@@ -1,5 +1,5 @@
 // --- CONFIGURATION ---
-const CLIENT_ID = "555797317893-ce2nrrf4e5dol0c6lurln0c3it76c2r.apps.googleusercontent.com";
+const CLIENT_ID = "555797317893-ce2nrrf49e5dol0c6lurln0c3it76c2r.apps.googleusercontent.com";
 const SPREADSHEET_ID = "1G3kVQdR0yd1j362oZKYRXMby1Ve6PVcY8CrsQnuxVfY";
 const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
 // --- END OF CONFIGURATION ---
@@ -12,92 +12,80 @@ let tokenClient;
 let gapiInited = false;
 let gisInited = false;
 
-/**
- * Callback after the API client library has loaded.
- */
+// Runs when the Google API client library (for Sheets) is loaded.
 function gapiLoaded() {
     gapi.load('client', initializeGapiClient);
 }
 
-/**
- * Callback after the Google Identity Services library has loaded.
- */
+// Runs when the Google Identity Services (for login) is loaded.
 function gisLoaded() {
-    tokenClient = google.accounts.id.initTokenClient({
+    // This is the correct new way to initialize the token client
+    tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID,
         scope: SCOPES,
-        callback: '', // defined later
+        callback: '', // Will be defined just before use
     });
     gisInited = true;
     maybeEnableButtons();
 }
 
-/**
- * Initializes the API client library.
- */
+// Initializes the Google API client.
 async function initializeGapiClient() {
-    await gapi.client.init({
-        // NOTE: No API key is needed for the Sheets API in this context
-    });
+    await gapi.client.init({}); // API key not needed for this flow
     gapiInited = true;
     maybeEnableButtons();
 }
 
-/**
-* Enables user interaction after all libraries are loaded.
-*/
+// Enables buttons once both libraries are fully loaded.
 function maybeEnableButtons() {
     if (gapiInited && gisInited) {
+        authorizeButton.style.opacity = 1;
+        authorizeButton.disabled = false;
         authorizeButton.onclick = handleAuthClick;
         signoutButton.onclick = handleSignoutClick;
     }
 }
 
-/**
- * Sign in the user upon button click.
- */
+// Called when the user clicks the authorization button.
 function handleAuthClick() {
-    tokenClient.callback = async (resp) => {
-        if (resp.error !== undefined) {
-            throw (resp);
+    tokenClient.callback = async (tokenResponse) => {
+        if (tokenResponse.error !== undefined) {
+            throw (tokenResponse);
         }
-        // Show signed-in UI
+        // Show the signed-in UI
         signoutButton.style.display = 'block';
         authorizeButton.innerText = 'Refresh Data';
         mainContent.style.display = 'block';
-        
-        // Load the data
+
+        // Load data from the spreadsheet
         await loadClients();
     };
 
+    // If the user doesn't have a token, request one.
     if (gapi.client.getToken() === null) {
-        // Prompt the user to select a Google Account and ask for consent to share their data
-        tokenClient.requestAccessToken({prompt: 'consent'});
+        tokenClient.requestAccessToken({ prompt: 'consent' });
     } else {
-        // Skip display of account chooser and consent dialog for an existing session.
-        tokenClient.requestAccessToken({prompt: ''});
+        // If they have a token, just refresh it without a prompt.
+        tokenClient.requestAccessToken({ prompt: '' });
     }
 }
 
-/**
- * Sign out the user upon button click.
- */
+// Called when the user clicks the sign-out button.
 function handleSignoutClick() {
     const token = gapi.client.getToken();
     if (token !== null) {
         google.accounts.oauth2.revoke(token.access_token);
         gapi.client.setToken('');
         
-        // Update UI
+        // Update the UI
         document.getElementById('client-list').innerText = 'Authorize to load client list.';
         authorizeButton.innerText = 'Authorize and Load Data';
         signoutButton.style.display = 'none';
+        mainContent.style.display = 'none';
     }
 }
 
-/**
- * Fetches client data from the 'Clients' sheet.
- */
+// Fetches client data from the 'Clients' sheet.
 async function loadClients() {
     const clientListDiv = document.getElementById('client-list');
     clientListDiv.innerHTML = '<p>Loading clients...</p>';
@@ -109,7 +97,7 @@ async function loadClients() {
         });
         
         const range = response.result;
-        if (range.values && range.values.length > 1) { // Check if values exist
+        if (range.values && range.values.length > 1) {
             const headers = range.values.shift(); // Remove header row
             
             clientListDiv.innerHTML = '';
@@ -117,7 +105,6 @@ async function loadClients() {
 
             range.values.forEach(row => {
                 const li = document.createElement('li');
-                // Assuming FirstName is column B (index 1) and Email is column D (index 3)
                 const firstName = row[1] || 'N/A'; // Handle empty cells
                 const email = row[3] || 'N/A';
                 li.textContent = `${firstName} - (${email})`; 
