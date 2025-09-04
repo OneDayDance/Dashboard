@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ODD Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Client Management Dashboard</h1>
+    </header>
+    <main>
+        <h2>Current Clients</h2>
+        <div id="client-list">
+            <p>Loading clients...</p>
+        </div>
+    </main>
+    <script src="script.js"></script>
+</body>
+</html>
