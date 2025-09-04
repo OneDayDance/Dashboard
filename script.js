@@ -2,8 +2,8 @@
  */
 
 // --- PASTE YOUR CREDENTIALS AND SPREADSHEET INFO HERE ---
-const CLIENT_ID = "YOUR_CLIENT_ID_FROM_GOOGLE_CLOUD"; 
-const SPREADSHEET_ID = "YOUR_SPREADSHEET_ID";
+const CLIENT_ID = "555797317893-ce2nrrf49e5dol0c6lurln0c3it76c2r.apps.googleusercontent.com"; 
+const SPREADSHEET_ID = "1G3kVQdR0yd1j362oZKYRXMby1Ve6PVcY8CrsQnuxVfY";
 // --- END OF CONFIGURATION ---
 
 // Scopes define the permissions the user grants.
@@ -82,13 +82,13 @@ async function loadClients() {
     try {
         const response = await gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Clients!A:E', // Adjust range as needed (e.g., Clients!A:E)
+            range: 'Clients!A:E', // Adjust range as needed
         });
-
+        
         const range = response.result;
         if (range.values.length > 1) { // More than just the header
             const headers = range.values.shift(); // Remove header row
-
+            
             clientListDiv.innerHTML = '';
             const ul = document.createElement('ul');
 
