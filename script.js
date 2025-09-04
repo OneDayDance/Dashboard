@@ -1,75 +1,98 @@
-/* * Client-side script for Google Sheets API access using OAuth 2.0
- */
-
-// --- PASTE YOUR CREDENTIALS AND SPREADSHEET INFO HERE ---
-const CLIENT_ID = "555797317893-ce2nrrf49e5dol0c6lurln0c3it76c2r.apps.googleusercontent.com"; 
+// --- CONFIGURATION ---
+const CLIENT_ID = "555797317893-ce2nrrf4e5dol0c6lurln0c3it76c2r.apps.googleusercontent.com";
 const SPREADSHEET_ID = "1G3kVQdR0yd1j362oZKYRXMby1Ve6PVcY8CrsQnuxVfY";
+const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
 // --- END OF CONFIGURATION ---
-
-// Scopes define the permissions the user grants.
-const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
 
 const authorizeButton = document.getElementById('authorize_button');
 const signoutButton = document.getElementById('signout_button');
 const mainContent = document.getElementById('main-content');
 
+let tokenClient;
+let gapiInited = false;
+let gisInited = false;
+
 /**
- * On load, called to load the auth2 library and API client library.
+ * Callback after the API client library has loaded.
  */
-function handleClientLoad() {
-    gapi.load('client:auth2', initClient);
+function gapiLoaded() {
+    gapi.load('client', initializeGapiClient);
 }
 
 /**
- * Initializes the API client library and sets up sign-in state
- * listeners.
+ * Callback after the Google Identity Services library has loaded.
  */
-function initClient() {
-    gapi.client.init({
-        clientId: CLIENT_ID,
-        scope: SCOPES
-    }).then(function () {
-        // Listen for sign-in state changes.
-        gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
+function gisLoaded() {
+    tokenClient = google.accounts.id.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: '', // defined later
+    });
+    gisInited = true;
+    maybeEnableButtons();
+}
 
-        // Handle the initial sign-in state.
-        updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+/**
+ * Initializes the API client library.
+ */
+async function initializeGapiClient() {
+    await gapi.client.init({
+        // NOTE: No API key is needed for the Sheets API in this context
+    });
+    gapiInited = true;
+    maybeEnableButtons();
+}
+
+/**
+* Enables user interaction after all libraries are loaded.
+*/
+function maybeEnableButtons() {
+    if (gapiInited && gisInited) {
         authorizeButton.onclick = handleAuthClick;
         signoutButton.onclick = handleSignoutClick;
-    }, function(error) {
-        console.error(JSON.stringify(error, null, 2));
-    });
-}
-
-/**
- * Called when the signed in status changes, to update the UI
- * and load data.
- */
-function updateSigninStatus(isSignedIn) {
-    if (isSignedIn) {
-        authorizeButton.style.display = 'none';
-        signoutButton.style.display = 'block';
-        mainContent.style.display = 'block';
-        loadClients();
-    } else {
-        authorizeButton.style.display = 'block';
-        signoutButton.style.display = 'none';
-        mainContent.style.display = 'none';
     }
 }
 
 /**
  * Sign in the user upon button click.
  */
-function handleAuthClick(event) {
-    gapi.auth2.getAuthInstance().signIn();
+function handleAuthClick() {
+    tokenClient.callback = async (resp) => {
+        if (resp.error !== undefined) {
+            throw (resp);
+        }
+        // Show signed-in UI
+        signoutButton.style.display = 'block';
+        authorizeButton.innerText = 'Refresh Data';
+        mainContent.style.display = 'block';
+        
+        // Load the data
+        await loadClients();
+    };
+
+    if (gapi.client.getToken() === null) {
+        // Prompt the user to select a Google Account and ask for consent to share their data
+        tokenClient.requestAccessToken({prompt: 'consent'});
+    } else {
+        // Skip display of account chooser and consent dialog for an existing session.
+        tokenClient.requestAccessToken({prompt: ''});
+    }
 }
 
 /**
  * Sign out the user upon button click.
  */
-function handleSignoutClick(event) {
-    gapi.auth2.getAuthInstance().signOut();
+function handleSignoutClick() {
+    const token = gapi.client.getToken();
+    if (token !== null) {
+        google.accounts.oauth2.revoke(token.access_token);
+        gapi.client.setToken('');
+        
+        // Update UI
+        document.getElementById('client-list').innerText = 'Authorize to load client list.';
+        authorizeButton.innerText = 'Authorize and Load Data';
+        signoutButton.style.display = 'none';
+    }
 }
 
 /**
@@ -86,7 +109,7 @@ async function loadClients() {
         });
         
         const range = response.result;
-        if (range.values.length > 1) { // More than just the header
+        if (range.values && range.values.length > 1) { // Check if values exist
             const headers = range.values.shift(); // Remove header row
             
             clientListDiv.innerHTML = '';
@@ -94,8 +117,10 @@ async function loadClients() {
 
             range.values.forEach(row => {
                 const li = document.createElement('li');
-                // Assuming FirstName is the 2nd column (index 1) and Email is the 4th (index 3)
-                li.textContent = `${row[1]} - (${row[3]})`; 
+                // Assuming FirstName is column B (index 1) and Email is column D (index 3)
+                const firstName = row[1] || 'N/A'; // Handle empty cells
+                const email = row[3] || 'N/A';
+                li.textContent = `${firstName} - (${email})`; 
                 ul.appendChild(li);
             });
             clientListDiv.appendChild(ul);
@@ -104,9 +129,7 @@ async function loadClients() {
             clientListDiv.innerHTML = '<p>No clients found.</p>';
         }
     } catch (err) {
+        console.error("API Error:", err);
         clientListDiv.innerHTML = `<p style="color:red;">Error: ${err.result.error.message}</p>`;
     }
 }
-
-// Load the client library.
-handleClientLoad();
