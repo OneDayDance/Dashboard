@@ -4,23 +4,30 @@ const SPREADSHEET_ID = "1G3kVQdR0yd1j362oZKYRXMby1Ve6PVcY8CrsQnuxVfY";
 const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
 // --- END OF CONFIGURATION ---
 
-// HTML Elements
-const authorizeButton = document.getElementById('authorize_button');
-const signoutButton = document.getElementById('signout_button');
-const appContainer = document.getElementById('app-container');
-const addClientForm = document.getElementById('add-client-form');
-
-// State
+// Declare variables, but wait to assign them until the DOM is loaded.
+let authorizeButton, signoutButton, appContainer, addClientForm;
 let tokenClient;
 let gapiInited = false;
 let gisInited = false;
 
+/**
+ * This is the main entry point. It runs after the HTML document has been fully loaded.
+ */
+document.addEventListener('DOMContentLoaded', () => {
+    // Now that the DOM is ready, we can safely assign our elements.
+    authorizeButton = document.getElementById('authorize_button');
+    signoutButton = document.getElementById('signout_button');
+    appContainer = document.getElementById('app-container');
+    addClientForm = document.getElementById('add-client-form');
+
+    // Assign event listeners
+    authorizeButton.onclick = handleAuthClick;
+    signoutButton.onclick = handleSignoutClick;
+    addClientForm.addEventListener('submit', handleAddClientSubmit);
+});
+
 
 // --- INITIALIZATION & AUTH ---
-
-window.onload = () => {
-    // This is needed to load the two Google scripts from the HTML
-};
 
 function gapiLoaded() { gapi.load('client', initializeGapiClient); }
 
@@ -29,22 +36,13 @@ function gisLoaded() {
         client_id: CLIENT_ID, scope: SCOPES, callback: '',
     });
     gisInited = true;
-    if (gapiInited) {
-        authorizeButton.style.visibility = 'visible';
-    }
 }
 
 async function initializeGapiClient() {
     await gapi.client.init({});
     await gapi.client.load('https://sheets.googleapis.com/$discovery/rest?version=v4');
     gapiInited = true;
-    if (gisInited) {
-        authorizeButton.style.visibility = 'visible';
-    }
 }
-
-authorizeButton.onclick = handleAuthClick;
-signoutButton.onclick = handleSignoutClick;
 
 function handleAuthClick() {
     tokenClient.callback = async (tokenResponse) => {
@@ -54,7 +52,6 @@ function handleAuthClick() {
         authorizeButton.style.display = 'none';
         appContainer.style.display = 'block';
         setupTabs();
-        // Load data for the default active tab
         loadDataForActiveTab();
     };
     if (gapi.client.getToken() === null) {
@@ -69,7 +66,6 @@ function handleSignoutClick() {
     if (token !== null) {
         google.accounts.oauth2.revoke(token.access_token);
         gapi.client.setToken('');
-        // Hide the main app and show the authorize button
         appContainer.style.display = 'none';
         authorizeButton.style.display = 'block';
         signoutButton.style.display = 'none';
@@ -85,17 +81,13 @@ function setupTabs() {
 
     tabButtons.forEach(button => {
         button.addEventListener('click', () => {
-            // Update button active state
             tabButtons.forEach(btn => btn.classList.remove('active'));
             button.classList.add('active');
             
-            // Hide all content, then show the correct one
             const tabId = button.dataset.tab;
             tabContents.forEach(content => {
                 content.style.display = (content.id === `tab-${tabId}`) ? 'block' : 'none';
             });
-
-            // Load data for the newly active tab
             loadDataForActiveTab();
         });
     });
@@ -125,9 +117,8 @@ function loadDataForActiveTab() {
     }
 }
 
-addClientForm.addEventListener('submit', handleAddClientSubmit);
 
-// --- DATA FUNCTIONS (CLIENTS) ---
+// --- DATA FUNCTIONS ---
 
 async function handleAddClientSubmit(event) {
     event.preventDefault();
@@ -209,7 +200,4 @@ async function writeData(sheetName, dataObject) {
     }
     const newRow = headers.map(header => dataObject[header] || '');
     return gapi.client.sheets.spreadsheets.values.append({
-        spreadsheetId: SPREADSHEET_ID, range: sheetName,
-        valueInputOption: 'USER_ENTERED', resource: { values: [newRow] },
-    });
-}
+        spreadsheetId: SPREADSHEET_
