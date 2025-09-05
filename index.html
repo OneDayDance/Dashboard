@@ -13,10 +13,23 @@
         <button id="signout_button" style="display: none;">Sign Out</button>
     </header>
     <main id="main-content" style="display: none;">
-        <h2>Current Clients</h2>
-        <div id="client-list">
-            <p>Authorize to load client list.</p>
-        </div>
+        <section class="card">
+            <h2>Add New Client</h2>
+            <form id="add-client-form">
+                <input type="text" id="client-first-name" placeholder="First Name" required>
+                <input type="text" id="client-last-name" placeholder="Last Name" required>
+                <input type="email" id="client-email" placeholder="Email" required>
+                <button type="submit">Add Client</button>
+            </form>
+            <div id="add-client-status"></div>
+        </section>
+
+        <section class="card">
+            <h2>Current Clients</h2>
+            <div id="client-list">
+                <p>Authorize to load client list.</p>
+            </div>
+        </section>
     </main>
 
     <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
