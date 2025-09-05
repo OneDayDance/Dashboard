@@ -23,6 +23,10 @@ function gisLoaded() {
 }
 async function initializeGapiClient() {
     await gapi.client.init({});
+    // ** THIS IS THE FIX **
+    // This line loads the Google Sheets API client library, making gapi.client.sheets available.
+    await gapi.client.load('https://sheets.googleapis.com/$discovery/rest?version=v4');
+    
     gapiInited = true;
     maybeEnableButtons();
 }
@@ -74,15 +78,14 @@ async function loadClients() {
         });
         
         const values = response.result.values;
-        if (!values || values.length <= 1) {
-            clientListDiv.innerHTML = '<p>No client data found.</p>';
+        if (!values || values.length < 1) { // Changed to < 1 to handle empty sheets
+            clientListDiv.innerHTML = '<p>No client data found. Try adding one!</p>';
             return;
         }
 
         const headers = values[0];
         const dataRows = values.slice(1);
 
-        // Find the column index for the headers we care about.
         const firstNameIndex = headers.indexOf('First Name');
         const lastNameIndex = headers.indexOf('Last Name');
         const emailIndex = headers.indexOf('Email');
@@ -93,6 +96,11 @@ async function loadClients() {
         }
         
         clientListDiv.innerHTML = '';
+        if (dataRows.length === 0) {
+            clientListDiv.innerHTML = '<p>No clients found. Try adding one!</p>';
+            return;
+        }
+
         const ul = document.createElement('ul');
         dataRows.forEach(row => {
             const li = document.createElement('li');
@@ -122,8 +130,8 @@ async function handleAddClientSubmit(event) {
         'First Name': document.getElementById('client-first-name').value,
         'Last Name': document.getElementById('client-last-name').value,
         'Email': document.getElementById('client-email').value,
-        'Status': 'Active', // Example of a default value
-        'ClientID': `C-${Date.now()}` // Example of an auto-generated ID
+        'Status': 'Active', 
+        'ClientID': `C-${Date.now()}`
     };
 
     try {
@@ -139,42 +147,31 @@ async function handleAddClientSubmit(event) {
 
 /**
  * A generic function to write a row of data dynamically.
- * It will create headers if the sheet is empty.
- * @param {string} sheetName The name of the sheet tab.
- * @param {object} dataObject An object where keys match header names.
  */
 async function writeData(sheetName, dataObject) {
-    // 1. Get current headers from the sheet
     const headerResponse = await gapi.client.sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
-        range: `${sheetName}!1:1`, // Get the first row
+        range: `${sheetName}!1:1`,
     });
 
     let headers = headerResponse.result.values ? headerResponse.result.values[0] : [];
     
-    // 2. If sheet is empty, write the object keys as the new headers
     if (headers.length === 0) {
         headers = Object.keys(dataObject);
         await gapi.client.sheets.spreadsheets.values.update({
             spreadsheetId: SPREADSHEET_ID,
             range: `${sheetName}!A1`,
             valueInputOption: 'RAW',
-            resource: {
-                values: [headers],
-            },
+            resource: { values: [headers] },
         });
     }
 
-    // 3. Create the new row in the correct column order
-    const newRow = headers.map(header => dataObject[header] || ''); // Use value or empty string
+    const newRow = headers.map(header => dataObject[header] || '');
 
-    // 4. Append the new row to the sheet
     return gapi.client.sheets.spreadsheets.values.append({
-        spreadsheetId: SPREADSHEET_ID,
+        spreadsheetId: SPREADSHEDEET_ID,
         range: sheetName,
         valueInputOption: 'USER_ENTERED',
-        resource: {
-            values: [newRow],
-        },
+        resource: { values: [newRow] },
     });
 }
