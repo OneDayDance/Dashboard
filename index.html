@@ -9,32 +9,67 @@
 <body>
     <header>
         <h1>Client Management Dashboard</h1>
-        <button id="authorize_button">Authorize and Load Data</button>
-        <button id="signout_button" style="display: none;">Sign Out</button>
+        <div id="auth-container">
+            <button id="authorize_button">Authorize</button>
+            <button id="signout_button" style="display: none;">Sign Out</button>
+        </div>
     </header>
-    <main id="main-content" style="display: none;">
-        <section class="card">
-            <h2>Add New Client</h2>
-            <form id="add-client-form">
-                <input type="text" id="client-first-name" placeholder="First Name" required>
-                <input type="text" id="client-last-name" placeholder="Last Name" required>
-                <input type="email" id="client-email" placeholder="Email" required>
-                <button type="submit">Add Client</button>
-            </form>
-            <div id="add-client-status"></div>
-        </section>
 
-        <section class="card">
-            <h2>Current Clients</h2>
-            <div id="client-list">
-                <p>Authorize to load client list.</p>
-            </div>
-        </section>
-    </main>
+    <div id="app-container" style="display: none;">
+        <nav class="tab-nav">
+            <button class="tab-button active" data-tab="requests">Requests</button>
+            <button class="tab-button" data-tab="analytics">Analytics</button>
+            <button class="tab-button" data-tab="clients">Clients</button>
+            <button class="tab-button" data-tab="projects">Projects</button>
+            <button class="tab-button" data-tab="costumes">Costumes</button>
+            <button class="tab-button" data-tab="equipment">Equipment</button>
+        </nav>
+
+        <main id="tab-requests" class="tab-content">
+            <h2>New Service Requests</h2>
+            <p>This section will show new submissions from your intake form.</p>
+        </main>
+
+        <main id="tab-analytics" class="tab-content" style="display: none;">
+            <h2>Analytics</h2>
+            <p>Charts and key metrics will go here.</p>
+        </main>
+
+        <main id="tab-clients" class="tab-content" style="display: none;">
+            <section class="card">
+                <h2>Add New Client</h2>
+                <form id="add-client-form">
+                    <input type="text" id="client-first-name" placeholder="First Name" required>
+                    <input type="text" id="client-last-name" placeholder="Last Name" required>
+                    <input type="email" id="client-email" placeholder="Email" required>
+                    <button type="submit">Add Client</button>
+                </form>
+                <div id="add-client-status"></div>
+            </section>
+            <section class="card">
+                <h2>Current Clients</h2>
+                <div id="client-list"></div>
+            </section>
+        </main>
+        
+        <main id="tab-projects" class="tab-content" style="display: none;">
+            <h2>Projects</h2>
+            <p>Project tracking will go here.</p>
+        </main>
+
+        <main id="tab-costumes" class="tab-content" style="display: none;">
+            <h2>Costumes</h2>
+            <p>Costume inventory management will go here.</p>
+        </main>
+        
+        <main id="tab-equipment" class="tab-content" style="display: none;">
+            <h2>Equipment</h2>
+            <p>Equipment tracking will go here.</p>
+        </main>
+    </div>
 
     <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
-    
     <script src="script.js"></script>
 </body>
 </html>
