@@ -27,14 +27,19 @@
 
         <main id="tab-requests" class="tab-content">
             <h2>New Service Requests</h2>
-            <p>This section will show new submissions from your intake form.</p>
+            <div class="filter-controls">
+                <label for="service-filter">Filter by Service:</label>
+                <select id="service-filter">
+                    <option value="all">All Services</option>
+                    </select>
+            </div>
+            <div id="requests-container"></div>
         </main>
 
         <main id="tab-analytics" class="tab-content" style="display: none;">
             <h2>Analytics</h2>
             <p>Charts and key metrics will go here.</p>
         </main>
-
         <main id="tab-clients" class="tab-content" style="display: none;">
             <section class="card">
                 <h2>Add New Client</h2>
@@ -51,21 +56,17 @@
                 <div id="client-list"></div>
             </section>
         </main>
-        
-        <main id="tab-projects" class="tab-content" style="display: none;">
-            <h2>Projects</h2>
-            <p>Project tracking will go here.</p>
-        </main>
+        <main id="tab-projects" class="tab-content" style="display: none;"><h2>Projects</h2><p>Project tracking will go here.</p></main>
+        <main id="tab-costumes" class="tab-content" style="display: none;"><h2>Costumes</h2><p>Costume inventory management will go here.</p></main>
+        <main id="tab-equipment" class="tab-content" style="display: none;"><h2>Equipment</h2><p>Equipment tracking will go here.</p></main>
+    </div>
 
-        <main id="tab-costumes" class="tab-content" style="display: none;">
-            <h2>Costumes</h2>
-            <p>Costume inventory management will go here.</p>
-        </main>
-        
-        <main id="tab-equipment" class="tab-content" style="display: none;">
-            <h2>Equipment</h2>
-            <p>Equipment tracking will go here.</p>
-        </main>
+    <div id="details-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2 id="modal-title">Request Details</h2>
+            <div id="modal-body"></div>
+        </div>
     </div>
 
     <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
