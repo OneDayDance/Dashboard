@@ -23,10 +23,7 @@ function gisLoaded() {
 }
 async function initializeGapiClient() {
     await gapi.client.init({});
-    // ** THIS IS THE FIX **
-    // This line loads the Google Sheets API client library, making gapi.client.sheets available.
     await gapi.client.load('https://sheets.googleapis.com/$discovery/rest?version=v4');
-    
     gapiInited = true;
     maybeEnableButtons();
 }
@@ -74,11 +71,11 @@ async function loadClients() {
     try {
         const response = await gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Clients', // Read the whole sheet
+            range: 'Clients',
         });
         
         const values = response.result.values;
-        if (!values || values.length < 1) { // Changed to < 1 to handle empty sheets
+        if (!values || values.length < 1) {
             clientListDiv.innerHTML = '<p>No client data found. Try adding one!</p>';
             return;
         }
@@ -138,7 +135,7 @@ async function handleAddClientSubmit(event) {
         await writeData('Clients', clientData);
         statusDiv.textContent = 'Client added successfully!';
         addClientForm.reset();
-        await loadClients(); // Refresh the client list
+        await loadClients();
     } catch (err) {
         console.error("Write Error:", err);
         statusDiv.textContent = `Error: ${err.result.error.message}`;
@@ -169,7 +166,7 @@ async function writeData(sheetName, dataObject) {
     const newRow = headers.map(header => dataObject[header] || '');
 
     return gapi.client.sheets.spreadsheets.values.append({
-        spreadsheetId: SPREADSHEDEET_ID,
+        spreadsheetId: SPREADSHEET_ID, // <-- THIS LINE IS NOW CORRECTED
         range: sheetName,
         valueInputOption: 'USER_ENTERED',
         resource: { values: [newRow] },
