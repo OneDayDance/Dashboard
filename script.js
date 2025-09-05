@@ -4,7 +4,7 @@ const SPREADSHEET_ID = "1G3kVQdR0yd1j362oZKYRXMby1Ve6PVcY8CrsQnuxVfY";
 const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
 // --- END OF CONFIGURATION ---
 
-// Declare variables, but wait to assign them until the DOM is loaded.
+// Declare variables; they will be assigned after the DOM loads.
 let authorizeButton, signoutButton, appContainer, addClientForm;
 let tokenClient;
 let gapiInited = false;
@@ -29,7 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // --- INITIALIZATION & AUTH ---
 
-function gapiLoaded() { gapi.load('client', initializeGapiClient); }
+function gapiLoaded() {
+    gapi.load('client', initializeGapiClient);
+}
 
 function gisLoaded() {
     tokenClient = google.accounts.oauth2.initTokenClient({
@@ -46,7 +48,9 @@ async function initializeGapiClient() {
 
 function handleAuthClick() {
     tokenClient.callback = async (tokenResponse) => {
-        if (tokenResponse.error !== undefined) { throw (tokenResponse); }
+        if (tokenResponse.error !== undefined) {
+            throw (tokenResponse);
+        }
         // On successful login, set up the app
         signoutButton.style.display = 'block';
         authorizeButton.style.display = 'none';
@@ -66,6 +70,7 @@ function handleSignoutClick() {
     if (token !== null) {
         google.accounts.oauth2.revoke(token.access_token);
         gapi.client.setToken('');
+        // Hide the main app and show the authorize button
         appContainer.style.display = 'none';
         authorizeButton.style.display = 'block';
         signoutButton.style.display = 'none';
@@ -79,15 +84,24 @@ function setupTabs() {
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('.tab-content');
 
+    // Make the first tab active by default
+    document.querySelector('.tab-button[data-tab="requests"]').classList.add('active');
+    document.querySelector('#tab-requests').style.display = 'block';
+
+
     tabButtons.forEach(button => {
         button.addEventListener('click', () => {
+            // Update button active state
             tabButtons.forEach(btn => btn.classList.remove('active'));
             button.classList.add('active');
             
+            // Hide all content, then show the correct one
             const tabId = button.dataset.tab;
             tabContents.forEach(content => {
                 content.style.display = (content.id === `tab-${tabId}`) ? 'block' : 'none';
             });
+
+            // Load data for the newly active tab
             loadDataForActiveTab();
         });
     });
@@ -200,4 +214,9 @@ async function writeData(sheetName, dataObject) {
     }
     const newRow = headers.map(header => dataObject[header] || '');
     return gapi.client.sheets.spreadsheets.values.append({
-        spreadsheetId: SPREADSHEET_
+        spreadsheetId: SPREADSHEET_ID, range: sheetName,
+        valueInputOption: 'USER_ENTERED', resource: { values: [newRow] },
+    });
+}
+
+// --- End of script.js ---
