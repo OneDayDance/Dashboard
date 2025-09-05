@@ -26,3 +26,33 @@ main {
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     margin-bottom: 20px;
 }
+.tab-nav {
+    display: flex;
+    border-bottom: 2px solid #ccc;
+    margin-bottom: 20px;
+}
+
+.tab-button {
+    padding: 10px 20px;
+    cursor: pointer;
+    border: none;
+    background-color: transparent;
+    font-size: 16px;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px; /* Aligns with the nav border */
+}
+
+.tab-button:hover {
+    background-color: #f0f0f0;
+}
+
+.tab-button.active {
+    border-bottom: 3px solid #007bff;
+    font-weight: bold;
+}
+
+#auth-container {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+}
