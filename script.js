@@ -10,17 +10,11 @@ let tokenClient;
 let gapiInited = false;
 let gisInited = false;
 
-/**
- * This is the main entry point. It runs after the HTML document has been fully loaded.
- */
 document.addEventListener('DOMContentLoaded', () => {
-    // Now that the DOM is ready, we can safely assign our elements.
     authorizeButton = document.getElementById('authorize_button');
     signoutButton = document.getElementById('signout_button');
     appContainer = document.getElementById('app-container');
     addClientForm = document.getElementById('add-client-form');
-
-    // Assign event listeners
     authorizeButton.onclick = handleAuthClick;
     signoutButton.onclick = handleSignoutClick;
     addClientForm.addEventListener('submit', handleAddClientSubmit);
@@ -29,17 +23,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // --- INITIALIZATION & AUTH ---
 
-function gapiLoaded() {
-    gapi.load('client', initializeGapiClient);
-}
-
+function gapiLoaded() { gapi.load('client', initializeGapiClient); }
 function gisLoaded() {
     tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID, scope: SCOPES, callback: '',
     });
     gisInited = true;
 }
-
 async function initializeGapiClient() {
     await gapi.client.init({});
     await gapi.client.load('https://sheets.googleapis.com/$discovery/rest?version=v4');
@@ -48,10 +38,7 @@ async function initializeGapiClient() {
 
 function handleAuthClick() {
     tokenClient.callback = async (tokenResponse) => {
-        if (tokenResponse.error !== undefined) {
-            throw (tokenResponse);
-        }
-        // On successful login, set up the app
+        if (tokenResponse.error !== undefined) { throw (tokenResponse); }
         signoutButton.style.display = 'block';
         authorizeButton.style.display = 'none';
         appContainer.style.display = 'block';
@@ -70,7 +57,6 @@ function handleSignoutClick() {
     if (token !== null) {
         google.accounts.oauth2.revoke(token.access_token);
         gapi.client.setToken('');
-        // Hide the main app and show the authorize button
         appContainer.style.display = 'none';
         authorizeButton.style.display = 'block';
         signoutButton.style.display = 'none';
@@ -83,25 +69,16 @@ function handleSignoutClick() {
 function setupTabs() {
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('.tab-content');
-
-    // Make the first tab active by default
     document.querySelector('.tab-button[data-tab="requests"]').classList.add('active');
     document.querySelector('#tab-requests').style.display = 'block';
-
-
     tabButtons.forEach(button => {
         button.addEventListener('click', () => {
-            // Update button active state
             tabButtons.forEach(btn => btn.classList.remove('active'));
             button.classList.add('active');
-            
-            // Hide all content, then show the correct one
             const tabId = button.dataset.tab;
             tabContents.forEach(content => {
                 content.style.display = (content.id === `tab-${tabId}`) ? 'block' : 'none';
             });
-
-            // Load data for the newly active tab
             loadDataForActiveTab();
         });
     });
@@ -111,7 +88,7 @@ function loadDataForActiveTab() {
     const activeTab = document.querySelector('.tab-button.active').dataset.tab;
     switch (activeTab) {
         case 'requests':
-            // TODO: loadRequests();
+            loadRequests(); // This is now active
             break;
         case 'analytics':
             // TODO: renderAnalytics();
@@ -157,6 +134,7 @@ async function handleAddClientSubmit(event) {
 }
 
 async function loadClients() {
+    // This function remains the same as before
     const clientListDiv = document.getElementById('client-list');
     clientListDiv.innerHTML = '<p>Loading clients...</p>';
     try {
@@ -200,7 +178,112 @@ async function loadClients() {
     }
 }
 
+/**
+ * NEW: Fetches and displays data from the "Submissions" tab.
+ */
+async function loadRequests() {
+    const container = document.getElementById('tab-requests');
+    container.innerHTML = '<p>Loading new service requests...</p>';
+
+    try {
+        const response = await gapi.client.sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID, range: 'Submissions',
+        });
+        const values = response.result.values;
+        if (!values || values.length <= 1) {
+            container.innerHTML = '<h2>New Service Requests</h2><p>No new submissions found.</p>';
+            return;
+        }
+        const headers = values[0];
+        const dataRows = values.slice(1);
+        
+        // Find the columns we need from the "Submissions" sheet
+        const dateIndex = headers.indexOf('Submission Date');
+        const nameIndex = headers.indexOf('Full Name');
+        const emailIndex = headers.indexOf('Email');
+        const serviceIndex = headers.indexOf('Primary Service Category');
+        // We also need these for creating a client
+        const firstNameIndex = headers.indexOf('First Name');
+        const lastNameIndex = headers.indexOf('Last Name');
+
+        container.innerHTML = '<h2>New Service Requests</h2>';
+        const table = document.createElement('table');
+        table.className = 'data-table';
+        table.innerHTML = `
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Service</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+        `;
+        const tbody = document.createElement('tbody');
+        dataRows.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${row[dateIndex] || ''}</td>
+                <td>${row[nameIndex] || ''}</td>
+                <td>${row[emailIndex] || ''}</td>
+                <td>${row[serviceIndex] || ''}</td>
+            `;
+            const actionTd = document.createElement('td');
+            const button = document.createElement('button');
+            button.textContent = 'Create Client';
+            // Store the necessary data on the button itself
+            button.dataset.firstName = row[firstNameIndex] || '';
+            button.dataset.lastName = row[lastNameIndex] || '';
+            button.dataset.email = row[emailIndex] || '';
+            
+            button.onclick = handleCreateClientFromRequest;
+            actionTd.appendChild(button);
+            tr.appendChild(actionTd);
+            tbody.appendChild(tr);
+        });
+        
+        table.appendChild(tbody);
+        container.appendChild(table);
+
+    } catch (err) {
+        console.error("API Error:", err);
+        container.innerHTML = `<p style="color:red;">Error loading requests: ${err.result.error.message}</p>`;
+    }
+}
+
+/**
+ * NEW: Handles the "Create Client" button click from a submission.
+ */
+async function handleCreateClientFromRequest(event) {
+    const button = event.target;
+    button.textContent = 'Creating...';
+    button.disabled = true;
+
+    // Retrieve the data we stored on the button's dataset
+    const { firstName, lastName, email } = button.dataset;
+
+    const clientData = {
+        'First Name': firstName,
+        'Last Name': lastName,
+        'Email': email,
+        'Status': 'Lead', // Default status for clients from submissions
+        'ClientID': `C-${Date.now()}`
+    };
+
+    try {
+        await writeData('Clients', clientData);
+        button.textContent = 'Client Created!';
+    } catch (err) {
+        button.textContent = 'Error!';
+        button.disabled = false;
+        console.error("Write Error:", err);
+    }
+}
+
+
 async function writeData(sheetName, dataObject) {
+    // This function remains the same as before
     const headerResponse = await gapi.client.sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!1:1`,
     });
@@ -218,5 +301,3 @@ async function writeData(sheetName, dataObject) {
         valueInputOption: 'USER_ENTERED', resource: { values: [newRow] },
     });
 }
-
-// --- End of script.js ---
