@@ -4,20 +4,33 @@ const SPREADSHEET_ID = "1G3kVQdR0yd1j362oZKYRXMby1Ve6PVcY8CrsQnuxVfY";
 const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
 // --- END OF CONFIGURATION ---
 
-// Declare variables; they will be assigned after the DOM loads.
-let authorizeButton, signoutButton, appContainer, addClientForm;
+// Declare variables
+let authorizeButton, signoutButton, appContainer, addClientForm, serviceFilter, modal, closeModalButton;
 let tokenClient;
-let gapiInited = false;
-let gisInited = false;
+let gapiInited = false, gisInited = false;
+let allRequests = []; // Cache for requests to make filtering fast
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Assign all elements once the DOM is ready
     authorizeButton = document.getElementById('authorize_button');
     signoutButton = document.getElementById('signout_button');
     appContainer = document.getElementById('app-container');
     addClientForm = document.getElementById('add-client-form');
+    serviceFilter = document.getElementById('service-filter');
+    modal = document.getElementById('details-modal');
+    closeModalButton = document.querySelector('.close-button');
+
+    // Assign event listeners
     authorizeButton.onclick = handleAuthClick;
     signoutButton.onclick = handleSignoutClick;
     addClientForm.addEventListener('submit', handleAddClientSubmit);
+    serviceFilter.onchange = renderRequestsTable; // Re-render table on filter change
+    closeModalButton.onclick = () => modal.style.display = 'none';
+    window.onclick = (event) => {
+        if (event.target == modal) {
+            modal.style.display = 'none';
+        }
+    };
 });
 
 
@@ -52,6 +65,7 @@ function handleAuthClick() {
     }
 }
 
+// ... handleSignoutClick function remains the same ...
 function handleSignoutClick() {
     const token = gapi.client.getToken();
     if (token !== null) {
@@ -66,6 +80,7 @@ function handleSignoutClick() {
 
 // --- TAB NAVIGATION LOGIC ---
 
+// ... setupTabs and loadDataForActiveTab functions remain the same ...
 function setupTabs() {
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('.tab-content');
@@ -88,29 +103,19 @@ function loadDataForActiveTab() {
     const activeTab = document.querySelector('.tab-button.active').dataset.tab;
     switch (activeTab) {
         case 'requests':
-            loadRequests(); // This is now active
-            break;
-        case 'analytics':
-            // TODO: renderAnalytics();
+            loadRequests();
             break;
         case 'clients':
             loadClients();
             break;
-        case 'projects':
-            // TODO: loadProjects();
-            break;
-        case 'costumes':
-            // TODO: loadCostumes();
-            break;
-        case 'equipment':
-            // TODO: loadEquipment();
-            break;
+        // ... other cases ...
     }
 }
 
 
 // --- DATA FUNCTIONS ---
 
+// ... handleAddClientSubmit, loadClients, and writeData functions remain the same ...
 async function handleAddClientSubmit(event) {
     event.preventDefault();
     const statusDiv = document.getElementById('add-client-status');
@@ -132,9 +137,7 @@ async function handleAddClientSubmit(event) {
         statusDiv.textContent = `Error: ${err.result.error.message}`;
     }
 }
-
 async function loadClients() {
-    // This function remains the same as before
     const clientListDiv = document.getElementById('client-list');
     clientListDiv.innerHTML = '<p>Loading clients...</p>';
     try {
@@ -170,120 +173,14 @@ async function loadClients() {
             const email = row[emailIndex] || 'N/A';
             li.textContent = `${firstName} ${lastName} - (${email})`;
             ul.appendChild(li);
-        });
+});
         clientListDiv.appendChild(ul);
     } catch (err) {
         console.error("API Error:", err);
         clientListDiv.innerHTML = `<p style="color:red;">Error: ${err.result.error.message}</p>`;
     }
 }
-
-/**
- * NEW: Fetches and displays data from the "Submissions" tab.
- */
-async function loadRequests() {
-    const container = document.getElementById('tab-requests');
-    container.innerHTML = '<p>Loading new service requests...</p>';
-
-    try {
-        const response = await gapi.client.sheets.spreadsheets.values.get({
-            spreadsheetId: SPREADSHEET_ID, range: 'Submissions',
-        });
-        const values = response.result.values;
-        if (!values || values.length <= 1) {
-            container.innerHTML = '<h2>New Service Requests</h2><p>No new submissions found.</p>';
-            return;
-        }
-        const headers = values[0];
-        const dataRows = values.slice(1);
-        
-        // Find the columns we need from the "Submissions" sheet
-        const dateIndex = headers.indexOf('Submission Date');
-        const nameIndex = headers.indexOf('Full Name');
-        const emailIndex = headers.indexOf('Email');
-        const serviceIndex = headers.indexOf('Primary Service Category');
-        // We also need these for creating a client
-        const firstNameIndex = headers.indexOf('First Name');
-        const lastNameIndex = headers.indexOf('Last Name');
-
-        container.innerHTML = '<h2>New Service Requests</h2>';
-        const table = document.createElement('table');
-        table.className = 'data-table';
-        table.innerHTML = `
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Service</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-        `;
-        const tbody = document.createElement('tbody');
-        dataRows.forEach(row => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${row[dateIndex] || ''}</td>
-                <td>${row[nameIndex] || ''}</td>
-                <td>${row[emailIndex] || ''}</td>
-                <td>${row[serviceIndex] || ''}</td>
-            `;
-            const actionTd = document.createElement('td');
-            const button = document.createElement('button');
-            button.textContent = 'Create Client';
-            // Store the necessary data on the button itself
-            button.dataset.firstName = row[firstNameIndex] || '';
-            button.dataset.lastName = row[lastNameIndex] || '';
-            button.dataset.email = row[emailIndex] || '';
-            
-            button.onclick = handleCreateClientFromRequest;
-            actionTd.appendChild(button);
-            tr.appendChild(actionTd);
-            tbody.appendChild(tr);
-        });
-        
-        table.appendChild(tbody);
-        container.appendChild(table);
-
-    } catch (err) {
-        console.error("API Error:", err);
-        container.innerHTML = `<p style="color:red;">Error loading requests: ${err.result.error.message}</p>`;
-    }
-}
-
-/**
- * NEW: Handles the "Create Client" button click from a submission.
- */
-async function handleCreateClientFromRequest(event) {
-    const button = event.target;
-    button.textContent = 'Creating...';
-    button.disabled = true;
-
-    // Retrieve the data we stored on the button's dataset
-    const { firstName, lastName, email } = button.dataset;
-
-    const clientData = {
-        'First Name': firstName,
-        'Last Name': lastName,
-        'Email': email,
-        'Status': 'Lead', // Default status for clients from submissions
-        'ClientID': `C-${Date.now()}`
-    };
-
-    try {
-        await writeData('Clients', clientData);
-        button.textContent = 'Client Created!';
-    } catch (err) {
-        button.textContent = 'Error!';
-        button.disabled = false;
-        console.error("Write Error:", err);
-    }
-}
-
-
 async function writeData(sheetName, dataObject) {
-    // This function remains the same as before
     const headerResponse = await gapi.client.sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!1:1`,
     });
@@ -300,4 +197,168 @@ async function writeData(sheetName, dataObject) {
         spreadsheetId: SPREADSHEET_ID, range: sheetName,
         valueInputOption: 'USER_ENTERED', resource: { values: [newRow] },
     });
+}
+
+
+/**
+ * NEW: Controller for loading and rendering requests.
+ */
+async function loadRequests() {
+    const container = document.getElementById('requests-container');
+    container.innerHTML = '<p>Loading new service requests...</p>';
+    // If we haven't fetched requests yet, do it now. Otherwise, use the cached data.
+    if (allRequests.length === 0) {
+        try {
+            const response = await gapi.client.sheets.spreadsheets.values.get({
+                spreadsheetId: SPREADSHEET_ID, range: 'Submissions',
+            });
+            const values = response.result.values;
+            if (values && values.length > 1) {
+                allRequests = {
+                    headers: values[0],
+                    rows: values.slice(1)
+                };
+                populateServiceFilter();
+            }
+        } catch (err) {
+            console.error("API Error:", err);
+            container.innerHTML = `<p style="color:red;">Error loading requests: ${err.result.error.message}</p>`;
+            return;
+        }
+    }
+    renderRequestsTable();
+}
+
+/**
+ * NEW: Renders the requests table based on the current filter.
+ */
+function renderRequestsTable() {
+    const container = document.getElementById('requests-container');
+    if (allRequests.length === 0 || allRequests.rows.length === 0) {
+        container.innerHTML = '<p>No new submissions found.</p>';
+        return;
+    }
+
+    const { headers, rows } = allRequests;
+    const selectedService = serviceFilter.value;
+
+    // Filter the rows
+    const serviceIndex = headers.indexOf('Primary Service Category');
+    const filteredRows = (selectedService === 'all')
+        ? rows
+        : rows.filter(row => row[serviceIndex] === selectedService);
+
+    if (filteredRows.length === 0) {
+        container.innerHTML = '<p>No submissions match the selected filter.</p>';
+        return;
+    }
+
+    // Find column indices
+    const dateIndex = headers.indexOf('Submission Date');
+    const nameIndex = headers.indexOf('Full Name');
+    const emailIndex = headers.indexOf('Email');
+    const firstNameIndex = headers.indexOf('First Name');
+    const lastNameIndex = headers.indexOf('Last Name');
+
+    container.innerHTML = '';
+    const table = document.createElement('table');
+    table.className = 'data-table';
+    table.innerHTML = `<thead><tr><th>Date</th><th>Name</th><th>Service</th><th>Action</th></tr></thead>`;
+    
+    const tbody = document.createElement('tbody');
+    filteredRows.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${row[dateIndex] || ''}</td>
+            <td>${row[nameIndex] || ''}</td>
+            <td>${row[serviceIndex] || ''}</td>
+        `;
+        // Make the row clickable to show details
+        tr.onclick = () => showRequestDetailsModal(row, headers);
+        
+        // Add the "Create Client" button cell
+        const actionTd = document.createElement('td');
+        const button = document.createElement('button');
+        button.textContent = 'Create Client';
+        button.dataset.firstName = row[firstNameIndex] || '';
+        button.dataset.lastName = row[lastNameIndex] || '';
+        button.dataset.email = row[emailIndex] || '';
+        button.onclick = (event) => {
+            event.stopPropagation(); // Prevents the row's click event from firing
+            handleCreateClientFromRequest(event);
+        };
+        actionTd.appendChild(button);
+        tr.appendChild(actionTd);
+        tbody.appendChild(tr);
+    });
+    
+    table.appendChild(tbody);
+    container.appendChild(table);
+}
+
+/**
+ * NEW: Populates the filter dropdown with unique service categories.
+ */
+function populateServiceFilter() {
+    if (allRequests.length === 0) return;
+    const { headers, rows } = allRequests;
+    const serviceIndex = headers.indexOf('Primary Service Category');
+    if (serviceIndex === -1) return;
+
+    // Get unique service categories
+    const services = new Set(rows.map(row => row[serviceIndex]));
+    
+    // Clear existing options except the first one
+    serviceFilter.innerHTML = '<option value="all">All Services</option>';
+    
+    services.forEach(service => {
+        if(service) { // Ensure not to add empty options
+            const option = document.createElement('option');
+            option.value = service;
+            option.textContent = service;
+            serviceFilter.appendChild(option);
+        }
+    });
+}
+
+/**
+ * NEW: Displays all data for a single request in a modal.
+ */
+function showRequestDetailsModal(rowData, headers) {
+    const modalBody = document.getElementById('modal-body');
+    let contentHtml = '<ul>';
+    headers.forEach((header, index) => {
+        if(rowData[index]) { // Only show fields that have data
+            contentHtml += `<li><strong>${header}:</strong> ${rowData[index]}</li>`;
+        }
+    });
+    contentHtml += '</ul>';
+    
+    modalBody.innerHTML = contentHtml;
+    modal.style.display = 'block';
+}
+
+// ... handleCreateClientFromRequest function remains the same ...
+async function handleCreateClientFromRequest(event) {
+    const button = event.target;
+    button.textContent = 'Creating...';
+    button.disabled = true;
+
+    const { firstName, lastName, email } = button.dataset;
+    const clientData = {
+        'First Name': firstName,
+        'Last Name': lastName,
+        'Email': email,
+        'Status': 'Lead',
+        'ClientID': `C-${Date.now()}`
+    };
+
+    try {
+        await writeData('Clients', clientData);
+        button.textContent = 'Client Created!';
+    } catch (err) {
+        button.textContent = 'Error!';
+        button.disabled = false;
+        console.error("Write Error:", err);
+    }
 }
