@@ -12,6 +12,7 @@ header {
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     text-align: center;
     margin-bottom: 20px;
+    position: relative;
 }
 main {
     background-color: #ffffff;
@@ -26,146 +27,13 @@ main {
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     margin-bottom: 20px;
 }
-.tab-nav {
-    display: flex;
-    border-bottom: 2px solid #ccc;
-    margin-bottom: 20px;
-}
-
-.tab-button {
-    padding: 10px 20px;
-    cursor: pointer;
-    border: none;
-    background-color: transparent;
-    font-size: 16px;
-    border-bottom: 3px solid transparent;
-    margin-bottom: -2px; /* Aligns with the nav border */
-}
-
-.tab-button:hover {
-    background-color: #f0f0f0;
-}
-
-.tab-button.active {
-    border-bottom: 3px solid #007bff;
-    font-weight: bold;
-}
-
 #auth-container {
     position: absolute;
     top: 20px;
     right: 20px;
 }
-/* Styles for the submissions table */
-.data-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-}
-
-.data-table th, .data-table td {
-    border: 1px solid #ddd;
-    padding: 8px;
-    text-align: left;
-}
-
-.data-table th {
-    background-color: #f2f2f2;
-    font-weight: bold;
-}
-
-.data-table tr:nth-child(even) {
-    background-color: #f9f9f9;
-}
-
-.data-table button {
-    cursor: pointer;
-    padding: 5px 10px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    background-color: #e7e7e7;
-}
-/* Filter Controls */
-.filter-controls {
-    margin-bottom: 20px;
-    background-color: #f9f9f9;
-    padding: 15px;
-    border-radius: 8px;
-    border: 1px solid #eee;
-}
-.filter-controls label {
-    font-weight: bold;
-    margin-right: 10px;
-}
-.filter-controls select {
-    padding: 8px;
-    border-radius: 4px;
-    border: 1px solid #ccc;
-}
-
-/* Clickable Table Rows */
-.data-table tbody tr:hover {
-    background-color: #e9ecef;
-    cursor: pointer;
-}
-
-/* Modal Styles */
-.modal {
-    display: none; 
-    position: fixed; 
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0,0,0,0.5);
-}
-
-.modal-content {
-    background-color: #fefefe;
-    margin: 10% auto;
-    padding: 20px;
-    border: 1px solid #888;
-    width: 80%;
-    max-width: 700px;
-    border-radius: 8px;
-    position: relative;
-}
-
-.close-button {
-    color: #aaa;
-    position: absolute;
-    top: 10px;
-    right: 20px;
-    font-size: 28px;
-    font-weight: bold;
-}
-
-.close-button:hover,
-.close-button:focus {
-    color: black;
-    text-decoration: none;
-    cursor: pointer;
-}
-
-/* Styles for the details view inside the modal */
-#modal-body ul {
-    list-style-type: none;
-    padding: 0;
-}
-#modal-body li {
-    padding: 8px 0;
-    border-bottom: 1px solid #eee;
-}
-#modal-body li strong {
-    display: inline-block;
-    width: 150px;
-    color: #555;
-}
-/* Signout Button Styling */
 #signout_button {
-    background-color: #f44336; /* Red */
+    background-color: #f44336;
     color: white;
     border: none;
     padding: 8px 16px;
@@ -176,10 +44,45 @@ main {
 #signout_button:hover {
     background-color: #d32f2f;
 }
-
-/* View Toggle Controls */
+.tab-nav {
+    display: flex;
+    border-bottom: 2px solid #ccc;
+    margin-bottom: 20px;
+}
+.tab-button {
+    padding: 10px 20px;
+    cursor: pointer;
+    border: none;
+    background-color: transparent;
+    font-size: 16px;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+}
+.tab-button:hover {
+    background-color: #f0f0f0;
+}
+.tab-button.active {
+    border-bottom: 3px solid #007bff;
+    font-weight: bold;
+}
+.controls-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+.filter-controls {
+    display: flex;
+    gap: 10px;
+}
+.filter-controls input, .filter-controls select {
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
 .view-controls {
-    margin-bottom: 15px;
+    display: flex;
+    gap: 10px;
 }
 .view-controls button {
     padding: 8px 12px;
@@ -192,8 +95,72 @@ main {
     color: white;
     border-color: #007bff;
 }
-
-/* Card View Layout */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+.data-table th, .data-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+.data-table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+.data-table th.sortable {
+    cursor: pointer;
+    position: relative;
+}
+.data-table th.sortable:hover {
+    background-color: #e2e2e2;
+}
+.data-table th.sortable::after {
+    content: '\2195'; /* Up-down arrow */
+    opacity: 0.3;
+    position: absolute;
+    right: 8px;
+}
+.data-table th.sorted-asc::after {
+    content: '\25B2'; /* Up triangle */
+    opacity: 1;
+}
+.data-table th.sorted-desc::after {
+    content: '\25BC'; /* Down triangle */
+    opacity: 1;
+}
+.badge {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+    color: white;
+}
+.badge-new { background-color: #28a745; }
+.badge-contacted { background-color: #17a2b8; }
+.badge-archived { background-color: #6c757d; }
+.badge-default { background-color: #ffc107; color: #333; }
+#pagination-controls {
+    margin-top: 20px;
+    text-align: center;
+}
+#pagination-controls button {
+    padding: 8px 12px;
+    margin: 0 4px;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    cursor: pointer;
+}
+#pagination-controls button.active {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+#pagination-controls button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
 .card-container {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -222,94 +189,54 @@ main {
     flex-grow: 1;
     padding: 8px;
 }
-
-/* Pretty-printed JSON in modal */
-.modal-body pre {
-    background-color: #f4f4f4;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 10px;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    font-family: monospace;
+.modal {
+    display: none; 
+    position: fixed; 
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.5);
 }
-/* Add these new styles to your existing style.css file */
-
-.controls-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-.filter-controls {
-    display: flex;
-    gap: 10px;
-}
-.filter-controls input, .filter-controls select {
-    padding: 8px;
-    border-radius: 4px;
-    border: 1px solid #ccc;
-}
-
-/* Status Badges */
-.badge {
-    padding: 3px 8px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: bold;
-    color: white;
-}
-.badge-new { background-color: #28a745; } /* Green */
-.badge-archived { background-color: #6c757d; } /* Gray */
-.badge-default { background-color: #ffc107; color: #333; } /* Yellow */
-
-/* Sortable Table Headers */
-.data-table th.sortable {
-    cursor: pointer;
+.modal-content {
+    background-color: #fefefe;
+    margin: 10% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 700px;
+    border-radius: 8px;
     position: relative;
 }
-.data-table th.sortable:hover {
-    background-color: #e2e2e2;
-}
-.data-table th.sortable::after {
-    content: '\2195'; /* Up-down arrow */
-    opacity: 0.3;
+.close-button {
+    color: #aaa;
     position: absolute;
-    right: 8px;
+    top: 10px;
+    right: 20px;
+    font-size: 28px;
+    font-weight: bold;
 }
-
-.data-table th.sorted-asc::after {
-    content: '\25B2'; /* Up triangle */
-    opacity: 1;
-}
-.data-table th.sorted-desc::after {
-    content: '\25BC'; /* Down triangle */
-    opacity: 1;
-}
-
-/* Pagination */
-#pagination-controls {
-    margin-top: 20px;
-    text-align: center;
-}
-#pagination-controls button {
-    padding: 8px 12px;
-    margin: 0 4px;
-    border: 1px solid #ccc;
-    background-color: #fff;
+.close-button:hover,
+.close-button:focus {
+    color: black;
+    text-decoration: none;
     cursor: pointer;
 }
-#pagination-controls button.active {
-    background-color: #007bff;
-    color: white;
-    border-color: #007bff;
+#modal-body ul {
+    list-style-type: none;
+    padding: 0;
 }
-#pagination-controls button:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
+#modal-body li {
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
 }
-
-/* Modal Notes */
+#modal-body li strong {
+    display: inline-block;
+    width: 150px;
+    color: #555;
+}
 #modal-notes-section {
     margin-top: 20px;
     border-top: 1px solid #eee;
@@ -325,7 +252,17 @@ main {
     margin-top: 10px;
     padding: 8px 15px;
 }
-
+#column-checkboxes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    margin: 20px 0;
+}
+#column-checkboxes label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
 .collapsible-header {
     display: flex;
     justify-content: space-between;
@@ -343,7 +280,7 @@ main {
     transition: transform 0.3s ease;
 }
 .collapsible-content {
-    max-height: 1000px; /* Adjust as needed */
+    max-height: 2000px; /* Large enough for content */
     overflow: hidden;
     transition: max-height 0.5s ease-in-out;
 }
@@ -352,15 +289,4 @@ main {
 }
 .collapsible-header.collapsed .toggle-arrow {
     transform: rotate(-90deg);
-}
-#column-checkboxes {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 10px;
-    margin: 20px 0;
-}
-#column-checkboxes label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
 }
