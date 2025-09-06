@@ -233,3 +233,94 @@ main {
     word-wrap: break-word;
     font-family: monospace;
 }
+/* Add these new styles to your existing style.css file */
+
+.controls-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+.filter-controls {
+    display: flex;
+    gap: 10px;
+}
+.filter-controls input, .filter-controls select {
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+
+/* Status Badges */
+.badge {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+    color: white;
+}
+.badge-new { background-color: #28a745; } /* Green */
+.badge-archived { background-color: #6c757d; } /* Gray */
+.badge-default { background-color: #ffc107; color: #333; } /* Yellow */
+
+/* Sortable Table Headers */
+.data-table th.sortable {
+    cursor: pointer;
+    position: relative;
+}
+.data-table th.sortable:hover {
+    background-color: #e2e2e2;
+}
+.data-table th.sortable::after {
+    content: ' \\2195'; /* Up-down arrow */
+    opacity: 0.3;
+    position: absolute;
+    right: 8px;
+}
+.data-table th.sorted-asc::after {
+    content: ' \\25B2'; /* Up triangle */
+    opacity: 1;
+}
+.data-table th.sorted-desc::after {
+    content: ' \\25BC'; /* Down triangle */
+    opacity: 1;
+}
+
+/* Pagination */
+#pagination-controls {
+    margin-top: 20px;
+    text-align: center;
+}
+#pagination-controls button {
+    padding: 8px 12px;
+    margin: 0 4px;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    cursor: pointer;
+}
+#pagination-controls button.active {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+#pagination-controls button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* Modal Notes */
+#modal-notes-section {
+    margin-top: 20px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+#modal-notes-textarea {
+    width: 98%;
+    min-height: 80px;
+    margin-top: 10px;
+    padding: 5px;
+}
+#modal-save-note-btn {
+    margin-top: 10px;
+    padding: 8px 15px;
+}
