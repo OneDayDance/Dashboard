@@ -62,14 +62,13 @@ document.addEventListener('DOMContentLoaded', () => {
     listViewBtn.onclick = () => setView('list');
     cardViewBtn.onclick = () => setView('card');
     columnSelectBtn.onclick = () => columnModal.style.display = 'block';
-    saveColumnsBtn.onclick = handleSaveColumns; // This line was causing the error
+    saveColumnsBtn.onclick = handleSaveColumns;
     
     archiveToggle.onclick = () => {
         archiveToggle.classList.toggle('collapsed');
         archiveContainer.classList.toggle('collapsed');
     };
 });
-
 
 // --- INITIALIZATION & AUTH ---
 function gapiLoaded() { gapi.load('client', initializeGapiClient); }
@@ -109,7 +108,6 @@ function handleSignoutClick() {
         signoutButton.style.display = 'none';
     }
 }
-
 
 // --- TAB NAVIGATION & CORE LOGIC ---
 function setupTabs() {
@@ -156,10 +154,6 @@ function setView(view) {
     cardViewBtn.classList.toggle('active', view === 'card');
     renderRequests();
 }
-/**
- * NEW: This function was missing in the previous version.
- * It reads the selected checkboxes and redraws the UI.
- */
 function handleSaveColumns() {
     const selectedColumns = [];
     document.querySelectorAll('#column-checkboxes input[type="checkbox"]:checked').forEach(checkbox => {
@@ -170,12 +164,10 @@ function handleSaveColumns() {
     renderRequests();
 }
 
-
 // --- REQUESTS TAB FUNCTIONS ---
 async function loadRequests() {
     const container = document.getElementById('requests-container');
     container.innerHTML = '<p>Loading new service requests...</p>';
-    
     try {
         const response = await gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID, range: 'Submissions',
@@ -192,7 +184,6 @@ async function loadRequests() {
         container.innerHTML = `<p style="color:red;">Error loading requests: ${err.result.error.message}</p>`;
         return;
     }
-    
     archiveToggle.classList.add('collapsed');
     archiveContainer.classList.add('collapsed');
     setView('list');
@@ -265,13 +256,14 @@ function renderRequestsAsList(requestRows, container) {
         }
         headerHtml += `<th class="${classes}" data-sort="${headerText}">${headerText}</th>`;
     });
-    headerHtml += '<th>Actions</th></tr></thead>';
-    table.innerHTML = headerHtml;
+    table.innerHTML = headerHtml += '</tr></thead>';
 
     const tbody = document.createElement('tbody');
     requestRows.forEach(row => {
         const originalIndex = allRequests.rows.indexOf(row);
         const tr = document.createElement('tr');
+        tr.onclick = () => showRequestDetailsModal(row, headers);
+        
         state.visibleColumns.forEach(headerText => {
             const cellIndex = headers.indexOf(headerText);
             const td = document.createElement('td');
@@ -283,6 +275,7 @@ function renderRequestsAsList(requestRows, container) {
                     const option = new Option(status, status, false, status === currentStatus);
                     statusSelect.add(option);
                 });
+                statusSelect.onclick = (e) => e.stopPropagation(); // Prevent modal from opening
                 statusSelect.onchange = handleStatusChange;
                 td.appendChild(statusSelect);
             } else {
@@ -290,15 +283,10 @@ function renderRequestsAsList(requestRows, container) {
             }
             tr.appendChild(td);
         });
-        
-        const actionTd = document.createElement('td');
-        actionTd.innerHTML = `<button class="details-btn" data-row-index="${originalIndex}">Details</button>`;
-        tr.appendChild(actionTd);
         tbody.appendChild(tr);
     });
     table.appendChild(tbody);
     container.appendChild(table);
-    container.querySelectorAll('.details-btn').forEach(b => b.onclick = (e) => showRequestDetailsModal(allRequests.rows[e.target.dataset.rowIndex], headers));
     container.querySelectorAll('th.sortable').forEach(th => th.onclick = handleSort);
 }
 
@@ -309,10 +297,6 @@ function renderRequestsAsCards(requestRows, container) {
         return;
     }
     const { headers } = allRequests;
-    const dateIndex = headers.indexOf('Submission Date');
-    const nameIndex = headers.indexOf('Full Name');
-    const statusIndex = headers.indexOf('Status');
-
     const cardContainer = document.createElement('div');
     cardContainer.className = 'card-container';
     
@@ -320,8 +304,21 @@ function renderRequestsAsCards(requestRows, container) {
         const originalIndex = allRequests.rows.indexOf(row);
         const card = document.createElement('div');
         card.className = 'request-card';
-        card.innerHTML = `<h3>${row[nameIndex] || 'No Name'}</h3><p><strong>Date:</strong> ${row[dateIndex] || 'N/A'}</p>`;
+        card.onclick = () => showRequestDetailsModal(row, headers);
         
+        // Dynamically add visible columns to the card
+        let cardContent = '';
+        state.visibleColumns.forEach(headerText => {
+            const cellIndex = headers.indexOf(headerText);
+            if (headerText === "Full Name") {
+                cardContent += `<h3>${row[cellIndex] || 'No Name'}</h3>`;
+            } else if (headerText !== "Status") {
+                cardContent += `<p><strong>${headerText}:</strong> ${row[cellIndex] || 'N/A'}</p>`;
+            }
+        });
+        card.innerHTML = cardContent;
+
+        const statusIndex = headers.indexOf('Status');
         const statusSelect = document.createElement('select');
         statusSelect.dataset.rowIndex = originalIndex;
         const currentStatus = row[statusIndex] || 'New';
@@ -329,46 +326,25 @@ function renderRequestsAsCards(requestRows, container) {
             const option = new Option(status, status, false, status === currentStatus);
             statusSelect.add(option);
         });
+        statusSelect.onclick = (e) => e.stopPropagation();
         statusSelect.onchange = handleStatusChange;
         
-        const actionsDiv = document.createElement('div');
-        actionsDiv.className = 'actions';
-        actionsDiv.innerHTML = `<button class="details-btn" data-row-index="${originalIndex}">Details</button>`;
-        
         card.appendChild(statusSelect);
-        card.appendChild(actionsDiv);
         cardContainer.appendChild(card);
     });
     container.appendChild(cardContainer);
-    container.querySelectorAll('.details-btn').forEach(b => b.onclick = (e) => showRequestDetailsModal(allRequests.rows[e.target.dataset.rowIndex], headers));
 }
 
 async function handleStatusChange(event) {
     const selectElement = event.target;
     const newStatus = selectElement.value;
     const rowIndex = parseInt(selectElement.dataset.rowIndex, 10);
-    const { headers, rows } = allRequests;
-    const rowData = rows[rowIndex];
-    const statusIndex = headers.indexOf('Status');
-    const submissionIdIndex = headers.indexOf('Submission ID'); 
-    if (statusIndex === -1 || submissionIdIndex === -1) {
-        alert("Error: 'Status' or 'Submission ID' column not found.");
-        return;
-    }
+    const dataToUpdate = { 'Status': newStatus };
+    
     selectElement.disabled = true;
     try {
-        const submissionId = rowData[submissionIdIndex];
-        const allSheetValues = (await gapi.client.sheets.spreadsheets.values.get({spreadsheetId: SPREADSHEET_ID, range: 'Submissions'})).result.values;
-        const visualRowIndex = allSheetValues.findIndex(sheetRow => sheetRow && sheetRow[submissionIdIndex] === submissionId);
-        if (visualRowIndex === -1) throw new Error("Could not find the row in the sheet to update.");
-        const targetCell = `${String.fromCharCode(65 + statusIndex)}${visualRowIndex + 1}`;
-        await gapi.client.sheets.spreadsheets.values.update({
-            spreadsheetId: SPREADSHEET_ID,
-            range: `Submissions!${targetCell}`,
-            valueInputOption: 'RAW',
-            resource: { values: [[newStatus]] }
-        });
-        allRequests.rows[rowIndex][statusIndex] = newStatus;
+        await updateRowData('Submissions', rowIndex, dataToUpdate);
+        allRequests.rows[rowIndex][allRequests.headers.indexOf('Status')] = newStatus;
         renderRequests();
     } catch(err) {
         alert('Could not update status. See console for details.');
@@ -388,6 +364,7 @@ function showRequestDetailsModal(rowData, headers) {
     });
     contentHtml += '</ul>';
     modalBody.innerHTML = contentHtml;
+    
     const notesTextarea = document.getElementById('modal-notes-textarea');
     const noteStatus = document.getElementById('modal-note-status');
     const originalIndex = allRequests.rows.indexOf(rowData);
@@ -409,45 +386,15 @@ function handleSort(event) {
     renderRequests();
 }
 
-function renderPagination(totalRows) {
-    const container = document.getElementById('pagination-controls');
-    container.innerHTML = '';
-    const pageCount = Math.ceil(totalRows / state.rowsPerPage);
-    if (pageCount <= 1) return;
-    for (let i = 1; i <= pageCount; i++) {
-        const btn = document.createElement('button');
-        btn.textContent = i;
-        if (i === state.currentPage) { btn.classList.add('active'); }
-        btn.onclick = () => { state.currentPage = i; renderRequests(); };
-        container.appendChild(btn);
-    }
-}
-
 async function handleSaveNote(rowIndex) {
     const noteStatus = document.getElementById('modal-note-status');
     noteStatus.textContent = 'Saving...';
     const newNote = document.getElementById('modal-notes-textarea').value;
-    const { headers, rows } = allRequests;
-    const rowData = rows[rowIndex];
-    const notesIndex = headers.indexOf('Notes');
-    const submissionIdIndex = headers.indexOf('Submission ID');
-    if (notesIndex === -1 || submissionIdIndex === -1) {
-        noteStatus.textContent = "Error: 'Notes' or 'Submission ID' column missing.";
-        return;
-    }
+    const dataToUpdate = { 'Notes': newNote };
+
     try {
-        const submissionId = rowData[submissionIdIndex];
-        const allSheetValues = (await gapi.client.sheets.spreadsheets.values.get({spreadsheetId: SPREADSHEET_ID, range: 'Submissions'})).result.values;
-        const visualRowIndex = allSheetValues.findIndex(sheetRow => sheetRow && sheetRow[submissionIdIndex] === submissionId);
-        if (visualRowIndex === -1) throw new Error("Could not find row in sheet.");
-        const targetCell = `${String.fromCharCode(65 + notesIndex)}${visualRowIndex + 1}`;
-        await gapi.client.sheets.spreadsheets.values.update({
-            spreadsheetId: SPREADSHEET_ID,
-            range: `Submissions!${targetCell}`,
-            valueInputOption: 'RAW',
-            resource: { values: [[newNote]] }
-        });
-        allRequests.rows[rowIndex][notesIndex] = newNote;
+        await updateRowData('Submissions', rowIndex, dataToUpdate);
+        allRequests.rows[rowIndex][allRequests.headers.indexOf('Notes')] = newNote;
         noteStatus.textContent = 'Saved successfully!';
     } catch (err) {
         noteStatus.textContent = 'Error saving note.';
@@ -455,6 +402,61 @@ async function handleSaveNote(rowIndex) {
     }
 }
 
+// --- UTILITY & GENERIC DATA FUNCTIONS ---
+
+/**
+ * NEW: A robust, centralized function for updating any row.
+ * It reads headers from the sheet to guarantee writing to the correct column.
+ */
+async function updateRowData(sheetName, localRowIndex, dataToUpdate) {
+    const { headers, rows } = allRequests;
+    const rowData = rows[localRowIndex];
+    const idColumnName = 'Submission ID';
+    const idIndex = headers.indexOf(idColumnName);
+    
+    if (idIndex === -1) throw new Error(`'${idColumnName}' column not found.`);
+    
+    const uniqueId = rowData[idIndex];
+    
+    // Fetch fresh sheet data to find the absolute row index
+    const sheetResponse = await gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID,
+        range: sheetName,
+    });
+    
+    const sheetValues = sheetResponse.result.values;
+    const sheetHeaders = sheetValues[0];
+    const visualRowIndex = sheetValues.findIndex(sheetRow => sheetRow && sheetRow[idIndex] === uniqueId);
+
+    if (visualRowIndex === -1) throw new Error("Could not find row in sheet. It may have been modified by someone else.");
+
+    const originalRow = sheetValues[visualRowIndex];
+    const updatedRow = [...originalRow]; // Create a copy
+
+    // For each piece of data to update, find its column and update the value
+    for (const columnName in dataToUpdate) {
+        const columnIndex = sheetHeaders.indexOf(columnName);
+        if (columnIndex > -1) {
+            updatedRow[columnIndex] = dataToUpdate[columnName];
+        } else {
+            console.warn(`Column "${columnName}" not found in sheet, could not update.`);
+        }
+    }
+
+    const targetRowNumber = visualRowIndex + 1;
+    const targetRange = `${sheetName}!A${targetRowNumber}`;
+
+    return gapi.client.sheets.spreadsheets.values.update({
+        spreadsheetId: SPREADSHEET_ID,
+        range: targetRange,
+        valueInputOption: 'RAW',
+        resource: {
+            values: [updatedRow]
+        }
+    });
+}
+
+// ... All other utility and data functions (loadClients, writeData, etc.) remain here ...
 async function loadClients() {
     const clientListDiv = document.getElementById('client-list');
     clientListDiv.innerHTML = '<p>Loading clients...</p>';
@@ -489,7 +491,6 @@ async function loadClients() {
         clientListDiv.innerHTML = `<p style="color:red;">Error: ${err.result.error.message}`;
     }
 }
-
 async function writeData(sheetName, dataObject) {
     const headerResponse = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!1:1` });
     let headers = headerResponse.result.values ? headerResponse.result.values[0] : [];
@@ -506,7 +507,6 @@ async function writeData(sheetName, dataObject) {
         valueInputOption: 'USER_ENTERED', resource: { values: [newRow] },
     });
 }
-
 function populateServiceFilter() {
     if (!allRequests.rows || allRequests.rows.length === 0) return;
     const { headers, rows } = allRequests;
@@ -521,7 +521,6 @@ function populateServiceFilter() {
         }
     });
 }
-
 function populateColumnSelector() {
     const container = document.getElementById('column-checkboxes');
     container.innerHTML = '';
@@ -538,7 +537,6 @@ function populateColumnSelector() {
         container.appendChild(wrapper);
     });
 }
-// --- All other functions (handleAddClientSubmit etc.) can be placed below ---
 async function handleAddClientSubmit(event) {
     event.preventDefault();
     const statusDiv = document.getElementById('add-client-status');
