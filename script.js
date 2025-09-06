@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
     listViewBtn.onclick = () => setView('list');
     cardViewBtn.onclick = () => setView('card');
     columnSelectBtn.onclick = () => columnModal.style.display = 'block';
-    saveColumnsBtn.onclick = handleSaveColumns;
+    saveColumnsBtn.onclick = handleSaveColumns; // This line was causing the error
     
     archiveToggle.onclick = () => {
         archiveToggle.classList.toggle('collapsed');
@@ -156,11 +156,26 @@ function setView(view) {
     cardViewBtn.classList.toggle('active', view === 'card');
     renderRequests();
 }
+/**
+ * NEW: This function was missing in the previous version.
+ * It reads the selected checkboxes and redraws the UI.
+ */
+function handleSaveColumns() {
+    const selectedColumns = [];
+    document.querySelectorAll('#column-checkboxes input[type="checkbox"]:checked').forEach(checkbox => {
+        selectedColumns.push(checkbox.value);
+    });
+    state.visibleColumns = selectedColumns;
+    columnModal.style.display = 'none';
+    renderRequests();
+}
+
 
 // --- REQUESTS TAB FUNCTIONS ---
 async function loadRequests() {
     const container = document.getElementById('requests-container');
     container.innerHTML = '<p>Loading new service requests...</p>';
+    
     try {
         const response = await gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID, range: 'Submissions',
@@ -177,6 +192,7 @@ async function loadRequests() {
         container.innerHTML = `<p style="color:red;">Error loading requests: ${err.result.error.message}</p>`;
         return;
     }
+    
     archiveToggle.classList.add('collapsed');
     archiveContainer.classList.add('collapsed');
     setView('list');
@@ -214,7 +230,6 @@ function renderRequests() {
     const statusIndex = headers.indexOf('Status');
     const newRequests = [], archivedRequests = [];
     
-    // This filter must respect the 'All Statuses' filter option
     processedRows.forEach(row => {
         const isArchived = row[statusIndex] === 'Archived';
         if (state.filters.status === 'all') {
@@ -261,9 +276,15 @@ function renderRequestsAsList(requestRows, container) {
             const cellIndex = headers.indexOf(headerText);
             const td = document.createElement('td');
             if (headerText === 'Status') {
+                const statusSelect = document.createElement('select');
+                statusSelect.dataset.rowIndex = originalIndex;
                 const currentStatus = row[cellIndex] || 'New';
-                const statusClass = `badge-${currentStatus.toLowerCase()}`;
-                td.innerHTML = `<span class="badge ${statusClass}">${currentStatus}</span>`;
+                ['New', 'Contacted', 'Archived'].forEach(status => {
+                    const option = new Option(status, status, false, status === currentStatus);
+                    statusSelect.add(option);
+                });
+                statusSelect.onchange = handleStatusChange;
+                td.appendChild(statusSelect);
             } else {
                 td.textContent = row[cellIndex] || '';
             }
@@ -322,7 +343,6 @@ function renderRequestsAsCards(requestRows, container) {
     container.querySelectorAll('.details-btn').forEach(b => b.onclick = (e) => showRequestDetailsModal(allRequests.rows[e.target.dataset.rowIndex], headers));
 }
 
-// And so on for the rest of the file...
 async function handleStatusChange(event) {
     const selectElement = event.target;
     const newStatus = selectElement.value;
@@ -356,6 +376,7 @@ async function handleStatusChange(event) {
         selectElement.disabled = false;
     }
 }
+
 function showRequestDetailsModal(rowData, headers) {
     const modalBody = document.getElementById('modal-body');
     const ignoredFields = ['Raw Payload', 'All Services JSON', 'Submission ID', 'Timestamp', 'Notes'];
@@ -376,6 +397,7 @@ function showRequestDetailsModal(rowData, headers) {
     modalSaveNoteBtn.onclick = () => handleSaveNote(originalIndex);
     detailsModal.style.display = 'block';
 }
+
 function handleSort(event) {
     const newSortColumn = event.target.dataset.sort;
     if (state.sortColumn === newSortColumn) {
@@ -386,6 +408,7 @@ function handleSort(event) {
     }
     renderRequests();
 }
+
 function renderPagination(totalRows) {
     const container = document.getElementById('pagination-controls');
     container.innerHTML = '';
@@ -399,6 +422,7 @@ function renderPagination(totalRows) {
         container.appendChild(btn);
     }
 }
+
 async function handleSaveNote(rowIndex) {
     const noteStatus = document.getElementById('modal-note-status');
     noteStatus.textContent = 'Saving...';
@@ -430,26 +454,7 @@ async function handleSaveNote(rowIndex) {
         console.error("Save Note Error:", err);
     }
 }
-async function handleAddClientSubmit(event) {
-    event.preventDefault();
-    const statusDiv = document.getElementById('add-client-status');
-    statusDiv.textContent = 'Adding client...';
-    const clientData = {
-        'First Name': document.getElementById('client-first-name').value,
-        'Last Name': document.getElementById('client-last-name').value,
-        'Email': document.getElementById('client-email').value,
-        'Status': 'Active', 
-        'ClientID': `C-${Date.now()}`
-    };
-    try {
-        await writeData('Clients', clientData);
-        statusDiv.textContent = 'Client added successfully!';
-        addClientForm.reset();
-        await loadClients();
-    } catch (err) {
-        statusDiv.textContent = `Error: ${err.result.error.message}`;
-    }
-}
+
 async function loadClients() {
     const clientListDiv = document.getElementById('client-list');
     clientListDiv.innerHTML = '<p>Loading clients...</p>';
@@ -484,6 +489,7 @@ async function loadClients() {
         clientListDiv.innerHTML = `<p style="color:red;">Error: ${err.result.error.message}`;
     }
 }
+
 async function writeData(sheetName, dataObject) {
     const headerResponse = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!1:1` });
     let headers = headerResponse.result.values ? headerResponse.result.values[0] : [];
@@ -500,8 +506,9 @@ async function writeData(sheetName, dataObject) {
         valueInputOption: 'USER_ENTERED', resource: { values: [newRow] },
     });
 }
+
 function populateServiceFilter() {
-    if (allRequests.rows.length === 0) return;
+    if (!allRequests.rows || allRequests.rows.length === 0) return;
     const { headers, rows } = allRequests;
     const serviceIndex = headers.indexOf('Primary Service Category');
     if (serviceIndex === -1) return;
@@ -513,4 +520,42 @@ function populateServiceFilter() {
             serviceFilter.add(option);
         }
     });
+}
+
+function populateColumnSelector() {
+    const container = document.getElementById('column-checkboxes');
+    container.innerHTML = '';
+    allRequests.headers.forEach(header => {
+        if (!header) return;
+        const isChecked = state.visibleColumns.includes(header);
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = `
+            <label>
+                <input type="checkbox" value="${header}" ${isChecked ? 'checked' : ''}>
+                ${header}
+            </label>
+        `;
+        container.appendChild(wrapper);
+    });
+}
+// --- All other functions (handleAddClientSubmit etc.) can be placed below ---
+async function handleAddClientSubmit(event) {
+    event.preventDefault();
+    const statusDiv = document.getElementById('add-client-status');
+    statusDiv.textContent = 'Adding client...';
+    const clientData = {
+        'First Name': document.getElementById('client-first-name').value,
+        'Last Name': document.getElementById('client-last-name').value,
+        'Email': document.getElementById('client-email').value,
+        'Status': 'Active', 
+        'ClientID': `C-${Date.now()}`
+    };
+    try {
+        await writeData('Clients', clientData);
+        statusDiv.textContent = 'Client added successfully!';
+        addClientForm.reset();
+        await loadClients();
+    } catch (err) {
+        statusDiv.textContent = `Error: ${err.result.error.message}`;
+    }
 }
