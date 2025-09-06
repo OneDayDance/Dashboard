@@ -325,3 +325,31 @@ main {
     margin-top: 10px;
     padding: 8px 15px;
 }
+
+.collapsible-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    padding: 10px;
+    border-top: 1px solid #ccc;
+    margin-top: 40px;
+}
+.collapsible-header h2 {
+    margin: 0;
+}
+.toggle-arrow {
+    font-size: 18px;
+    transition: transform 0.3s ease;
+}
+.collapsible-content {
+    max-height: 1000px; /* Adjust as needed */
+    overflow: hidden;
+    transition: max-height 0.5s ease-in-out;
+}
+.collapsible-content.collapsed {
+    max-height: 0;
+}
+.collapsible-header.collapsed .toggle-arrow {
+    transform: rotate(-90deg);
+}
