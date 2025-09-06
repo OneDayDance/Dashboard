@@ -6,8 +6,8 @@ const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
 
 // State Variables
 let tokenClient, gapiInited = false, gisInited = false;
-let allRequests = []; // Cache for requests
-let currentView = 'list'; // 'list' or 'card'
+let allRequests = [];
+let currentView = 'list';
 
 // --- DOM ELEMENT DECLARATIONS ---
 let authorizeButton, signoutButton, appContainer, addClientForm, serviceFilter, modal, closeModalButton, listViewBtn, cardViewBtn;
@@ -32,23 +32,18 @@ document.addEventListener('DOMContentLoaded', () => {
     closeModalButton.onclick = () => modal.style.display = 'none';
     window.onclick = (event) => { if (event.target == modal) { modal.style.display = 'none'; } };
     
-    // View toggle listeners
-    listViewBtn.onclick = () => {
-        currentView = 'list';
-        listViewBtn.classList.add('active');
-        cardViewBtn.classList.remove('active');
-        renderRequests();
-    };
-    cardViewBtn.onclick = () => {
-        currentView = 'card';
-        cardViewBtn.classList.add('active');
-        listViewBtn.classList.remove('active');
-        renderRequests();
-    };
+    listViewBtn.onclick = () => { currentView = 'list'; updateViewToggle(); renderRequests(); };
+    cardViewBtn.onclick = () => { currentView = 'card'; updateViewToggle(); renderRequests(); };
 });
 
-// --- INITIALIZATION & AUTH ---
-// All auth functions (gapiLoaded, gisLoaded, initializeGapiClient, handleAuthClick, handleSignoutClick) remain the same.
+function updateViewToggle() {
+    listViewBtn.classList.toggle('active', currentView === 'list');
+    cardViewBtn.classList.toggle('active', currentView === 'card');
+}
+
+
+// --- INITIALIZATION, AUTH, and TAB NAVIGATION ---
+// These sections remain the same as the previous version.
 function gapiLoaded() { gapi.load('client', initializeGapiClient); }
 function gisLoaded() {
     tokenClient = google.accounts.oauth2.initTokenClient({
@@ -86,10 +81,6 @@ function handleSignoutClick() {
         signoutButton.style.display = 'none';
     }
 }
-
-
-// --- TAB NAVIGATION ---
-// The setupTabs and loadDataForActiveTab functions remain largely the same.
 function setupTabs() {
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('.tab-content');
@@ -123,49 +114,64 @@ function loadDataForActiveTab() {
 // --- REQUESTS TAB FUNCTIONS ---
 
 async function loadRequests() {
+    // Invalidate cache to get fresh data including status changes
+    allRequests = []; 
     const container = document.getElementById('requests-container');
     container.innerHTML = '<p>Loading new service requests...</p>';
-    if (allRequests.length === 0) {
-        try {
-            const response = await gapi.client.sheets.spreadsheets.values.get({
-                spreadsheetId: SPREADSHEET_ID, range: 'Submissions',
-            });
-            const values = response.result.values;
-            if (values && values.length > 1) {
-                allRequests = { headers: values[0], rows: values.slice(1) };
-                populateServiceFilter();
-            }
-        } catch (err) {
-            container.innerHTML = `<p style="color:red;">Error loading requests: ${err.result.error.message}</p>`;
-            return;
+    
+    try {
+        const response = await gapi.client.sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID, range: 'Submissions',
+        });
+        const values = response.result.values;
+        if (values && values.length > 1) {
+            allRequests = { headers: values[0], rows: values.slice(1) };
+            populateServiceFilter();
         }
+    } catch (err) {
+        container.innerHTML = `<p style="color:red;">Error loading requests: ${err.result.error.message}</p>`;
+        return;
     }
     renderRequests();
 }
 
 function renderRequests() {
+    if (allRequests.length === 0) {
+        document.getElementById('requests-container').innerHTML = '<p>No submissions found.</p>';
+        document.getElementById('archived-requests-container').innerHTML = '';
+        return;
+    }
+
+    // Separate requests into new and archived
+    const { headers, rows } = allRequests;
+    const statusIndex = headers.indexOf('Status');
+    const newRequests = rows.filter(row => row[statusIndex] !== 'Archived');
+    const archivedRequests = rows.filter(row => row[statusIndex] === 'Archived');
+
     if (currentView === 'list') {
-        renderRequestsAsList();
+        renderRequestsAsList(newRequests, document.getElementById('requests-container'));
+        renderRequestsAsList(archivedRequests, document.getElementById('archived-requests-container'));
     } else {
-        renderRequestsAsCards();
+        // Card view can be similarly separated if desired
+        renderRequestsAsCards(newRequests, document.getElementById('requests-container'));
+        renderRequestsAsCards(archivedRequests, document.getElementById('archived-requests-container'));
     }
 }
 
-function getFilteredRequests() {
-    if (allRequests.length === 0 || allRequests.rows.length === 0) return [];
-    const { headers, rows } = allRequests;
+function getFilteredRequests(sourceRows) {
+    if (!sourceRows || sourceRows.length === 0) return [];
+    const { headers } = allRequests;
     const selectedService = serviceFilter.value;
     const serviceIndex = headers.indexOf('Primary Service Category');
     return (selectedService === 'all')
-        ? rows
-        : rows.filter(row => row[serviceIndex] === selectedService);
+        ? sourceRows
+        : sourceRows.filter(row => row[serviceIndex] === selectedService);
 }
 
-function renderRequestsAsList() {
-    const container = document.getElementById('requests-container');
-    const filteredRows = getFilteredRequests();
+function renderRequestsAsList(requestRows, container) {
+    const filteredRows = getFilteredRequests(requestRows);
     if (filteredRows.length === 0) {
-        container.innerHTML = '<p>No submissions match the selected filter.</p>';
+        container.innerHTML = `<p>No submissions ${container.id.includes('archived') ? 'archived' : 'found'}.</p>`;
         return;
     }
 
@@ -173,6 +179,7 @@ function renderRequestsAsList() {
     const dateIndex = headers.indexOf('Submission Date');
     const nameIndex = headers.indexOf('Full Name');
     const serviceIndex = headers.indexOf('Primary Service Category');
+    const statusIndex = headers.indexOf('Status');
 
     container.innerHTML = '';
     const table = document.createElement('table');
@@ -180,15 +187,17 @@ function renderRequestsAsList() {
     table.innerHTML = `<thead><tr><th>Date</th><th>Name</th><th>Service</th><th>Actions</th></tr></thead>`;
     
     const tbody = document.createElement('tbody');
-    filteredRows.forEach((row, index) => {
+    filteredRows.forEach(row => {
+        const originalIndex = allRequests.rows.indexOf(row);
         const tr = document.createElement('tr');
         tr.innerHTML = `<td>${row[dateIndex] || ''}</td><td>${row[nameIndex] || ''}</td><td>${row[serviceIndex] || ''}</td>`;
         tr.onclick = () => showRequestDetailsModal(row, headers);
         
+        const isArchived = row[statusIndex] === 'Archived';
         const actionTd = document.createElement('td');
         actionTd.innerHTML = `
-            <button class="initiate-project-btn" data-row-index="${index}">Initiate Project</button>
-            <button class="archive-btn" data-row-index="${index}">Archive</button>
+            <button class="initiate-project-btn" data-row-index="${originalIndex}" ${isArchived ? 'disabled' : ''}>Initiate Project</button>
+            <button class="archive-btn" data-row-index="${originalIndex}">${isArchived ? 'Unarchive' : 'Archive'}</button>
         `;
         tr.appendChild(actionTd);
         tbody.appendChild(tr);
@@ -196,16 +205,67 @@ function renderRequestsAsList() {
     table.appendChild(tbody);
     container.appendChild(table);
     
-    // Add event listeners after table is in the DOM
     container.querySelectorAll('.initiate-project-btn').forEach(b => b.onclick = handleInitiateProject);
     container.querySelectorAll('.archive-btn').forEach(b => b.onclick = handleArchiveRequest);
 }
 
-function renderRequestsAsCards() {
-    const container = document.getElementById('requests-container');
-    const filteredRows = getFilteredRequests();
+async function handleArchiveRequest(event) {
+    event.stopPropagation();
+    const button = event.target;
+    const rowIndex = parseInt(button.dataset.rowIndex, 10);
+    const { headers, rows } = allRequests;
+    const rowData = rows[rowIndex];
+    
+    const statusIndex = headers.indexOf('Status');
+    const timestampIndex = headers.indexOf('Submission IDTimestamp');
+    if (statusIndex === -1 || timestampIndex === -1) {
+        alert("Error: 'Status' or 'Submission IDTimestamp' column not found in your sheet.");
+        return;
+    }
+    
+    const currentStatus = rowData[statusIndex];
+    const newStatus = currentStatus === 'Archived' ? '' : 'Archived'; // Toggle status
+    button.textContent = 'Updating...';
+    button.disabled = true;
+
+    try {
+        // Find the absolute row number in the sheet to update
+        const timestamp = rowData[timestampIndex];
+        const allSheetValues = (await gapi.client.sheets.spreadsheets.values.get({spreadsheetId: SPREADSHEET_ID, range: 'Submissions'})).result.values;
+        const visualRowIndex = allSheetValues.findIndex(sheetRow => sheetRow[timestampIndex] === timestamp);
+
+        if (visualRowIndex === -1) {
+            throw new Error("Could not find the row in the sheet. It may have been moved or deleted.");
+        }
+        
+        const targetCell = `${String.fromCharCode(65 + statusIndex)}${visualRowIndex + 1}`; // e.g., "F12"
+        await gapi.client.sheets.spreadsheets.values.update({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `Submissions!${targetCell}`,
+            valueInputOption: 'RAW',
+            resource: {
+                values: [[newStatus]]
+            }
+        });
+        
+        // Update local cache and re-render the UI
+        allRequests.rows[rowIndex][statusIndex] = newStatus;
+        renderRequests();
+
+    } catch(err) {
+        alert('Could not update status. See console for details.');
+        console.error("Archive/Update Error:", err);
+        button.textContent = newStatus === 'Archived' ? 'Unarchive' : 'Archive';
+        button.disabled = false;
+    }
+}
+
+
+// --- All other functions (including the new card renderer, modal, utilities, and client functions) ---
+function renderRequestsAsCards(requestRows, container) {
+    const filteredRows = getFilteredRequests(requestRows);
     if (filteredRows.length === 0) {
-        container.innerHTML = '<p>No submissions match the selected filter.</p>';
+        container.innerHTML = `<p>No submissions ${container.id.includes('archived') ? 'archived' : 'found'}.</p>`;
         return;
     }
 
@@ -213,12 +273,15 @@ function renderRequestsAsCards() {
     const dateIndex = headers.indexOf('Submission Date');
     const nameIndex = headers.indexOf('Full Name');
     const serviceIndex = headers.indexOf('Primary Service Category');
+    const statusIndex = headers.indexOf('Status');
 
     container.innerHTML = '';
     const cardContainer = document.createElement('div');
     cardContainer.className = 'card-container';
     
-    filteredRows.forEach((row, index) => {
+    filteredRows.forEach(row => {
+        const originalIndex = allRequests.rows.indexOf(row);
+        const isArchived = row[statusIndex] === 'Archived';
         const card = document.createElement('div');
         card.className = 'request-card';
         card.innerHTML = `
@@ -227,16 +290,15 @@ function renderRequestsAsCards() {
             <p><strong>Service:</strong> ${row[serviceIndex] || 'N/A'}</p>
             <div class="actions">
                 <button class="details-btn">Details</button>
-                <button class="initiate-project-btn">Initiate Project</button>
-                <button class="archive-btn">Archive</button>
+                <button class="initiate-project-btn" ${isArchived ? 'disabled' : ''}>Initiate Project</button>
+                <button class="archive-btn">${isArchived ? 'Unarchive' : 'Archive'}</button>
             </div>
         `;
-        // Add event listeners to buttons within the card
         card.querySelector('.details-btn').onclick = () => showRequestDetailsModal(row, headers);
+        card.querySelector('.initiate-project-btn').dataset.rowIndex = originalIndex;
         card.querySelector('.initiate-project-btn').onclick = handleInitiateProject;
-        card.querySelector('.initiate-project-btn').dataset.rowIndex = index;
+        card.querySelector('.archive-btn').dataset.rowIndex = originalIndex;
         card.querySelector('.archive-btn').onclick = handleArchiveRequest;
-        card.querySelector('.archive-btn').dataset.rowIndex = index;
         
         cardContainer.appendChild(card);
     });
@@ -247,28 +309,23 @@ function showRequestDetailsModal(rowData, headers) {
     const modalBody = document.getElementById('modal-body');
     const ignoredFields = ['Raw Payload', 'All Services JSON', 'Submission IDTimestamp'];
     let contentHtml = '<ul>';
-    let rawPayload = '';
     const rawPayloadIndex = headers.indexOf('Raw Payload');
-
     headers.forEach((header, index) => {
         if (rowData[index] && !ignoredFields.includes(header)) {
             contentHtml += `<li><strong>${header}:</strong> ${rowData[index]}</li>`;
         }
     });
     contentHtml += '</ul>';
-
     if (rawPayloadIndex > -1 && rowData[rawPayloadIndex]) {
         try {
             const payload = JSON.parse(rowData[rawPayloadIndex]);
             contentHtml += '<h3>Raw Payload Data</h3>';
             contentHtml += `<pre><code>${JSON.stringify(payload, null, 2)}</code></pre>`;
         } catch (e) {
-            // If it's not valid JSON, just show as text
             contentHtml += '<h3>Raw Payload Data (Not valid JSON)</h3>';
             contentHtml += `<pre><code>${rowData[rawPayloadIndex]}</code></pre>`;
         }
     }
-    
     modalBody.innerHTML = contentHtml;
     modal.style.display = 'block';
 }
@@ -277,26 +334,21 @@ async function handleInitiateProject(event) {
     event.stopPropagation();
     const button = event.target;
     if (!confirm('Are you sure you want to create a new project from this request?')) return;
-    
     button.textContent = 'Creating...';
     button.disabled = true;
-
     const rowIndex = button.dataset.rowIndex;
     const { headers, rows } = allRequests;
     const requestData = arrayToObject(rows[rowIndex], headers);
-    
     const projectData = {
         'ProjectName': `Project for ${requestData['Full Name']} - ${requestData['Submission Date']}`,
-        'ClientID': 'LOOKUP_REQUIRED', // We'll need to find the client ID or create a client
+        'ClientID': 'LOOKUP_REQUIRED',
         'Status': 'Planning',
         'StartDate': requestData['Primary Date'] || new Date().toLocaleDateString(),
         'Description': `Based on service request from ${requestData['Submission Date']}.\nService: ${requestData['Primary Service Type']}\nLocation: ${requestData['Primary Location']}`
     };
-
     try {
         await writeData('Projects', projectData);
         button.textContent = 'Project Created';
-        // Note: This doesn't archive the request automatically, that's a separate action.
     } catch(err) {
         button.textContent = 'Error!';
         button.disabled = false;
@@ -305,70 +357,6 @@ async function handleInitiateProject(event) {
     }
 }
 
-async function handleArchiveRequest(event) {
-    event.stopPropagation();
-    const button = event.target;
-    if (!confirm('Are you sure you want to archive this request? This will move it from the Submissions sheet.')) return;
-    
-    button.textContent = 'Archiving...';
-    button.disabled = true;
-
-    const rowIndex = parseInt(button.dataset.rowIndex, 10);
-    const { headers, rows } = allRequests;
-    const rowData = rows[rowIndex];
-    const rowObject = arrayToObject(rowData, headers);
-    
-    try {
-        // Step 1: Write the data to the 'Archived' sheet
-        await writeData('Archived', rowObject);
-
-        // Step 2: Delete the row from the 'Submissions' sheet (this is complex)
-        // Note: The Sheets API uses 1-based indexing for rows and requires the sheet's grid ID.
-        // This is a simplified approach; a robust solution would fetch the sheetId first.
-        // We'll find the row number based on a unique ID, like 'Submission IDTimestamp'.
-        const timestampIndex = headers.indexOf('Submission IDTimestamp');
-        const timestamp = rowData[timestampIndex];
-        
-        // Find the visual row number in the sheet
-        const allSheetValues = (await gapi.client.sheets.spreadsheets.values.get({spreadsheetId: SPREADSHEET_ID, range: 'Submissions'})).result.values;
-        const visualRowIndex = allSheetValues.findIndex(row => row[timestampIndex] === timestamp);
-
-        if (visualRowIndex > -1) {
-            // Step 3: Delete the row using a batch update. Assumes sheetId is 0 (the first sheet).
-            // A truly robust solution would look up the sheetId first.
-            await gapi.client.sheets.spreadsheets.batchUpdate({
-                spreadsheetId: SPREADSHEET_ID,
-                resource: {
-                    requests: [{
-                        deleteDimension: {
-                            range: {
-                                sheetId: 0, // DANGER: Assumes 'Submissions' is the very first sheet
-                                dimension: 'ROWS',
-                                startIndex: visualRowIndex,
-                                endIndex: visualRowIndex + 1
-                            }
-                        }
-                    }]
-                }
-            });
-        }
-        
-        // Step 4: Remove from local cache and re-render
-        allRequests.rows.splice(rowIndex, 1);
-        renderRequests();
-
-    } catch(err) {
-        button.textContent = 'Error!';
-        button.disabled = false;
-        alert('Could not archive request. The sheet might have been changed by someone else. Please refresh.');
-        console.error("Archive Error:", err);
-    }
-}
-
-
-// --- UTILITY AND OTHER DATA FUNCTIONS ---
-
-// ... populateServiceFilter, handleCreateClientFromRequest, handleAddClientSubmit, loadClients, and writeData remain here ...
 function populateServiceFilter() {
     if (allRequests.length === 0) return;
     const { headers, rows } = allRequests;
