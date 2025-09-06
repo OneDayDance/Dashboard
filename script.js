@@ -4,13 +4,23 @@ const SPREADSHEET_ID = "1G3kVQdR0yd1j362oZKYRXMby1Ve6PVcY8CrsQnuxVfY";
 const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
 // --- END OF CONFIGURATION ---
 
-// State Variables
-let tokenClient, gapiInited = false, gisInited = false;
-let allRequests = [];
-let currentView = 'list';
+// --- STATE MANAGEMENT ---
+let allRequests = { headers: [], rows: [] };
+let state = {
+    currentPage: 1,
+    rowsPerPage: 10,
+    sortColumn: 'Submission Date',
+    sortDirection: 'desc',
+    searchTerm: '',
+    filters: {
+        service: 'all',
+        status: 'all' // 'all', 'new', 'archived'
+    }
+};
 
-// --- DOM ELEMENT DECLARATIONS ---
-let authorizeButton, signoutButton, appContainer, addClientForm, serviceFilter, modal, closeModalButton, listViewBtn, cardViewBtn;
+// --- DOM ELEMENTS (declared globally, assigned when DOM is ready) ---
+let tokenClient, gapiInited = false, gisInited = false;
+let authorizeButton, signoutButton, appContainer, addClientForm, serviceFilter, statusFilter, searchBar, modal, closeModalButton, listViewBtn, cardViewBtn, modalSaveNoteBtn;
 
 document.addEventListener('DOMContentLoaded', () => {
     // Assign all elements
@@ -19,28 +29,116 @@ document.addEventListener('DOMContentLoaded', () => {
     appContainer = document.getElementById('app-container');
     addClientForm = document.getElementById('add-client-form');
     serviceFilter = document.getElementById('service-filter');
+    statusFilter = document.getElementById('status-filter');
+    searchBar = document.getElementById('search-bar');
     modal = document.getElementById('details-modal');
     closeModalButton = document.querySelector('.close-button');
     listViewBtn = document.getElementById('list-view-btn');
     cardViewBtn = document.getElementById('card-view-btn');
+    modalSaveNoteBtn = document.getElementById('modal-save-note-btn');
 
     // Assign event listeners
     authorizeButton.onclick = handleAuthClick;
     signoutButton.onclick = handleSignoutClick;
     addClientForm.addEventListener('submit', handleAddClientSubmit);
-    serviceFilter.onchange = renderRequests;
+    serviceFilter.onchange = (e) => updateFilter('service', e.target.value);
+    statusFilter.onchange = (e) => updateFilter('status', e.target.value);
+    searchBar.oninput = (e) => updateSearch(e.target.value);
     closeModalButton.onclick = () => modal.style.display = 'none';
     window.onclick = (event) => { if (event.target == modal) { modal.style.display = 'none'; } };
-    
-    listViewBtn.onclick = () => { currentView = 'list'; updateViewToggle(); renderRequests(); };
-    cardViewBtn.onclick = () => { currentView = 'card'; updateViewToggle(); renderRequests(); };
+    listViewBtn.onclick = () => setView('list');
+    cardViewBtn.onclick = () => setView('card');
 });
 
-function updateViewToggle() {
-    listViewBtn.classList.toggle('active', currentView === 'list');
-    cardViewBtn.classList.toggle('active', currentView === 'card');
+// --- CORE LOGIC & WORKFLOW ---
+
+function updateFilter(key, value) {
+    state.filters[key] = value;
+    state.currentPage = 1;
+    renderRequests();
 }
 
+function updateSearch(term) {
+    state.searchTerm = term.toLowerCase();
+    state.currentPage = 1;
+    renderRequests();
+}
+
+function setView(view) {
+    state.currentView = view;
+    listViewBtn.classList.toggle('active', view === 'list');
+    cardViewBtn.classList.toggle('active', view === 'card');
+    renderRequests();
+}
+
+/**
+ * The main rendering pipeline. Takes all data, applies filters, sorting,
+ * pagination, and then calls the appropriate render function.
+ */
+function renderRequests() {
+    if (allRequests.rows.length === 0) {
+        document.getElementById('requests-container').innerHTML = '<p>No submissions found.</p>';
+        return;
+    }
+
+    const { headers, rows } = allRequests;
+    const statusIndex = headers.indexOf('Status');
+    
+    // 1. Apply Status Filter (New vs Archived)
+    let processedRows = rows;
+    if (state.filters.status !== 'all') {
+        const isArchived = state.filters.status === 'archived';
+        processedRows = rows.filter(row => (row[statusIndex] === 'Archived') === isArchived);
+    }
+
+    // 2. Apply Search Term
+    if (state.searchTerm) {
+        processedRows = processedRows.filter(row => 
+            row.some(cell => cell.toLowerCase().includes(state.searchTerm))
+        );
+    }
+
+    // 3. Apply Service Category Filter
+    if (state.filters.service !== 'all') {
+        const serviceIndex = headers.indexOf('Primary Service Category');
+        processedRows = processedRows.filter(row => row[serviceIndex] === state.filters.service);
+    }
+    
+    // 4. Apply Sorting
+    const sortIndex = headers.indexOf(state.sortColumn);
+    if (sortIndex > -1) {
+        processedRows.sort((a, b) => {
+            let valA = a[sortIndex] || '';
+            let valB = b[sortIndex] || '';
+            // Basic date sorting for 'Submission Date'
+            if (state.sortColumn === 'Submission Date') {
+                valA = new Date(valA).getTime();
+                valB = new Date(valB).getTime();
+            }
+            if (valA < valB) return state.sortDirection === 'asc' ? -1 : 1;
+            if (valA > valB) return state.sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }
+
+    // 5. Apply Pagination
+    const startIndex = (state.currentPage - 1) * state.rowsPerPage;
+    const endIndex = startIndex + state.rowsPerPage;
+    const paginatedRows = processedRows.slice(startIndex, endIndex);
+
+    // 6. Render
+    const container = document.getElementById('requests-container');
+    if (state.currentView === 'list') {
+        renderRequestsAsList(paginatedRows, container);
+    } else {
+        renderRequestsAsCards(paginatedRows, container);
+    }
+    renderPagination(processedRows.length);
+}
+
+
+// --- All other functions from the previous step ---
+// NOTE: Some functions like renderRequestsAsList are modified to work with the new pipeline.
 
 // --- INITIALIZATION & AUTH ---
 function gapiLoaded() { gapi.load('client', initializeGapiClient); }
@@ -80,9 +178,6 @@ function handleSignoutClick() {
         signoutButton.style.display = 'none';
     }
 }
-
-
-// --- TAB NAVIGATION ---
 function setupTabs() {
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('.tab-content');
@@ -111,14 +206,10 @@ function loadDataForActiveTab() {
             break;
     }
 }
-
-
-// --- REQUESTS TAB FUNCTIONS ---
-
 async function loadRequests() {
-    allRequests = []; 
     const container = document.getElementById('requests-container');
     container.innerHTML = '<p>Loading new service requests...</p>';
+    document.getElementById('archived-requests-container').innerHTML = ''; // Clear archived
     
     try {
         const response = await gapi.client.sheets.spreadsheets.values.get({
@@ -128,129 +219,167 @@ async function loadRequests() {
         if (values && values.length > 1) {
             allRequests = { headers: values[0], rows: values.slice(1) };
             populateServiceFilter();
+        } else {
+            allRequests = { headers: [], rows: [] };
         }
     } catch (err) {
         container.innerHTML = `<p style="color:red;">Error loading requests: ${err.result.error.message}</p>`;
         return;
     }
-    renderRequests();
+    setView('list'); // Default to list view on load
 }
 
-function renderRequests() {
-    if (allRequests.length === 0) {
-        document.getElementById('requests-container').innerHTML = '<p>No submissions found.</p>';
-        document.getElementById('archived-requests-container').innerHTML = '';
+function renderRequestsAsList(paginatedRows, container) {
+    container.innerHTML = '';
+    if (paginatedRows.length === 0) {
+        container.innerHTML = '<p>No requests match your criteria.</p>';
         return;
     }
-
-    const { headers, rows } = allRequests;
-    const statusIndex = headers.indexOf('Status');
-    const newRequests = rows.filter(row => row[statusIndex] !== 'Archived');
-    const archivedRequests = rows.filter(row => row[statusIndex] === 'Archived');
-
-    if (currentView === 'list') {
-        renderRequestsAsList(newRequests, document.getElementById('requests-container'));
-        renderRequestsAsList(archivedRequests, document.getElementById('archived-requests-container'));
-    } else {
-        renderRequestsAsCards(newRequests, document.getElementById('requests-container'));
-        renderRequestsAsCards(archivedRequests, document.getElementById('archived-requests-container'));
-    }
-}
-
-function getFilteredRequests(sourceRows) {
-    if (!sourceRows || sourceRows.length === 0) return [];
-    const { headers } = allRequests;
-    const selectedService = serviceFilter.value;
-    const serviceIndex = headers.indexOf('Primary Service Category');
-    return (selectedService === 'all')
-        ? sourceRows
-        : sourceRows.filter(row => row[serviceIndex] === selectedService);
-}
-
-function renderRequestsAsList(requestRows, container) {
-    const filteredRows = getFilteredRequests(requestRows);
-    if (filteredRows.length === 0) {
-        container.innerHTML = `<p>No submissions ${container.id.includes('archived') ? 'archived' : 'found'}.</p>`;
-        return;
-    }
-
     const { headers } = allRequests;
     const dateIndex = headers.indexOf('Submission Date');
     const nameIndex = headers.indexOf('Full Name');
-    const serviceIndex = headers.indexOf('Primary Service Category');
     const statusIndex = headers.indexOf('Status');
-
-    container.innerHTML = '';
     const table = document.createElement('table');
     table.className = 'data-table';
-    table.innerHTML = `<thead><tr><th>Date</th><th>Name</th><th>Service</th><th>Actions</th></tr></thead>`;
     
+    const sortableHeaders = ['Submission Date', 'Full Name'];
+    let headerHtml = '<thead><tr>';
+    sortableHeaders.forEach(headerText => {
+        let classes = 'sortable';
+        if (state.sortColumn === headerText) {
+            classes += state.sortDirection === 'asc' ? ' sorted-asc' : ' sorted-desc';
+        }
+        headerHtml += `<th class="${classes}" data-sort="${headerText}">${headerText}</th>`;
+    });
+    headerHtml += '<th>Status</th><th>Actions</th></tr></thead>';
+    table.innerHTML = headerHtml;
+
     const tbody = document.createElement('tbody');
-    filteredRows.forEach(row => {
+    paginatedRows.forEach(row => {
         const originalIndex = allRequests.rows.indexOf(row);
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${row[dateIndex] || ''}</td><td>${row[nameIndex] || ''}</td><td>${row[serviceIndex] || ''}</td>`;
-        tr.onclick = () => showRequestDetailsModal(row, headers);
+        const status = row[statusIndex] || 'New';
+        const statusClass = `badge-${status.toLowerCase()}`;
+        tr.innerHTML = `<td>${row[dateIndex] || ''}</td><td>${row[nameIndex] || ''}</td><td><span class="badge ${statusClass}">${status}</span></td>`;
         
         const isArchived = row[statusIndex] === 'Archived';
         const actionTd = document.createElement('td');
-        actionTd.innerHTML = `
-            <button class="initiate-project-btn" data-row-index="${originalIndex}" ${isArchived ? 'disabled' : ''}>Initiate Project</button>
-            <button class="archive-btn" data-row-index="${originalIndex}">${isArchived ? 'Unarchive' : 'Archive'}</button>
-        `;
+        actionTd.innerHTML = `<button class="details-btn" data-row-index="${originalIndex}">Details</button><button class="archive-btn" data-row-index="${originalIndex}">${isArchived ? 'Unarchive' : 'Archive'}</button>`;
         tr.appendChild(actionTd);
         tbody.appendChild(tr);
     });
     table.appendChild(tbody);
     container.appendChild(table);
     
-    container.querySelectorAll('.initiate-project-btn').forEach(b => b.onclick = handleInitiateProject);
+    container.querySelectorAll('.details-btn').forEach(b => b.onclick = (e) => showRequestDetailsModal(allRequests.rows[e.target.dataset.rowIndex], headers));
     container.querySelectorAll('.archive-btn').forEach(b => b.onclick = handleArchiveRequest);
+    container.querySelectorAll('th.sortable').forEach(th => th.onclick = handleSort);
 }
 
-function renderRequestsAsCards(requestRows, container) {
-    const filteredRows = getFilteredRequests(requestRows);
-    if (filteredRows.length === 0) {
-        container.innerHTML = `<p>No submissions ${container.id.includes('archived') ? 'archived' : 'found'}.</p>`;
+function handleSort(event) {
+    const newSortColumn = event.target.dataset.sort;
+    if (state.sortColumn === newSortColumn) {
+        state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        state.sortColumn = newSortColumn;
+        state.sortDirection = 'asc';
+    }
+    renderRequests();
+}
+
+function renderPagination(totalRows) {
+    const container = document.getElementById('pagination-controls');
+    container.innerHTML = '';
+    const pageCount = Math.ceil(totalRows / state.rowsPerPage);
+    if (pageCount <= 1) return;
+
+    for (let i = 1; i <= pageCount; i++) {
+        const btn = document.createElement('button');
+        btn.textContent = i;
+        if (i === state.currentPage) {
+            btn.classList.add('active');
+        }
+        btn.onclick = () => {
+            state.currentPage = i;
+            renderRequests();
+        };
+        container.appendChild(btn);
+    }
+}
+
+async function showRequestDetailsModal(rowData, headers) {
+    const modalBody = document.getElementById('modal-body');
+    const notesTextarea = document.getElementById('modal-notes-textarea');
+    const noteStatus = document.getElementById('modal-note-status');
+    const originalIndex = allRequests.rows.indexOf(rowData);
+
+    noteStatus.textContent = '';
+    const ignoredFields = ['Raw Payload', 'All Services JSON', 'Submission ID', 'Timestamp', 'Notes'];
+    let contentHtml = '<ul>';
+    const rawPayloadIndex = headers.indexOf('Raw Payload');
+    const notesIndex = headers.indexOf('Notes');
+    
+    headers.forEach((header, index) => {
+        if (rowData[index] && !ignoredFields.includes(header)) {
+            contentHtml += `<li><strong>${header}:</strong> ${rowData[index]}</li>`;
+        }
+    });
+    contentHtml += '</ul>';
+    
+    if (rawPayloadIndex > -1 && rowData[rawPayloadIndex]) {
+        try {
+            contentHtml += `<h3>Raw Payload Data</h3><pre><code>${JSON.stringify(JSON.parse(rowData[rawPayloadIndex]), null, 2)}</code></pre>`;
+        } catch (e) {
+            contentHtml += `<h3>Raw Payload Data</h3><pre><code>${rowData[rawPayloadIndex]}</code></pre>`;
+        }
+    }
+    
+    modalBody.innerHTML = contentHtml;
+    notesTextarea.value = rowData[notesIndex] || '';
+    modalSaveNoteBtn.onclick = () => handleSaveNote(originalIndex);
+    modal.style.display = 'block';
+}
+
+async function handleSaveNote(rowIndex) {
+    const noteStatus = document.getElementById('modal-note-status');
+    noteStatus.textContent = 'Saving...';
+    const newNote = document.getElementById('modal-notes-textarea').value;
+    
+    const { headers, rows } = allRequests;
+    const rowData = rows[rowIndex];
+    const notesIndex = headers.indexOf('Notes');
+    const submissionIdIndex = headers.indexOf('Submission ID');
+
+    if (notesIndex === -1 || submissionIdIndex === -1) {
+        noteStatus.textContent = "Error: 'Notes' or 'Submission ID' column missing.";
         return;
     }
 
-    const { headers } = allRequests;
-    const dateIndex = headers.indexOf('Submission Date');
-    const nameIndex = headers.indexOf('Full Name');
-    const serviceIndex = headers.indexOf('Primary Service Category');
-    const statusIndex = headers.indexOf('Status');
+    try {
+        const submissionId = rowData[submissionIdIndex];
+        const allSheetValues = (await gapi.client.sheets.spreadsheets.values.get({spreadsheetId: SPREADSHEET_ID, range: 'Submissions'})).result.values;
+        const visualRowIndex = allSheetValues.findIndex(sheetRow => sheetRow && sheetRow[submissionIdIndex] === submissionId);
 
-    container.innerHTML = '';
-    const cardContainer = document.createElement('div');
-    cardContainer.className = 'card-container';
-    
-    filteredRows.forEach(row => {
-        const originalIndex = allRequests.rows.indexOf(row);
-        const isArchived = row[statusIndex] === 'Archived';
-        const card = document.createElement('div');
-        card.className = 'request-card';
-        card.innerHTML = `
-            <h3>${row[nameIndex] || 'No Name'}</h3>
-            <p><strong>Date:</strong> ${row[dateIndex] || 'N/A'}</p>
-            <p><strong>Service:</strong> ${row[serviceIndex] || 'N/A'}</p>
-            <div class="actions">
-                <button class="details-btn">Details</button>
-                <button class="initiate-project-btn" ${isArchived ? 'disabled' : ''}>Initiate Project</button>
-                <button class="archive-btn">${isArchived ? 'Unarchive' : 'Archive'}</button>
-            </div>
-        `;
-        card.querySelector('.details-btn').onclick = () => showRequestDetailsModal(row, headers);
-        card.querySelector('.initiate-project-btn').dataset.rowIndex = originalIndex;
-        card.querySelector('.initiate-project-btn').onclick = handleInitiateProject;
-        card.querySelector('.archive-btn').dataset.rowIndex = originalIndex;
-        card.querySelector('.archive-btn').onclick = handleArchiveRequest;
+        if (visualRowIndex === -1) throw new Error("Could not find row in sheet.");
         
-        cardContainer.appendChild(card);
-    });
-    container.appendChild(cardContainer);
+        const targetCell = `${String.fromCharCode(65 + notesIndex)}${visualRowIndex + 1}`;
+        await gapi.client.sheets.spreadsheets.values.update({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `Submissions!${targetCell}`,
+            valueInputOption: 'RAW',
+            resource: { values: [[newNote]] }
+        });
+
+        allRequests.rows[rowIndex][notesIndex] = newNote; // Update cache
+        noteStatus.textContent = 'Saved successfully!';
+    } catch (err) {
+        noteStatus.textContent = 'Error saving note.';
+        console.error("Save Note Error:", err);
+    }
 }
 
+
+// --- All other functions (from previous steps) ---
 async function handleArchiveRequest(event) {
     event.stopPropagation();
     const button = event.target;
@@ -277,26 +406,19 @@ async function handleArchiveRequest(event) {
         const visualRowIndex = allSheetValues.findIndex(sheetRow => sheetRow && sheetRow[submissionIdIndex] === submissionId);
 
         if (visualRowIndex === -1) {
-            throw new Error("Could not find the row in the sheet to update. It may have been changed by someone else.");
+            throw new Error("Could not find the row in the sheet to update.");
         }
         
         const targetRowNumber = visualRowIndex + 1;
-        
-        // ** THIS IS THE FIX **
-        // This simplified range is more robust. It tells the API where to START writing
-        // and the API figures out the rest based on the data we send.
         const targetRange = `Submissions!A${targetRowNumber}`;
-        
-        const updatedRowValues = [...rowData]; // Create a copy of the row
-        updatedRowValues[statusIndex] = newStatus; // Update the status in the copy
+        const updatedRowValues = [...rowData];
+        updatedRowValues[statusIndex] = newStatus;
 
         await gapi.client.sheets.spreadsheets.values.update({
             spreadsheetId: SPREADSHEET_ID,
             range: targetRange,
             valueInputOption: 'RAW',
-            resource: {
-                values: [updatedRowValues] // Write the entire updated row back
-            }
+            resource: { values: [updatedRowValues] }
         });
         
         allRequests.rows[rowIndex][statusIndex] = newStatus;
@@ -309,62 +431,8 @@ async function handleArchiveRequest(event) {
         button.disabled = false;
     }
 }
-
-
-// --- All other functions remain the same ---
-
-function showRequestDetailsModal(rowData, headers) {
-    const modalBody = document.getElementById('modal-body');
-    const ignoredFields = ['Raw Payload', 'All Services JSON', 'Submission ID', 'Timestamp'];
-    let contentHtml = '<ul>';
-    const rawPayloadIndex = headers.indexOf('Raw Payload');
-    headers.forEach((header, index) => {
-        if (rowData[index] && !ignoredFields.includes(header)) {
-            contentHtml += `<li><strong>${header}:</strong> ${rowData[index]}</li>`;
-        }
-    });
-    contentHtml += '</ul>';
-    if (rawPayloadIndex > -1 && rowData[rawPayloadIndex]) {
-        try {
-            const payload = JSON.parse(rowData[rawPayloadIndex]);
-            contentHtml += '<h3>Raw Payload Data</h3>';
-            contentHtml += `<pre><code>${JSON.stringify(payload, null, 2)}</code></pre>`;
-        } catch (e) {
-            contentHtml += '<h3>Raw Payload Data (Not valid JSON)</h3>';
-            contentHtml += `<pre><code>${rowData[rawPayloadIndex]}</code></pre>`;
-        }
-    }
-    modalBody.innerHTML = contentHtml;
-    modal.style.display = 'block';
-}
-async function handleInitiateProject(event) {
-    event.stopPropagation();
-    const button = event.target;
-    if (!confirm('Are you sure you want to create a new project from this request?')) return;
-    button.textContent = 'Creating...';
-    button.disabled = true;
-    const rowIndex = button.dataset.rowIndex;
-    const { headers, rows } = allRequests;
-    const requestData = arrayToObject(rows[rowIndex], headers);
-    const projectData = {
-        'ProjectName': `Project for ${requestData['Full Name']} - ${requestData['Submission Date']}`,
-        'ClientID': 'LOOKUP_REQUIRED',
-        'Status': 'Planning',
-        'StartDate': requestData['Primary Date'] || new Date().toLocaleDateString(),
-        'Description': `Based on service request from ${requestData['Submission Date']}.\nService: ${requestData['Primary Service Type']}\nLocation: ${requestData['Primary Location']}`
-    };
-    try {
-        await writeData('Projects', projectData);
-        button.textContent = 'Project Created';
-    } catch(err) {
-        button.textContent = 'Error!';
-        button.disabled = false;
-        alert('Could not create project. See console for details.');
-        console.error("Initiate Project Error:", err);
-    }
-}
 function populateServiceFilter() {
-    if (allRequests.length === 0) return;
+    if (allRequests.rows.length === 0) return;
     const { headers, rows } = allRequests;
     const serviceIndex = headers.indexOf('Primary Service Category');
     if (serviceIndex === -1) return;
@@ -433,7 +501,7 @@ async function loadClients() {
         });
         clientListDiv.appendChild(ul);
     } catch (err) {
-        clientListDiv.innerHTML = `<p style="color:red;">Error: ${err.result.error.message}</p>`;
+        clientListDiv.innerHTML = `<p style="color:red;">Error: ${err.result.error.message}`;
     }
 }
 async function writeData(sheetName, dataObject) {
@@ -451,11 +519,4 @@ async function writeData(sheetName, dataObject) {
         spreadsheetId: SPREADSHEET_ID, range: sheetName,
         valueInputOption: 'USER_ENTERED', resource: { values: [newRow] },
     });
-}
-function arrayToObject(row, headers) {
-    const obj = {};
-    headers.forEach((header, index) => {
-        obj[header] = row[index];
-    });
-    return obj;
 }
