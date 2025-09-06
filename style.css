@@ -15,10 +15,7 @@ header {
     position: relative;
 }
 main {
-    background-color: #ffffff;
     padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 .card {
     background-color: #ffffff;
@@ -117,18 +114,22 @@ main {
     background-color: #e2e2e2;
 }
 .data-table th.sortable::after {
-    content: '\2195'; /* Up-down arrow */
+    content: '\2195';
     opacity: 0.3;
     position: absolute;
     right: 8px;
 }
 .data-table th.sorted-asc::after {
-    content: '\25B2'; /* Up triangle */
+    content: '\25B2';
     opacity: 1;
 }
 .data-table th.sorted-desc::after {
-    content: '\25BC'; /* Down triangle */
+    content: '\25BC';
     opacity: 1;
+}
+.data-table tbody tr:hover {
+    background-color: #e9ecef;
+    cursor: pointer;
 }
 .badge {
     padding: 3px 8px;
@@ -141,26 +142,6 @@ main {
 .badge-contacted { background-color: #17a2b8; }
 .badge-archived { background-color: #6c757d; }
 .badge-default { background-color: #ffc107; color: #333; }
-#pagination-controls {
-    margin-top: 20px;
-    text-align: center;
-}
-#pagination-controls button {
-    padding: 8px 12px;
-    margin: 0 4px;
-    border: 1px solid #ccc;
-    background-color: #fff;
-    cursor: pointer;
-}
-#pagination-controls button.active {
-    background-color: #007bff;
-    color: white;
-    border-color: #007bff;
-}
-#pagination-controls button:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-}
 .card-container {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -172,6 +153,11 @@ main {
     padding: 15px;
     background-color: #fff;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    cursor: pointer;
+}
+.request-card:hover {
+    border-color: #007bff;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 .request-card h3 {
     margin-top: 0;
@@ -179,15 +165,7 @@ main {
 .request-card p {
     margin: 5px 0;
     color: #555;
-}
-.request-card .actions {
-    margin-top: 15px;
-    display: flex;
-    gap: 10px;
-}
-.request-card .actions button {
-    flex-grow: 1;
-    padding: 8px;
+    font-size: 14px;
 }
 .modal {
     display: none; 
