@@ -42,8 +42,7 @@ function updateViewToggle() {
 }
 
 
-// --- INITIALIZATION, AUTH, and TAB NAVIGATION ---
-// These sections remain the same as the previous version.
+// --- INITIALIZATION & AUTH ---
 function gapiLoaded() { gapi.load('client', initializeGapiClient); }
 function gisLoaded() {
     tokenClient = google.accounts.oauth2.initTokenClient({
@@ -81,6 +80,9 @@ function handleSignoutClick() {
         signoutButton.style.display = 'none';
     }
 }
+
+
+// --- TAB NAVIGATION ---
 function setupTabs() {
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('.tab-content');
@@ -114,7 +116,6 @@ function loadDataForActiveTab() {
 // --- REQUESTS TAB FUNCTIONS ---
 
 async function loadRequests() {
-    // Invalidate cache to get fresh data including status changes
     allRequests = []; 
     const container = document.getElementById('requests-container');
     container.innerHTML = '<p>Loading new service requests...</p>';
@@ -142,7 +143,6 @@ function renderRequests() {
         return;
     }
 
-    // Separate requests into new and archived
     const { headers, rows } = allRequests;
     const statusIndex = headers.indexOf('Status');
     const newRequests = rows.filter(row => row[statusIndex] !== 'Archived');
@@ -152,7 +152,6 @@ function renderRequests() {
         renderRequestsAsList(newRequests, document.getElementById('requests-container'));
         renderRequestsAsList(archivedRequests, document.getElementById('archived-requests-container'));
     } else {
-        // Card view can be similarly separated if desired
         renderRequestsAsCards(newRequests, document.getElementById('requests-container'));
         renderRequestsAsCards(archivedRequests, document.getElementById('archived-requests-container'));
     }
@@ -196,7 +195,7 @@ function renderRequestsAsList(requestRows, container) {
         const isArchived = row[statusIndex] === 'Archived';
         const actionTd = document.createElement('td');
         actionTd.innerHTML = `
-            <button class="initiate-project-btn" data-row-index="${originalIndex}" ${isArchived ? 'disabled' : ''}>Initiate Project</button>
+            <button class="initiate-project-btn" data-row-index="${originalIndex}" ${isArchiv ? 'disabled' : ''}>Initiate Project</button>
             <button class="archive-btn" data-row-index="${originalIndex}">${isArchived ? 'Unarchive' : 'Archive'}</button>
         `;
         tr.appendChild(actionTd);
@@ -209,59 +208,6 @@ function renderRequestsAsList(requestRows, container) {
     container.querySelectorAll('.archive-btn').forEach(b => b.onclick = handleArchiveRequest);
 }
 
-async function handleArchiveRequest(event) {
-    event.stopPropagation();
-    const button = event.target;
-    const rowIndex = parseInt(button.dataset.rowIndex, 10);
-    const { headers, rows } = allRequests;
-    const rowData = rows[rowIndex];
-    
-    const statusIndex = headers.indexOf('Status');
-    const timestampIndex = headers.indexOf('Submission IDTimestamp');
-    if (statusIndex === -1 || timestampIndex === -1) {
-        alert("Error: 'Status' or 'Submission IDTimestamp' column not found in your sheet.");
-        return;
-    }
-    
-    const currentStatus = rowData[statusIndex];
-    const newStatus = currentStatus === 'Archived' ? '' : 'Archived'; // Toggle status
-    button.textContent = 'Updating...';
-    button.disabled = true;
-
-    try {
-        // Find the absolute row number in the sheet to update
-        const timestamp = rowData[timestampIndex];
-        const allSheetValues = (await gapi.client.sheets.spreadsheets.values.get({spreadsheetId: SPREADSHEET_ID, range: 'Submissions'})).result.values;
-        const visualRowIndex = allSheetValues.findIndex(sheetRow => sheetRow[timestampIndex] === timestamp);
-
-        if (visualRowIndex === -1) {
-            throw new Error("Could not find the row in the sheet. It may have been moved or deleted.");
-        }
-        
-        const targetCell = `${String.fromCharCode(65 + statusIndex)}${visualRowIndex + 1}`; // e.g., "F12"
-        await gapi.client.sheets.spreadsheets.values.update({
-            spreadsheetId: SPREADSHEET_ID,
-            range: `Submissions!${targetCell}`,
-            valueInputOption: 'RAW',
-            resource: {
-                values: [[newStatus]]
-            }
-        });
-        
-        // Update local cache and re-render the UI
-        allRequests.rows[rowIndex][statusIndex] = newStatus;
-        renderRequests();
-
-    } catch(err) {
-        alert('Could not update status. See console for details.');
-        console.error("Archive/Update Error:", err);
-        button.textContent = newStatus === 'Archived' ? 'Unarchive' : 'Archive';
-        button.disabled = false;
-    }
-}
-
-
-// --- All other functions (including the new card renderer, modal, utilities, and client functions) ---
 function renderRequestsAsCards(requestRows, container) {
     const filteredRows = getFilteredRequests(requestRows);
     if (filteredRows.length === 0) {
@@ -305,9 +251,62 @@ function renderRequestsAsCards(requestRows, container) {
     container.appendChild(cardContainer);
 }
 
+async function handleArchiveRequest(event) {
+    event.stopPropagation();
+    const button = event.target;
+    const rowIndex = parseInt(button.dataset.rowIndex, 10);
+    const { headers, rows } = allRequests;
+    const rowData = rows[rowIndex];
+    
+    const statusIndex = headers.indexOf('Status');
+    // ** FIX IS HERE **
+    const submissionIdIndex = headers.indexOf('Submission ID'); 
+    
+    if (statusIndex === -1 || submissionIdIndex === -1) {
+        alert("Error: 'Status' or 'Submission ID' column not found in your sheet.");
+        return;
+    }
+    
+    const currentStatus = rowData[statusIndex];
+    const newStatus = currentStatus === 'Archived' ? '' : 'Archived';
+    button.textContent = 'Updating...';
+    button.disabled = true;
+
+    try {
+        const submissionId = rowData[submissionIdIndex];
+        const allSheetValues = (await gapi.client.sheets.spreadsheets.values.get({spreadsheetId: SPREADSHEET_ID, range: 'Submissions'})).result.values;
+        const visualRowIndex = allSheetValues.findIndex(sheetRow => sheetRow[submissionIdIndex] === submissionId);
+
+        if (visualRowIndex === -1) {
+            throw new Error("Could not find the row in the sheet. It may have been moved or deleted.");
+        }
+        
+        const targetCell = `${String.fromCharCode(65 + statusIndex)}${visualRowIndex + 1}`;
+        await gapi.client.sheets.spreadsheets.values.update({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `Submissions!${targetCell}`,
+            valueInputOption: 'RAW',
+            resource: {
+                values: [[newStatus]]
+            }
+        });
+        
+        allRequests.rows[rowIndex][statusIndex] = newStatus;
+        renderRequests();
+
+    } catch(err) {
+        alert('Could not update status. See console for details.');
+        console.error("Archive/Update Error:", err);
+        button.textContent = newStatus === 'Archived' ? 'Unarchive' : 'Archive';
+        button.disabled = false;
+    }
+}
+
+// --- All other functions remain the same ---
+
 function showRequestDetailsModal(rowData, headers) {
     const modalBody = document.getElementById('modal-body');
-    const ignoredFields = ['Raw Payload', 'All Services JSON', 'Submission IDTimestamp'];
+    const ignoredFields = ['Raw Payload', 'All Services JSON', 'Submission ID', 'Timestamp'];
     let contentHtml = '<ul>';
     const rawPayloadIndex = headers.indexOf('Raw Payload');
     headers.forEach((header, index) => {
@@ -329,7 +328,6 @@ function showRequestDetailsModal(rowData, headers) {
     modalBody.innerHTML = contentHtml;
     modal.style.display = 'block';
 }
-
 async function handleInitiateProject(event) {
     event.stopPropagation();
     const button = event.target;
@@ -356,7 +354,6 @@ async function handleInitiateProject(event) {
         console.error("Initiate Project Error:", err);
     }
 }
-
 function populateServiceFilter() {
     if (allRequests.length === 0) return;
     const { headers, rows } = allRequests;
