@@ -277,12 +277,13 @@ main {
     position: absolute;
     right: 8px;
 }
+
 .data-table th.sorted-asc::after {
-    content: ' \\25B2'; /* Up triangle */
+    content: '\25B2'; /* Up triangle */
     opacity: 1;
 }
 .data-table th.sorted-desc::after {
-    content: ' \\25BC'; /* Down triangle */
+    content: '\25BC'; /* Down triangle */
     opacity: 1;
 }
 
