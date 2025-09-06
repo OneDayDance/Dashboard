@@ -13,7 +13,8 @@ let state = {
     sortDirection: 'desc',
     searchTerm: '',
     filters: { service: 'all', status: 'all' },
-    visibleColumns: ['Submission Date', 'Full Name', 'Primary Service Category', 'Status'] // Default visible columns
+    visibleColumns: ['Submission Date', 'Full Name', 'Primary Service Category', 'Status'],
+    currentView: 'list'
 };
 const sortableColumns = ['Submission Date', 'Full Name', 'Email', 'Organization', 'Primary Service Category', 'Status'];
 
@@ -48,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     serviceFilter.onchange = (e) => updateFilter('service', e.target.value);
     statusFilter.onchange = (e) => updateFilter('status', e.target.value);
     searchBar.oninput = (e) => updateSearch(e.target.value);
+    
     closeModalButtons.forEach(btn => btn.onclick = () => {
         detailsModal.style.display = 'none';
         columnModal.style.display = 'none';
@@ -56,112 +58,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (event.target == detailsModal) detailsModal.style.display = 'none';
         if (event.target == columnModal) columnModal.style.display = 'none';
     };
+    
     listViewBtn.onclick = () => setView('list');
     cardViewBtn.onclick = () => setView('card');
+    columnSelectBtn.onclick = () => columnModal.style.display = 'block';
+    saveColumnsBtn.onclick = handleSaveColumns;
+    
     archiveToggle.onclick = () => {
         archiveToggle.classList.toggle('collapsed');
         archiveContainer.classList.toggle('collapsed');
     };
-    columnSelectBtn.onclick = () => columnModal.style.display = 'block';
-    saveColumnsBtn.onclick = handleSaveColumns;
 });
 
-// --- CORE LOGIC & WORKFLOW ---
-function handleSaveColumns() {
-    const selectedColumns = [];
-    document.querySelectorAll('#column-checkboxes input[type="checkbox"]:checked').forEach(checkbox => {
-        selectedColumns.push(checkbox.value);
-    });
-    state.visibleColumns = selectedColumns;
-    columnModal.style.display = 'none';
-    renderRequests();
-}
 
-function renderRequestsAsList(requestRows, container) {
-    container.innerHTML = '';
-    if (requestRows.length === 0) {
-        container.innerHTML = `<p>No submissions to display.</p>`;
-        return;
-    }
-
-    const { headers } = allRequests;
-    const table = document.createElement('table');
-    table.className = 'data-table';
-    
-    // Dynamically build headers from visible columns
-    let headerHtml = '<thead><tr>';
-    state.visibleColumns.forEach(headerText => {
-        let classes = '';
-        if (sortableColumns.includes(headerText)) {
-            classes += 'sortable';
-            if (state.sortColumn === headerText) {
-                classes += state.sortDirection === 'asc' ? ' sorted-asc' : ' sorted-desc';
-            }
-        }
-        headerHtml += `<th class="${classes}" data-sort="${headerText}">${headerText}</th>`;
-    });
-    headerHtml += '<th>Actions</th></tr></thead>';
-    table.innerHTML = headerHtml;
-
-    const tbody = document.createElement('tbody');
-    requestRows.forEach(row => {
-        const originalIndex = allRequests.rows.indexOf(row);
-        const tr = document.createElement('tr');
-        
-        // Dynamically build cells from visible columns
-        state.visibleColumns.forEach(headerText => {
-            const cellIndex = headers.indexOf(headerText);
-            const td = document.createElement('td');
-            if (headerText === 'Status') {
-                const statusSelect = document.createElement('select');
-                statusSelect.dataset.rowIndex = originalIndex;
-                const currentStatus = row[cellIndex] || 'New';
-                ['New', 'Contacted', 'Archived'].forEach(status => {
-                    const option = new Option(status, status, false, status === currentStatus);
-                    statusSelect.add(option);
-                });
-                statusSelect.onchange = handleStatusChange;
-                td.appendChild(statusSelect);
-            } else {
-                td.textContent = row[cellIndex] || '';
-            }
-            tr.appendChild(td);
-        });
-        
-        const actionTd = document.createElement('td');
-        actionTd.innerHTML = `<button class="details-btn" data-row-index="${originalIndex}">Details</button>`;
-        tr.appendChild(actionTd);
-        tbody.appendChild(tr);
-    });
-
-    table.appendChild(tbody);
-    container.appendChild(table);
-    
-    container.querySelectorAll('.details-btn').forEach(b => b.onclick = (e) => showRequestDetailsModal(allRequests.rows[e.target.dataset.rowIndex], headers));
-    container.querySelectorAll('th.sortable').forEach(th => th.onclick = handleSort);
-}
-
-function populateColumnSelector() {
-    const container = document.getElementById('column-checkboxes');
-    container.innerHTML = '';
-    allRequests.headers.forEach(header => {
-        if (!header) return; // Skip empty header columns
-        const isChecked = state.visibleColumns.includes(header);
-        const wrapper = document.createElement('div');
-        wrapper.innerHTML = `
-            <label>
-                <input type="checkbox" value="${header}" ${isChecked ? 'checked' : ''}>
-                ${header}
-            </label>
-        `;
-        container.appendChild(wrapper);
-    });
-}
-
-
-// --- All other functions from the previous steps remain here, with minor or no changes ---
-
-// INITIALIZATION & AUTH
+// --- INITIALIZATION & AUTH ---
 function gapiLoaded() { gapi.load('client', initializeGapiClient); }
 function gisLoaded() {
     tokenClient = google.accounts.oauth2.initTokenClient({
@@ -200,7 +110,8 @@ function handleSignoutClick() {
     }
 }
 
-// TAB NAVIGATION & CORE LOGIC
+
+// --- TAB NAVIGATION & CORE LOGIC ---
 function setupTabs() {
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('.tab-content');
@@ -246,11 +157,10 @@ function setView(view) {
     renderRequests();
 }
 
-// REQUESTS TAB FUNCTIONS
+// --- REQUESTS TAB FUNCTIONS ---
 async function loadRequests() {
     const container = document.getElementById('requests-container');
     container.innerHTML = '<p>Loading new service requests...</p>';
-    
     try {
         const response = await gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID, range: 'Submissions',
@@ -259,7 +169,7 @@ async function loadRequests() {
         if (values && values.length > 1) {
             allRequests = { headers: values[0], rows: values.slice(1) };
             populateServiceFilter();
-            populateColumnSelector(); // New
+            populateColumnSelector();
         } else {
             allRequests = { headers: [], rows: [] };
         }
@@ -267,14 +177,13 @@ async function loadRequests() {
         container.innerHTML = `<p style="color:red;">Error loading requests: ${err.result.error.message}</p>`;
         return;
     }
-    
     archiveToggle.classList.add('collapsed');
     archiveContainer.classList.add('collapsed');
     setView('list');
 }
 
 function renderRequests() {
-    if (allRequests.rows.length === 0) {
+    if (!allRequests.rows || allRequests.rows.length === 0) {
         document.getElementById('requests-container').innerHTML = '<p>No submissions found.</p>';
         document.getElementById('archived-requests-container').innerHTML = '';
         return;
@@ -282,7 +191,7 @@ function renderRequests() {
     const { headers, rows } = allRequests;
     let processedRows = rows;
     if (state.searchTerm) {
-        processedRows = processedRows.filter(row => row.some(cell => cell.toLowerCase().includes(state.searchTerm)));
+        processedRows = processedRows.filter(row => row.some(cell => String(cell).toLowerCase().includes(state.searchTerm)));
     }
     if (state.filters.service !== 'all') {
         const serviceIndex = headers.indexOf('Primary Service Category');
@@ -303,34 +212,129 @@ function renderRequests() {
     }
 
     const statusIndex = headers.indexOf('Status');
-    const newRequests = processedRows.filter(row => row[statusIndex] !== 'Archived');
-    const archivedRequests = processedRows.filter(row => row[statusIndex] === 'Archived');
+    const newRequests = [], archivedRequests = [];
+    
+    // This filter must respect the 'All Statuses' filter option
+    processedRows.forEach(row => {
+        const isArchived = row[statusIndex] === 'Archived';
+        if (state.filters.status === 'all') {
+            if (isArchived) archivedRequests.push(row);
+            else newRequests.push(row);
+        } else if (state.filters.status === 'archived' && isArchived) {
+            archivedRequests.push(row);
+        } else if (state.filters.status === 'new' && !isArchived) {
+            newRequests.push(row);
+        }
+    });
 
     const renderFn = state.currentView === 'list' ? renderRequestsAsList : renderRequestsAsCards;
     renderFn(newRequests, document.getElementById('requests-container'));
     renderFn(archivedRequests, document.getElementById('archived-requests-container'));
 }
 
-function renderRequestsAsCards(requestRows, container) {
-    // This can be fully built out later if needed, but the focus is the list view fix.
-    container.innerHTML = `<p>Card view is under construction.</p>`;
+function renderRequestsAsList(requestRows, container) {
+    container.innerHTML = '';
+    if (requestRows.length === 0) {
+        container.innerHTML = `<p>No submissions to display.</p>`;
+        return;
+    }
+    const { headers } = allRequests;
+    const table = document.createElement('table');
+    table.className = 'data-table';
+    let headerHtml = '<thead><tr>';
+    state.visibleColumns.forEach(headerText => {
+        let classes = '';
+        if (sortableColumns.includes(headerText)) {
+            classes += 'sortable';
+            if (state.sortColumn === headerText) { classes += state.sortDirection === 'asc' ? ' sorted-asc' : ' sorted-desc'; }
+        }
+        headerHtml += `<th class="${classes}" data-sort="${headerText}">${headerText}</th>`;
+    });
+    headerHtml += '<th>Actions</th></tr></thead>';
+    table.innerHTML = headerHtml;
+
+    const tbody = document.createElement('tbody');
+    requestRows.forEach(row => {
+        const originalIndex = allRequests.rows.indexOf(row);
+        const tr = document.createElement('tr');
+        state.visibleColumns.forEach(headerText => {
+            const cellIndex = headers.indexOf(headerText);
+            const td = document.createElement('td');
+            if (headerText === 'Status') {
+                const currentStatus = row[cellIndex] || 'New';
+                const statusClass = `badge-${currentStatus.toLowerCase()}`;
+                td.innerHTML = `<span class="badge ${statusClass}">${currentStatus}</span>`;
+            } else {
+                td.textContent = row[cellIndex] || '';
+            }
+            tr.appendChild(td);
+        });
+        
+        const actionTd = document.createElement('td');
+        actionTd.innerHTML = `<button class="details-btn" data-row-index="${originalIndex}">Details</button>`;
+        tr.appendChild(actionTd);
+        tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    container.appendChild(table);
+    container.querySelectorAll('.details-btn').forEach(b => b.onclick = (e) => showRequestDetailsModal(allRequests.rows[e.target.dataset.rowIndex], headers));
+    container.querySelectorAll('th.sortable').forEach(th => th.onclick = handleSort);
 }
 
+function renderRequestsAsCards(requestRows, container) {
+    container.innerHTML = '';
+    if (requestRows.length === 0) {
+        container.innerHTML = `<p>No submissions to display.</p>`;
+        return;
+    }
+    const { headers } = allRequests;
+    const dateIndex = headers.indexOf('Submission Date');
+    const nameIndex = headers.indexOf('Full Name');
+    const statusIndex = headers.indexOf('Status');
+
+    const cardContainer = document.createElement('div');
+    cardContainer.className = 'card-container';
+    
+    requestRows.forEach(row => {
+        const originalIndex = allRequests.rows.indexOf(row);
+        const card = document.createElement('div');
+        card.className = 'request-card';
+        card.innerHTML = `<h3>${row[nameIndex] || 'No Name'}</h3><p><strong>Date:</strong> ${row[dateIndex] || 'N/A'}</p>`;
+        
+        const statusSelect = document.createElement('select');
+        statusSelect.dataset.rowIndex = originalIndex;
+        const currentStatus = row[statusIndex] || 'New';
+        ['New', 'Contacted', 'Archived'].forEach(status => {
+            const option = new Option(status, status, false, status === currentStatus);
+            statusSelect.add(option);
+        });
+        statusSelect.onchange = handleStatusChange;
+        
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'actions';
+        actionsDiv.innerHTML = `<button class="details-btn" data-row-index="${originalIndex}">Details</button>`;
+        
+        card.appendChild(statusSelect);
+        card.appendChild(actionsDiv);
+        cardContainer.appendChild(card);
+    });
+    container.appendChild(cardContainer);
+    container.querySelectorAll('.details-btn').forEach(b => b.onclick = (e) => showRequestDetailsModal(allRequests.rows[e.target.dataset.rowIndex], headers));
+}
+
+// And so on for the rest of the file...
 async function handleStatusChange(event) {
     const selectElement = event.target;
     const newStatus = selectElement.value;
     const rowIndex = parseInt(selectElement.dataset.rowIndex, 10);
     const { headers, rows } = allRequests;
     const rowData = rows[rowIndex];
-    
     const statusIndex = headers.indexOf('Status');
     const submissionIdIndex = headers.indexOf('Submission ID'); 
-    
     if (statusIndex === -1 || submissionIdIndex === -1) {
         alert("Error: 'Status' or 'Submission ID' column not found.");
         return;
     }
-    
     selectElement.disabled = true;
     try {
         const submissionId = rowData[submissionIdIndex];
@@ -352,7 +356,6 @@ async function handleStatusChange(event) {
         selectElement.disabled = false;
     }
 }
-
 function showRequestDetailsModal(rowData, headers) {
     const modalBody = document.getElementById('modal-body');
     const ignoredFields = ['Raw Payload', 'All Services JSON', 'Submission ID', 'Timestamp', 'Notes'];
@@ -373,7 +376,6 @@ function showRequestDetailsModal(rowData, headers) {
     modalSaveNoteBtn.onclick = () => handleSaveNote(originalIndex);
     detailsModal.style.display = 'block';
 }
-
 function handleSort(event) {
     const newSortColumn = event.target.dataset.sort;
     if (state.sortColumn === newSortColumn) {
@@ -384,12 +386,19 @@ function handleSort(event) {
     }
     renderRequests();
 }
-
 function renderPagination(totalRows) {
-    // This function can be re-implemented if needed with the new filtering logic. For now, it's removed to simplify.
-    document.getElementById('pagination-controls').innerHTML = '';
+    const container = document.getElementById('pagination-controls');
+    container.innerHTML = '';
+    const pageCount = Math.ceil(totalRows / state.rowsPerPage);
+    if (pageCount <= 1) return;
+    for (let i = 1; i <= pageCount; i++) {
+        const btn = document.createElement('button');
+        btn.textContent = i;
+        if (i === state.currentPage) { btn.classList.add('active'); }
+        btn.onclick = () => { state.currentPage = i; renderRequests(); };
+        container.appendChild(btn);
+    }
 }
-
 async function handleSaveNote(rowIndex) {
     const noteStatus = document.getElementById('modal-note-status');
     noteStatus.textContent = 'Saving...';
@@ -421,7 +430,26 @@ async function handleSaveNote(rowIndex) {
         console.error("Save Note Error:", err);
     }
 }
-
+async function handleAddClientSubmit(event) {
+    event.preventDefault();
+    const statusDiv = document.getElementById('add-client-status');
+    statusDiv.textContent = 'Adding client...';
+    const clientData = {
+        'First Name': document.getElementById('client-first-name').value,
+        'Last Name': document.getElementById('client-last-name').value,
+        'Email': document.getElementById('client-email').value,
+        'Status': 'Active', 
+        'ClientID': `C-${Date.now()}`
+    };
+    try {
+        await writeData('Clients', clientData);
+        statusDiv.textContent = 'Client added successfully!';
+        addClientForm.reset();
+        await loadClients();
+    } catch (err) {
+        statusDiv.textContent = `Error: ${err.result.error.message}`;
+    }
+}
 async function loadClients() {
     const clientListDiv = document.getElementById('client-list');
     clientListDiv.innerHTML = '<p>Loading clients...</p>';
@@ -456,7 +484,6 @@ async function loadClients() {
         clientListDiv.innerHTML = `<p style="color:red;">Error: ${err.result.error.message}`;
     }
 }
-
 async function writeData(sheetName, dataObject) {
     const headerResponse = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!1:1` });
     let headers = headerResponse.result.values ? headerResponse.result.values[0] : [];
