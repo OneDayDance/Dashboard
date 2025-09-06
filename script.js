@@ -194,7 +194,6 @@ function renderRequestsAsList(requestRows, container) {
         
         const isArchived = row[statusIndex] === 'Archived';
         const actionTd = document.createElement('td');
-        // ** MINOR FIX IS HERE ** (isArchived was misspelled)
         actionTd.innerHTML = `
             <button class="initiate-project-btn" data-row-index="${originalIndex}" ${isArchived ? 'disabled' : ''}>Initiate Project</button>
             <button class="archive-btn" data-row-index="${originalIndex}">${isArchived ? 'Unarchive' : 'Archive'}</button>
@@ -282,8 +281,12 @@ async function handleArchiveRequest(event) {
         }
         
         const targetRowNumber = visualRowIndex + 1;
-        // ** THIS IS THE NEW, SAFER LOGIC **
-        const targetRange = `Submissions!A${targetRowNumber}:${String.fromCharCode(64 + headers.length)}${targetRowNumber}`;
+        
+        // ** THIS IS THE FIX **
+        // This simplified range is more robust. It tells the API where to START writing
+        // and the API figures out the rest based on the data we send.
+        const targetRange = `Submissions!A${targetRowNumber}`;
+        
         const updatedRowValues = [...rowData]; // Create a copy of the row
         updatedRowValues[statusIndex] = newStatus; // Update the status in the copy
 
@@ -296,7 +299,6 @@ async function handleArchiveRequest(event) {
             }
         });
         
-        // Update local cache and re-render the UI
         allRequests.rows[rowIndex][statusIndex] = newStatus;
         renderRequests();
 
