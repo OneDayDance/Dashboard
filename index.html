@@ -26,15 +26,23 @@
         </nav>
 
         <main id="tab-requests" class="tab-content">
-            <h2>New Service Requests</h2>
-            <div class="filter-controls">
-                <label for="service-filter">Filter by Service:</label>
-                <select id="service-filter">
-                    <option value="all">All Services</option>
-                    </select>
-            </div>
-            <div id="requests-container"></div>
-        </main>
+    <h2>New Service Requests</h2>
+
+    <div class="controls-container" style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="filter-controls">
+            <label for="service-filter">Filter by Service:</label>
+            <select id="service-filter">
+                <option value="all">All Services</option>
+            </select>
+        </div>
+        <div class="view-controls">
+            <button id="list-view-btn" class="active">List View</button>
+            <button id="card-view-btn">Card View</button>
+        </div>
+    </div>
+    
+    <div id="requests-container"></div>
+</main>
 
         <main id="tab-analytics" class="tab-content" style="display: none;">
             <h2>Analytics</h2>
