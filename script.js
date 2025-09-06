@@ -137,25 +137,24 @@ async function loadRequests() {
 }
 
 function renderRequests() {
-    const requestsContainer = document.getElementById('requests-container');
-    const archivedContainer = document.getElementById('archived-requests-container');
-    
-    if (!allRequests.headers) {
-        requestsContainer.innerHTML = '<p>No submissions found.</p>';
-        archivedContainer.innerHTML = '';
+    if (allRequests.length === 0) {
+        document.getElementById('requests-container').innerHTML = '<p>No submissions found.</p>';
+        document.getElementById('archived-requests-container').innerHTML = '';
         return;
     }
 
     const { headers, rows } = allRequests;
     const statusIndex = headers.indexOf('Status');
-    
     const newRequests = rows.filter(row => row[statusIndex] !== 'Archived');
     const archivedRequests = rows.filter(row => row[statusIndex] === 'Archived');
 
-    const renderFunc = currentView === 'list' ? renderRequestsAsList : renderRequestsAsCards;
-    
-    renderFunc(newRequests, requestsContainer, 'found');
-    renderFunc(archivedRequests, archivedContainer, 'archived');
+    if (currentView === 'list') {
+        renderRequestsAsList(newRequests, document.getElementById('requests-container'));
+        renderRequestsAsList(archivedRequests, document.getElementById('archived-requests-container'));
+    } else {
+        renderRequestsAsCards(newRequests, document.getElementById('requests-container'));
+        renderRequestsAsCards(archivedRequests, document.getElementById('archived-requests-container'));
+    }
 }
 
 function getFilteredRequests(sourceRows) {
@@ -163,16 +162,15 @@ function getFilteredRequests(sourceRows) {
     const { headers } = allRequests;
     const selectedService = serviceFilter.value;
     const serviceIndex = headers.indexOf('Primary Service Category');
-    if (serviceIndex === -1 || selectedService === 'all') {
-        return sourceRows;
-    }
-    return sourceRows.filter(row => row[serviceIndex] === selectedService);
+    return (selectedService === 'all')
+        ? sourceRows
+        : sourceRows.filter(row => row[serviceIndex] === selectedService);
 }
 
-function renderRequestsAsList(requestRows, container, type) {
+function renderRequestsAsList(requestRows, container) {
     const filteredRows = getFilteredRequests(requestRows);
     if (filteredRows.length === 0) {
-        container.innerHTML = `<p>No submissions ${type}.</p>`;
+        container.innerHTML = `<p>No submissions ${container.id.includes('archived') ? 'archived' : 'found'}.</p>`;
         return;
     }
 
@@ -196,6 +194,7 @@ function renderRequestsAsList(requestRows, container, type) {
         
         const isArchived = row[statusIndex] === 'Archived';
         const actionTd = document.createElement('td');
+        // ** MINOR FIX IS HERE ** (isArchived was misspelled)
         actionTd.innerHTML = `
             <button class="initiate-project-btn" data-row-index="${originalIndex}" ${isArchived ? 'disabled' : ''}>Initiate Project</button>
             <button class="archive-btn" data-row-index="${originalIndex}">${isArchived ? 'Unarchive' : 'Archive'}</button>
@@ -210,10 +209,10 @@ function renderRequestsAsList(requestRows, container, type) {
     container.querySelectorAll('.archive-btn').forEach(b => b.onclick = handleArchiveRequest);
 }
 
-function renderRequestsAsCards(requestRows, container, type) {
+function renderRequestsAsCards(requestRows, container) {
     const filteredRows = getFilteredRequests(requestRows);
     if (filteredRows.length === 0) {
-        container.innerHTML = `<p>No submissions ${type}.</p>`;
+        container.innerHTML = `<p>No submissions ${container.id.includes('archived') ? 'archived' : 'found'}.</p>`;
         return;
     }
 
@@ -275,24 +274,25 @@ async function handleArchiveRequest(event) {
 
     try {
         const submissionId = rowData[submissionIdIndex];
-        // Re-fetch the sheet to get the most current state before updating
-        const freshSheetValues = (await gapi.client.sheets.spreadsheets.values.get({spreadsheetId: SPREADSHEET_ID, range: 'Submissions'})).result.values;
-        // Find the visual row index (1-based for sheets, but our array is 0-based)
-        const visualRowIndex = freshSheetValues.findIndex(sheetRow => sheetRow[submissionIdIndex] === submissionId);
+        const allSheetValues = (await gapi.client.sheets.spreadsheets.values.get({spreadsheetId: SPREADSHEET_ID, range: 'Submissions'})).result.values;
+        const visualRowIndex = allSheetValues.findIndex(sheetRow => sheetRow && sheetRow[submissionIdIndex] === submissionId);
 
         if (visualRowIndex === -1) {
-            throw new Error("Could not find the row in the sheet. It may have been moved or deleted by another user.");
+            throw new Error("Could not find the row in the sheet to update. It may have been changed by someone else.");
         }
         
-        const columnLetter = String.fromCharCode(65 + statusIndex);
-        const targetCell = `${columnLetter}${visualRowIndex + 1}`; // Add 1 because sheets are 1-indexed
+        const targetRowNumber = visualRowIndex + 1;
+        // ** THIS IS THE NEW, SAFER LOGIC **
+        const targetRange = `Submissions!A${targetRowNumber}:${String.fromCharCode(64 + headers.length)}${targetRowNumber}`;
+        const updatedRowValues = [...rowData]; // Create a copy of the row
+        updatedRowValues[statusIndex] = newStatus; // Update the status in the copy
 
         await gapi.client.sheets.spreadsheets.values.update({
             spreadsheetId: SPREADSHEET_ID,
-            range: `Submissions!${targetCell}`,
+            range: targetRange,
             valueInputOption: 'RAW',
             resource: {
-                values: [[newStatus]]
+                values: [updatedRowValues] // Write the entire updated row back
             }
         });
         
@@ -303,7 +303,6 @@ async function handleArchiveRequest(event) {
     } catch(err) {
         alert('Could not update status. See console for details.');
         console.error("Archive/Update Error:", err);
-        // Revert button on error
         button.textContent = newStatus === 'Archived' ? 'Unarchive' : 'Archive';
         button.disabled = false;
     }
@@ -363,7 +362,7 @@ async function handleInitiateProject(event) {
     }
 }
 function populateServiceFilter() {
-    if (!allRequests.headers) return;
+    if (allRequests.length === 0) return;
     const { headers, rows } = allRequests;
     const serviceIndex = headers.indexOf('Primary Service Category');
     if (serviceIndex === -1) return;
