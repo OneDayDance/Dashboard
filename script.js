@@ -137,24 +137,25 @@ async function loadRequests() {
 }
 
 function renderRequests() {
-    if (allRequests.length === 0) {
-        document.getElementById('requests-container').innerHTML = '<p>No submissions found.</p>';
-        document.getElementById('archived-requests-container').innerHTML = '';
+    const requestsContainer = document.getElementById('requests-container');
+    const archivedContainer = document.getElementById('archived-requests-container');
+    
+    if (!allRequests.headers) {
+        requestsContainer.innerHTML = '<p>No submissions found.</p>';
+        archivedContainer.innerHTML = '';
         return;
     }
 
     const { headers, rows } = allRequests;
     const statusIndex = headers.indexOf('Status');
+    
     const newRequests = rows.filter(row => row[statusIndex] !== 'Archived');
     const archivedRequests = rows.filter(row => row[statusIndex] === 'Archived');
 
-    if (currentView === 'list') {
-        renderRequestsAsList(newRequests, document.getElementById('requests-container'));
-        renderRequestsAsList(archivedRequests, document.getElementById('archived-requests-container'));
-    } else {
-        renderRequestsAsCards(newRequests, document.getElementById('requests-container'));
-        renderRequestsAsCards(archivedRequests, document.getElementById('archived-requests-container'));
-    }
+    const renderFunc = currentView === 'list' ? renderRequestsAsList : renderRequestsAsCards;
+    
+    renderFunc(newRequests, requestsContainer, 'found');
+    renderFunc(archivedRequests, archivedContainer, 'archived');
 }
 
 function getFilteredRequests(sourceRows) {
@@ -162,15 +163,16 @@ function getFilteredRequests(sourceRows) {
     const { headers } = allRequests;
     const selectedService = serviceFilter.value;
     const serviceIndex = headers.indexOf('Primary Service Category');
-    return (selectedService === 'all')
-        ? sourceRows
-        : sourceRows.filter(row => row[serviceIndex] === selectedService);
+    if (serviceIndex === -1 || selectedService === 'all') {
+        return sourceRows;
+    }
+    return sourceRows.filter(row => row[serviceIndex] === selectedService);
 }
 
-function renderRequestsAsList(requestRows, container) {
+function renderRequestsAsList(requestRows, container, type) {
     const filteredRows = getFilteredRequests(requestRows);
     if (filteredRows.length === 0) {
-        container.innerHTML = `<p>No submissions ${container.id.includes('archived') ? 'archived' : 'found'}.</p>`;
+        container.innerHTML = `<p>No submissions ${type}.</p>`;
         return;
     }
 
@@ -195,7 +197,7 @@ function renderRequestsAsList(requestRows, container) {
         const isArchived = row[statusIndex] === 'Archived';
         const actionTd = document.createElement('td');
         actionTd.innerHTML = `
-            <button class="initiate-project-btn" data-row-index="${originalIndex}" ${isArchiv ? 'disabled' : ''}>Initiate Project</button>
+            <button class="initiate-project-btn" data-row-index="${originalIndex}" ${isArchived ? 'disabled' : ''}>Initiate Project</button>
             <button class="archive-btn" data-row-index="${originalIndex}">${isArchived ? 'Unarchive' : 'Archive'}</button>
         `;
         tr.appendChild(actionTd);
@@ -208,10 +210,10 @@ function renderRequestsAsList(requestRows, container) {
     container.querySelectorAll('.archive-btn').forEach(b => b.onclick = handleArchiveRequest);
 }
 
-function renderRequestsAsCards(requestRows, container) {
+function renderRequestsAsCards(requestRows, container, type) {
     const filteredRows = getFilteredRequests(requestRows);
     if (filteredRows.length === 0) {
-        container.innerHTML = `<p>No submissions ${container.id.includes('archived') ? 'archived' : 'found'}.</p>`;
+        container.innerHTML = `<p>No submissions ${type}.</p>`;
         return;
     }
 
@@ -259,11 +261,10 @@ async function handleArchiveRequest(event) {
     const rowData = rows[rowIndex];
     
     const statusIndex = headers.indexOf('Status');
-    // ** FIX IS HERE **
     const submissionIdIndex = headers.indexOf('Submission ID'); 
     
     if (statusIndex === -1 || submissionIdIndex === -1) {
-        alert("Error: 'Status' or 'Submission ID' column not found in your sheet.");
+        alert("Error: 'Status' or 'Submission ID' column not found in your sheet. Please add them.");
         return;
     }
     
@@ -274,14 +275,18 @@ async function handleArchiveRequest(event) {
 
     try {
         const submissionId = rowData[submissionIdIndex];
-        const allSheetValues = (await gapi.client.sheets.spreadsheets.values.get({spreadsheetId: SPREADSHEET_ID, range: 'Submissions'})).result.values;
-        const visualRowIndex = allSheetValues.findIndex(sheetRow => sheetRow[submissionIdIndex] === submissionId);
+        // Re-fetch the sheet to get the most current state before updating
+        const freshSheetValues = (await gapi.client.sheets.spreadsheets.values.get({spreadsheetId: SPREADSHEET_ID, range: 'Submissions'})).result.values;
+        // Find the visual row index (1-based for sheets, but our array is 0-based)
+        const visualRowIndex = freshSheetValues.findIndex(sheetRow => sheetRow[submissionIdIndex] === submissionId);
 
         if (visualRowIndex === -1) {
-            throw new Error("Could not find the row in the sheet. It may have been moved or deleted.");
+            throw new Error("Could not find the row in the sheet. It may have been moved or deleted by another user.");
         }
         
-        const targetCell = `${String.fromCharCode(65 + statusIndex)}${visualRowIndex + 1}`;
+        const columnLetter = String.fromCharCode(65 + statusIndex);
+        const targetCell = `${columnLetter}${visualRowIndex + 1}`; // Add 1 because sheets are 1-indexed
+
         await gapi.client.sheets.spreadsheets.values.update({
             spreadsheetId: SPREADSHEET_ID,
             range: `Submissions!${targetCell}`,
@@ -291,16 +296,19 @@ async function handleArchiveRequest(event) {
             }
         });
         
+        // Update local cache and re-render the UI
         allRequests.rows[rowIndex][statusIndex] = newStatus;
         renderRequests();
 
     } catch(err) {
         alert('Could not update status. See console for details.');
         console.error("Archive/Update Error:", err);
+        // Revert button on error
         button.textContent = newStatus === 'Archived' ? 'Unarchive' : 'Archive';
         button.disabled = false;
     }
 }
+
 
 // --- All other functions remain the same ---
 
@@ -355,7 +363,7 @@ async function handleInitiateProject(event) {
     }
 }
 function populateServiceFilter() {
-    if (allRequests.length === 0) return;
+    if (!allRequests.headers) return;
     const { headers, rows } = allRequests;
     const serviceIndex = headers.indexOf('Primary Service Category');
     if (serviceIndex === -1) return;
@@ -369,25 +377,6 @@ function populateServiceFilter() {
             serviceFilter.appendChild(option);
         }
     });
-}
-async function handleCreateClientFromRequest(event) {
-    event.stopPropagation();
-    const button = event.target;
-    button.textContent = 'Creating...';
-    button.disabled = true;
-    const { firstName, lastName, email } = button.dataset;
-    const clientData = {
-        'First Name': firstName, 'Last Name': lastName, 'Email': email,
-        'Status': 'Lead', 'ClientID': `C-${Date.now()}`
-    };
-    try {
-        await writeData('Clients', clientData);
-        button.textContent = 'Client Created!';
-    } catch (err) {
-        button.textContent = 'Error!';
-        button.disabled = false;
-        console.error("Write Error:", err);
-    }
 }
 async function handleAddClientSubmit(event) {
     event.preventDefault();
