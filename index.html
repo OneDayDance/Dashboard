@@ -26,49 +26,33 @@
         </nav>
 
         <main id="tab-requests" class="tab-content">
-    <h2>New Service Requests</h2>
-    <div class="controls-container" style="display: flex; justify-content: space-between; align-items: center;">
-        <div class="filter-controls">
-            <label for="service-filter">Filter by Service:</label>
-            <select id="service-filter">
-                <option value="all">All Services</option>
-            </select>
-        </div>
-        <div class="view-controls">
-            <button id="list-view-btn" class="active">List View</button>
-            <button id="card-view-btn">Card View</button>
-        </div>
-    </div>
-    
-    <div id="requests-container">
-        </div>
-
-    <hr style="margin: 40px 0;">
-    <h2>Archived Requests</h2>
-    <div id="archived-requests-container">
-        </div>
-</main>
-
-        <main id="tab-analytics" class="tab-content" style="display: none;">
-            <h2>Analytics</h2>
-            <p>Charts and key metrics will go here.</p>
+            <h2>New Service Requests</h2>
+            <div class="controls-container">
+                <div class="filter-controls">
+                    <input type="text" id="search-bar" placeholder="Search requests...">
+                    <select id="service-filter">
+                        <option value="all">All Services</option>
+                    </select>
+                    <select id="status-filter">
+                        <option value="all">All Statuses</option>
+                        <option value="new">New</option>
+                        <option value="archived">Archived</option>
+                    </select>
+                </div>
+                <div class="view-controls">
+                    <button id="list-view-btn" class="active">List View</button>
+                    <button id="card-view-btn">Card View</button>
+                </div>
+            </div>
+            <div id="requests-container"></div>
+            <div id="pagination-controls"></div>
+            <hr style="margin: 40px 0;">
+            <h2>Archived Requests</h2>
+            <div id="archived-requests-container"></div>
         </main>
-        <main id="tab-clients" class="tab-content" style="display: none;">
-            <section class="card">
-                <h2>Add New Client</h2>
-                <form id="add-client-form">
-                    <input type="text" id="client-first-name" placeholder="First Name" required>
-                    <input type="text" id="client-last-name" placeholder="Last Name" required>
-                    <input type="email" id="client-email" placeholder="Email" required>
-                    <button type="submit">Add Client</button>
-                </form>
-                <div id="add-client-status"></div>
-            </section>
-            <section class="card">
-                <h2>Current Clients</h2>
-                <div id="client-list"></div>
-            </section>
-        </main>
+
+        <main id="tab-analytics" class="tab-content" style="display: none;"><h2>Analytics</h2><p>Charts and key metrics will go here.</p></main>
+        <main id="tab-clients" class="tab-content" style="display: none;"><section class="card"><h2>Add New Client</h2><form id="add-client-form"><input type="text" id="client-first-name" placeholder="First Name" required><input type="text" id="client-last-name" placeholder="Last Name" required><input type="email" id="client-email" placeholder="Email" required><button type="submit">Add Client</button></form><div id="add-client-status"></div></section><section class="card"><h2>Current Clients</h2><div id="client-list"></div></section></main>
         <main id="tab-projects" class="tab-content" style="display: none;"><h2>Projects</h2><p>Project tracking will go here.</p></main>
         <main id="tab-costumes" class="tab-content" style="display: none;"><h2>Costumes</h2><p>Costume inventory management will go here.</p></main>
         <main id="tab-equipment" class="tab-content" style="display: none;"><h2>Equipment</h2><p>Equipment tracking will go here.</p></main>
@@ -79,6 +63,12 @@
             <span class="close-button">&times;</span>
             <h2 id="modal-title">Request Details</h2>
             <div id="modal-body"></div>
+            <div id="modal-notes-section">
+                <h3>Notes</h3>
+                <textarea id="modal-notes-textarea"></textarea>
+                <button id="modal-save-note-btn">Save Note</button>
+                <span id="modal-note-status"></span>
+            </div>
         </div>
     </div>
 
