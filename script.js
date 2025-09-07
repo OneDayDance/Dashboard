@@ -237,7 +237,6 @@ async function loadRequests() {
 }
 
 function renderRequests() {
-    // This function remains largely the same, no major changes needed.
     if (!allRequests.rows || allRequests.rows.length === 0) {
         document.getElementById('requests-container').innerHTML = '<p>No submissions found.</p>';
         document.getElementById('archived-requests-container').innerHTML = '';
@@ -401,7 +400,6 @@ async function handleStatusChange(event, rowIndex) {
 }
 
 function showRequestDetailsModal(rowData, headers) {
-    // This function remains largely the same
     const modalBody = document.getElementById('modal-body');
     const ignoredFields = ['Raw Payload', 'All Services JSON', 'Submission ID', 'Timestamp', 'Notes'];
     let contentHtml = '<ul>';
@@ -510,8 +508,6 @@ async function handleSaveNote(rowIndex) {
 
 // --- PROJECTS TAB FUNCTIONS (NEW) ---
 async function loadProjects() {
-    // This assumes you have a sheet named 'Projects'
-    // It should have columns like 'ProjectID', 'Client Email', 'Project Name', 'Status', 'Date', 'Value'
     try {
         const response = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: 'Projects' });
         const values = response.result.values;
@@ -522,7 +518,7 @@ async function loadProjects() {
         }
     } catch (err) {
         console.warn("Could not load 'Projects' sheet. Some client features may be limited.", err);
-        allProjects = { headers: [], rows: [] }; // Ensure it's not undefined
+        allProjects = { headers: [], rows: [] };
     }
 }
 
@@ -570,7 +566,6 @@ function renderClients() {
     const table = document.createElement('table');
     table.className = 'data-table';
     let headerHtml = '<thead><tr>';
-    // Display a subset of columns in the main table for clarity
     const displayHeaders = ['First Name', 'Last Name', 'Email', 'Organization', 'Status'];
     displayHeaders.forEach(headerText => {
         let classes = '';
@@ -622,7 +617,6 @@ function showClientDetailsModal(rowData, headers) {
     const clientEmail = rowData[headers.indexOf('Email')];
     statusSpan.textContent = '';
     
-    // Setup tab functionality
     const tabButtons = clientDetailsModal.querySelectorAll('.client-tab-button');
     const tabContents = clientDetailsModal.querySelectorAll('.client-tab-content');
     tabButtons.forEach(button => {
@@ -633,7 +627,6 @@ function showClientDetailsModal(rowData, headers) {
             document.getElementById(`client-tab-${button.dataset.tab}`).classList.add('active');
         };
     });
-    // Reset to first tab
     tabButtons.forEach(btn => btn.classList.remove('active'));
     tabContents.forEach(content => content.classList.remove('active'));
     tabButtons[0].classList.add('active');
@@ -653,9 +646,9 @@ function showClientDetailsModal(rowData, headers) {
 
     const renderEditMode = () => {
         populateClientDetailsTab(rowData, headers, true);
-        populateClientHistoryTab(clientEmail); // History is not editable
+        populateClientHistoryTab(clientEmail);
         populateClientNotesTab(rowData, headers, true);
-        populateClientFinancialsTab(clientEmail); // Financials are not editable
+        populateClientFinancialsTab(clientEmail);
 
         editBtn.style.display = 'none';
         saveBtn.style.display = 'inline-block';
@@ -666,26 +659,35 @@ function showClientDetailsModal(rowData, headers) {
         statusSpan.textContent = 'Saving...';
         const dataToUpdate = {};
         let updatedRowData = [...rowData];
-        const editableHeaders = ['First Name', 'Last Name', 'Email', 'Phone', 'Organization', 'Status', 'Social Media', 'Notes'];
+        
+        // Dynamically get all headers that should be editable
+        const readOnlyHeaders = ['ClientID', 'Original Submission ID', 'Source'];
+        const editableHeaders = allClients.headers.filter(h => !readOnlyHeaders.includes(h));
+        
+        // Define which fields are expected on the details tab for potential creation
+        const detailFields = ['First Name', 'Last Name', 'Email', 'Phone', 'Organization', 'Status', 'Social Media'];
 
-        editableHeaders.forEach(header => {
-             const inputId = `client-edit-${header.replace(/\s+/g, '')}`;
-             const inputElement = document.getElementById(inputId);
-             if (inputElement) {
-                dataToUpdate[header] = inputElement.value;
-                const headerIndex = headers.indexOf(header);
-                if(headerIndex > -1) updatedRowData[headerIndex] = inputElement.value;
-             }
+        // Collect data from Details and Notes tabs
+        [...detailFields, 'Notes', 'Contact Logs'].forEach(header => {
+            const inputId = `client-edit-${header.replace(/\s+/g, '')}`;
+            const inputElement = document.getElementById(inputId);
+            const headerIndex = headers.indexOf(header);
+            
+            if (inputElement) {
+                const newValue = (header === 'Contact Logs') ? JSON.stringify(JSON.parse(inputElement.value)) : inputElement.value;
+                dataToUpdate[header] = newValue;
+                if(headerIndex > -1) updatedRowData[headerIndex] = newValue;
+            }
         });
         
         try {
             const clientId = rowData[headers.indexOf('ClientID')];
             await updateSheetRow('Clients', 'ClientID', clientId, dataToUpdate);
             
-            const originalIndex = allClients.rows.findIndex(r => r[headers.indexOf('ClientID')] === clientId);
-            if (originalIndex > -1) allClients.rows[originalIndex] = updatedRowData;
-            
-            rowData = updatedRowData; 
+            await loadClients(); // Re-fetch to get the latest data structure
+            const updatedClientRow = allClients.rows.find(r => r[allClients.headers.indexOf('ClientID')] === clientId);
+
+            rowData = updatedClientRow || updatedRowData;
             
             statusSpan.textContent = 'Saved successfully!';
             renderClients();
@@ -706,19 +708,20 @@ function showClientDetailsModal(rowData, headers) {
 
 function populateClientDetailsTab(rowData, headers, isEditMode) {
     const container = document.getElementById('client-tab-details');
-    // Ensure standard fields exist for editing even if not in sheet
     const displayHeaders = ['First Name', 'Last Name', 'Email', 'Phone', 'Organization', 'Status', 'Social Media'];
     let contentHtml = '<ul>';
 
     if (isEditMode) {
         displayHeaders.forEach(header => {
             const headerId = header.replace(/\s+/g, '');
-            const value = rowData[headers.indexOf(header)] || '';
+            const headerIndex = headers.indexOf(header);
+            const value = headerIndex > -1 ? (rowData[headerIndex] || '') : '';
             contentHtml += `<li><strong>${header}:</strong> <input type="text" id="client-edit-${headerId}" value="${value}"></li>`;
         });
     } else {
         displayHeaders.forEach(header => {
-            const value = rowData[headers.indexOf(header)] || 'N/A';
+            const headerIndex = headers.indexOf(header);
+            const value = headerIndex > -1 ? (rowData[headerIndex] || 'N/A') : 'N/A';
             contentHtml += `<li><strong>${header}:</strong> <span>${value}</span></li>`;
         });
     }
@@ -770,17 +773,19 @@ function populateClientHistoryTab(clientEmail) {
 function populateClientNotesTab(rowData, headers, isEditMode) {
     const container = document.getElementById('client-tab-notes');
     let contentHtml = '<h3>General Notes</h3>';
+    const notesIndex = headers.indexOf('Notes');
+    const logsIndex = headers.indexOf('Contact Logs');
 
     if (isEditMode) {
-        const notes = rowData[headers.indexOf('Notes')] || '';
+        const notes = notesIndex > -1 ? (rowData[notesIndex] || '') : '';
         contentHtml += `<textarea id="client-edit-Notes">${notes}</textarea>`;
     } else {
-        const notes = rowData[headers.indexOf('Notes')] || 'No notes for this client.';
-        contentHtml += `<p>${notes}</p>`;
+        const notes = notesIndex > -1 ? (rowData[notesIndex] || 'No notes for this client.') : 'No notes for this client.';
+        contentHtml += `<p>${notes.replace(/\n/g, '<br>')}</p>`;
     }
 
     contentHtml += '<h3>Contact Logs</h3>';
-    const logsJson = rowData[headers.indexOf('Contact Logs')] || '[]';
+    const logsJson = logsIndex > -1 ? (rowData[logsIndex] || '[]') : '[]';
     let logs = [];
     try {
         logs = JSON.parse(logsJson);
@@ -797,10 +802,12 @@ function populateClientNotesTab(rowData, headers, isEditMode) {
     }
 
     if (isEditMode) {
+        // Hidden input to store the JSON string of logs, to be saved later
+        contentHtml += `<input type="hidden" id="client-edit-ContactLogs" value='${JSON.stringify(logs)}'>`;
         contentHtml += `
             <h3>Add New Contact Log</h3>
             <textarea id="new-contact-log-entry" placeholder="Log a call, meeting, or email..."></textarea>
-            <button id="add-contact-log-btn">Add Log</button>
+            <button id="add-contact-log-btn" class="modal-button">Add Log</button>
         `;
     }
 
@@ -812,13 +819,11 @@ function populateClientNotesTab(rowData, headers, isEditMode) {
             if(!newNote) return;
 
             const newLog = { date: new Date().toISOString(), note: newNote };
-            logs.unshift(newLog); // Add to the beginning
+            logs.unshift(newLog);
             
-            // This doesn't save yet, just updates the view. The main save button will handle persistence.
-            const updatedLogsJson = JSON.stringify(logs);
-            rowData[headers.indexOf('Contact Logs')] = updatedLogsJson; // Update local data
+            document.getElementById('client-edit-ContactLogs').value = JSON.stringify(logs);
             
-            // Re-render the tab to show the new log
+            // Re-render the tab to show the new log immediately
             populateClientNotesTab(rowData, headers, true); 
         };
     }
@@ -836,6 +841,7 @@ function populateClientFinancialsTab(clientEmail) {
         let ytdIncome = 0;
 
         allProjects.rows.forEach(row => {
+            if (!row[projDateIndex]) return;
             const rowYear = new Date(row[projDateIndex]).getFullYear();
             if (row[projEmailIndex] === clientEmail && rowYear === currentYear) {
                 const value = parseFloat(row[projValueIndex]);
@@ -877,28 +883,58 @@ async function handleAddClientSubmit(event) {
 }
 
 // --- UTILITY & GENERIC DATA FUNCTIONS ---
+function columnToLetter(column) {
+    let temp, letter = '';
+    while (column > 0) {
+        temp = (column - 1) % 26;
+        letter = String.fromCharCode(temp + 65) + letter;
+        column = (column - temp - 1) / 26;
+    }
+    return letter;
+}
+
 async function updateSheetRow(sheetName, idColumnName, idValue, dataToUpdate) {
-    const sheetResponse = await gapi.client.sheets.spreadsheets.values.get({
+    let sheetResponse = await gapi.client.sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID, range: sheetName,
     });
     
-    const sheetValues = sheetResponse.result.values;
-    const sheetHeaders = sheetValues[0];
-    const idIndex = sheetHeaders.indexOf(idColumnName);
-    if (idIndex === -1) throw new Error(`Unique ID column '${idColumnName}' not found in sheet '${sheetName}'.`);
-    
-    const visualRowIndex = sheetValues.findIndex(sheetRow => sheetRow && sheetRow[idIndex] === idValue);
-    if (visualRowIndex === -1) throw new Error(`Could not find row with ${idColumnName} = ${idValue} in sheet.`);
+    let sheetValues = sheetResponse.result.values || [[]];
+    let sheetHeaders = sheetValues[0] || [];
 
-    const originalRow = sheetValues[visualRowIndex];
+    const newHeaders = Object.keys(dataToUpdate).filter(h => !sheetHeaders.includes(h));
+    if (newHeaders.length > 0) {
+        const firstEmptyColumn = columnToLetter(sheetHeaders.length + 1);
+        const newHeadersRange = `${sheetName}!${firstEmptyColumn}1`;
+        
+        await gapi.client.sheets.spreadsheets.values.update({
+            spreadsheetId: SPREADSHEET_ID,
+            range: newHeadersRange,
+            valueInputOption: 'RAW',
+            resource: { values: [newHeaders] }
+        });
+
+        // Re-fetch after adding new headers
+        sheetResponse = await gapi.client.sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID, range: sheetName,
+        });
+        sheetValues = sheetResponse.result.values || [[]];
+        sheetHeaders = sheetValues[0] || [];
+    }
+    
+    const idIndex = sheetHeaders.indexOf(idColumnName);
+    if (idIndex === -1) throw new Error(`Unique ID column '${idColumnName}' not found.`);
+    
+    const visualRowIndex = sheetValues.findIndex(row => row && row[idIndex] === idValue);
+    if (visualRowIndex === -1) throw new Error(`Could not find row with ${idColumnName} = ${idValue}.`);
+
+    const originalRow = sheetValues[visualRowIndex] || [];
+    while (originalRow.length < sheetHeaders.length) originalRow.push('');
     const updatedRow = [...originalRow];
 
     for (const columnName in dataToUpdate) {
         const columnIndex = sheetHeaders.indexOf(columnName);
         if (columnIndex > -1) {
             updatedRow[columnIndex] = dataToUpdate[columnName];
-        } else {
-            console.warn(`Column "${columnName}" not found in sheet, could not update.`);
         }
     }
 
@@ -909,9 +945,7 @@ async function updateSheetRow(sheetName, idColumnName, idValue, dataToUpdate) {
         spreadsheetId: SPREADSHEET_ID,
         range: targetRange,
         valueInputOption: 'USER_ENTERED',
-        resource: {
-            values: [updatedRow]
-        }
+        resource: { values: [updatedRow] }
     });
 }
 
