@@ -104,7 +104,7 @@ button:hover {
 }
 
 button[disabled] {
-    background-color: #ccc;
+    background-color: #ccc !important;
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
@@ -115,7 +115,7 @@ button[disabled] {
 }
 
 /* Specific button overrides */
-#client-tab-actions button, #add-client-form button, #create-project-form button, #task-details-form button, #add-subtask-btn, #add-link-btn, #project-edit-btn, #project-save-btn, #add-bucket-btn, .add-task-to-bucket-btn {
+#client-tab-actions button, #add-client-form button, #create-project-form button, #task-details-form button, #add-subtask-btn, #add-link-btn, #project-edit-btn, #project-save-btn, #add-bucket-btn, .add-task-to-bucket-btn, #modal-create-client-btn, #modal-create-project-btn {
     background-color: #FF9D76;
 }
 .add-task-to-bucket-btn {
@@ -128,8 +128,8 @@ button[disabled] {
      background-color: #FF9D76;
      color: white;
 }
-#delete-client-btn { background-color: #dc3545 !important; }
-#delete-confirm-btn { background-color: #dc3545; }
+#delete-client-btn, #delete-project-btn { background-color: #dc3545 !important; }
+#delete-confirm-btn, #delete-project-confirm-btn { background-color: #dc3545; }
 
 
 /* --- Themed Tabs --- */
@@ -191,18 +191,18 @@ button[disabled] {
 .project-list-column { transition: all 0.3s ease; overflow: hidden; }
 .project-list-column.collapsed > *:not(.project-list-header) { opacity: 0; display: none; }
 .project-list-header { display: flex; justify-content: space-between; align-items: center; }
-.project-list-column.collapsed .project-list-header { flex-direction: column; align-items: center; }
+.project-list-column.collapsed .project-list-header { flex-direction: column-reverse; }
 #project-list-title { margin-top: 0; transition: all 0.3s ease; }
 .project-list-column.collapsed #project-list-title {
     writing-mode: vertical-rl;
     text-orientation: mixed;
-    white-space: pre; /* Use pre to respect newlines */
+    white-space: pre;
     transform: rotate(180deg);
     margin: 20px 0;
     line-height: 1;
 }
 #project-list-collapse-btn { font-size: 20px; padding: 0; background: #eee; color: #333; border-radius: 50%; width: 30px; height: 30px; line-height: 28px; text-align: center; transition: transform 0.3s ease; flex-shrink: 0; }
-.project-list-column.collapsed #project-list-collapse-btn { order: -1; margin-bottom: 10px; transform: rotate(180deg); }
+.project-list-column.collapsed #project-list-collapse-btn { margin-bottom: 10px; transform: rotate(180deg); }
 .project-list { list-style: none; padding: 0; margin: 0; max-height: 60vh; overflow-y: auto; }
 .project-list-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; transition: background-color 0.2s ease; }
 .project-list-item:hover { background-color: #e9ecef; }
@@ -210,7 +210,12 @@ button[disabled] {
 .project-list-item h4 { margin: 0 0 5px 0; }
 .project-list-item p { margin: 0; font-size: 12px; color: #555; }
 #project-details-column h3 { margin-top: 0; }
-#project-details-column .modal-footer { text-align: right; }
+.project-details-header { display: flex; justify-content: space-between; align-items: center; }
+.project-actions-dropdown { position: relative; }
+.project-actions-dropdown-content { display: none; position: absolute; right: 0; background-color: #f9f9f9; min-width: 160px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); z-index: 1; border-radius: 5px; }
+.project-actions-dropdown-content a { color: black; padding: 12px 16px; text-decoration: none; display: block; }
+.project-actions-dropdown-content a:hover { background-color: #f1f1f1; }
+.project-actions-dropdown-content a.delete { color: #dc3545; }
 .project-details-section { margin-bottom: 20px; }
 .project-details-section-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 10px; }
 .project-details-section-header h4 { border: none; margin: 0; padding: 0;}
@@ -238,6 +243,7 @@ button[disabled] {
 .task-card:hover { box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
 .subtask-summary { font-size: 12px; color: #555; margin: 5px 0 0; }
 .drag-over { border: 2px dashed #FF9D76; background-color: rgba(255, 157, 118, 0.1); }
+.drop-indicator { height: 2px; background: #FF9D76; margin: 2px 0; }
 .dragging { opacity: 0.5; }
 
 /* --- Themed Modals --- */
@@ -267,10 +273,11 @@ button[disabled] {
 .client-tab-content textarea { min-height: 80px; resize: vertical; }
 #client-tab-notes h3, #client-tab-history h3, #client-tab-financials h3, #client-tab-actions h3 { margin-top: 15px; margin-bottom: 10px; }
 #client-tab-notes h3:first-child, #client-tab-history h3:first-child, #client-tab-actions h3:first-child { margin-top: 0; }
-#client-tab-actions { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+#client-tab-actions { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
 .contact-log { border: 1px solid #eee; padding: 10px; border-radius: 5px; margin-bottom: 10px; background: #f9f9f9; }
 .contact-log small { font-weight: bold; color: #555; }
 .modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
+#modal-request-actions-section { display: flex; flex-direction: column; gap: 10px; align-items: flex-start;}
 #modal-notes-textarea { width: 95%; min-height: 80px; margin-top: 10px; padding: 5px; }
 #column-checkboxes, #client-column-checkboxes { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin: 20px 0; }
 #column-checkboxes label, #client-column-checkboxes label { display: flex; align-items: center; gap: 8px; }
@@ -290,8 +297,11 @@ button[disabled] {
 .item-tag a { color: #FF9D76; }
 .item-tag { background: #eee; border-radius: 4px; padding: 2px 6px; display: inline-flex; align-items: center; gap: 4px; margin: 2px; }
 .item-tag button { background: none; border: none; color: #888; cursor: pointer; font-size: 14px; padding: 0;}
-#subtasks-container-modal .subtask-item { display: flex; gap: 8px; align-items: center; padding-left: 20px; } 
+#subtasks-container-modal { cursor: grab; }
+#subtasks-container-modal .subtask-item { display: flex; gap: 8px; align-items: center; padding: 5px; background-color: #f9f9f9; border-radius: 3px; margin-top: 3px; } 
 #subtasks-container-modal .subtask-item input { flex-shrink: 0; }
+#subtasks-container-modal .subtask-item label { flex-grow: 1; }
+
 
 /* Form Field & Grid styles for modals */
 .form-field { margin-bottom: 15px; }
