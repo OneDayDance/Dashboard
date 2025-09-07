@@ -22,6 +22,9 @@ const sortableColumns = ['Submission Date', 'Full Name', 'Email', 'Organization'
 // --- DOM ELEMENTS ---
 let tokenClient, gapiInited = false, gisInited = false;
 let authorizeButton, signoutButton, appContainer, addClientForm, serviceFilter, statusFilter, searchBar, detailsModal, columnModal, closeModalButtons, listViewBtn, cardViewBtn, modalSaveNoteBtn, archiveToggle, archiveContainer, columnSelectBtn, saveColumnsBtn, landingContainer;
+// This flag ensures we only try silent sign-in once per page load.
+let silentAuthAttempted = false;
+
 
 document.addEventListener('DOMContentLoaded', () => {
     // Assign all elements
@@ -77,26 +80,47 @@ function checkLibsLoaded() {
     if (gapiInited && gisInited) {
         authorizeButton.disabled = false;
         authorizeButton.textContent = 'Authorize';
+        // Once both libraries are ready, try to sign in silently.
+        attemptSilentSignIn();
     }
 }
 
 function gapiLoaded() { gapi.load('client', initializeGapiClient); }
+
 function gisLoaded() {
     tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: CLIENT_ID, scope: SCOPES, callback: '',
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        // This callback will handle both silent and manual authorization responses.
+        callback: async (tokenResponse) => {
+            if (tokenResponse.error) {
+                // This can happen if silent auth fails. We'll just log it and do nothing.
+                // The user can still click the "Authorize" button manually.
+                console.warn('Token response error:', tokenResponse.error);
+                return;
+            }
+            // A token was successfully retrieved, either silently or manually.
+            await onSignInSuccess();
+        },
     });
     gisInited = true;
     checkLibsLoaded();
 }
+
 async function initializeGapiClient() {
     await gapi.client.init({});
     await gapi.client.load('https://sheets.googleapis.com/$discovery/rest?version=v4');
     gapiInited = true;
     checkLibsLoaded();
+}
 
-    // Automatically sign in if a token exists from a previous session
-    if (gapi.client.getToken() !== null) {
-        onSignInSuccess();
+function attemptSilentSignIn() {
+    // We only want to try this once on page load.
+    if (!silentAuthAttempted) {
+        silentAuthAttempted = true;
+        // Using an empty prompt attempts to get a token without user interaction.
+        // The callback defined in `gisLoaded` will handle the response.
+        tokenClient.requestAccessToken({ prompt: '' });
     }
 }
 
@@ -113,16 +137,11 @@ async function loadInitialData() {
 }
 
 function handleAuthClick() {
-    tokenClient.callback = async (tokenResponse) => {
-        if (tokenResponse.error !== undefined) { throw (tokenResponse); }
-        await onSignInSuccess();
-    };
-    if (gapi.client.getToken() === null) {
-        tokenClient.requestAccessToken({ prompt: 'consent' });
-    } else {
-        tokenClient.requestAccessToken({ prompt: '' });
-    }
+    // When the user clicks the button, we want to force the consent screen to appear.
+    // The same callback from `gisLoaded` will handle the successful response.
+    tokenClient.requestAccessToken({ prompt: 'consent' });
 }
+
 function handleSignoutClick() {
     const token = gapi.client.getToken();
     if (token !== null) {
@@ -130,6 +149,8 @@ function handleSignoutClick() {
         gapi.client.setToken('');
         appContainer.style.display = 'none';
         landingContainer.style.display = 'flex';
+        // Reset the flag so silent sign-in can be attempted if the page is reloaded.
+        silentAuthAttempted = false;
     }
 }
 
