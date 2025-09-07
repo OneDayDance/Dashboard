@@ -1,6 +1,6 @@
 /* --- Fluid Gradient Background --- */
 :root {
-    --ang: 45deg;
+    --ang: 0deg; /* Start at 0 for a seamless loop */
     --c1: #FF9D76;
     --c2: #76F1FF;
     --c3: #C176FF;
@@ -25,7 +25,8 @@ html::before {
 }
 
 @keyframes bg-rotate {
-    to { --ang: 360deg; }
+    from { --ang: 0deg; } /* Explicitly start at 0 */
+    to { --ang: 360deg; } /* End at 360 (visually same as 0) */
 }
 
 body {
