@@ -7,85 +7,39 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <header>
-        <h1>Client Management Dashboard</h1>
-        <div id="auth-container">
-            <button id="authorize_button">Authorize</button>
-            <button id="signout_button" style="display: none;">Sign Out</button>
-        </div>
-    </header>
 
-    <div id="app-container" style="display: none;">
-        <nav class="tab-nav">
-            <button class="tab-button active" data-tab="requests">Requests</button>
-            <button class="tab-button" data-tab="analytics">Analytics</button>
-            <button class="tab-button" data-tab="clients">Clients</button>
-            <button class="tab-button" data-tab="projects">Projects</button>
-            <button class="tab-button" data-tab="costumes">Costumes</button>
-            <button class="tab-button" data-tab="equipment">Equipment</button>
-        </nav>
-
-        <main id="tab-requests" class="tab-content">
-            <h2>New Service Requests</h2>
-            <div class="controls-container">
-                <div class="filter-controls">
-                    <input type="text" id="search-bar" placeholder="Search requests...">
-                    <select id="service-filter">
-                        <option value="all">All Services</option>
-                    </select>
-                    <select id="status-filter">
-                        <option value="all">All Statuses</option>
-                        <option value="new">New</option>
-                        <option value="archived">Archived</option>
-                    </select>
-                </div>
-                <div class="view-controls">
-                    <button id="list-view-btn" class="active">List View</button>
-                    <button id="card-view-btn">Card View</button>
-                    <button id="column-select-btn">Display Options</button>
-                </div>
-            </div>
-            <div id="requests-container"></div>
-            
-            <div class="collapsible-header" id="archive-toggle">
-                <h2>Archived Requests</h2>
-                <span class="toggle-arrow">&#9662;</span>
-            </div>
-            <div id="archived-requests-container" class="collapsible-content"></div>
-        </main>
-
-        <main id="tab-analytics" class="tab-content" style="display: none;"><h2>Analytics</h2><p>Charts and key metrics will go here.</p></main>
-        <main id="tab-clients" class="tab-content" style="display: none;"><section class="card"><h2>Add New Client</h2><form id="add-client-form"><input type="text" id="client-first-name" placeholder="First Name" required><input type="text" id="client-last-name" placeholder="Last Name" required><input type="email" id="client-email" placeholder="Email" required><button type="submit">Add Client</button></form><div id="add-client-status"></div></section><section class="card"><h2>Current Clients</h2><div id="client-list"></div></section></main>
-        <main id="tab-projects" class="tab-content" style="display: none;"><h2>Projects</h2><p>Project tracking will go here.</p></main>
-        <main id="tab-costumes" class="tab-content" style="display: none;"><h2>Costumes</h2><p>Costume inventory management will go here.</p></main>
-        <main id="tab-equipment" class="tab-content" style="display: none;"><h2>Equipment</h2><p>Equipment tracking will go here.</p></main>
-    </div>
-
-    <div id="details-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h2 id="modal-title">Request Details</h2>
-            <div id="modal-body"></div>
-            <div id="modal-notes-section">
-                <h3>Notes</h3>
-                <textarea id="modal-notes-textarea"></textarea>
-                <button id="modal-save-note-btn">Save Note</button>
-                <span id="modal-note-status"></span>
-            </div>
+    <div id="auth-screen">
+        <div class="auth-card">
+            <h1>Management Dashboard</h1>
+            <p>Please authorize to continue.</p>
+            <button id="authorize_button">Authorize with Google</button>
         </div>
     </div>
 
-    <div id="column-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h2>Select Columns to Display</h2>
-            <div id="column-checkboxes"></div>
-            <button id="save-columns-btn">Apply</button>
+    <div id="app-wrapper" style="display: none;">
+        <header>
+            <h1>Client Management Dashboard</h1>
+            <div id="auth-container">
+                <button id="signout_button" style="display: none;">Sign Out</button>
+            </div>
+        </header>
+
+        <div id="app-container">
+            <nav class="tab-nav">
+                <button class="tab-button active" data-tab="requests">Requests</button>
+                <button class="tab-button" data-tab="analytics">Analytics</button>
+                <button class="tab-button" data-tab="clients">Clients</button>
+                <button class="tab-button" data-tab="projects">Projects</button>
+                <button class="tab-button" data-tab="costumes">Costumes</button>
+                <button class="tab-button" data-tab="equipment">Equipment</button>
+            </nav>
+
+            <main id="tab-content-wrapper">
+                <div id="tab-requests" class="tab-content">
+                    </div>
+                </main>
         </div>
     </div>
 
-    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
-    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
-    <script src="script.js"></script>
-</body>
+    </body>
 </html>
