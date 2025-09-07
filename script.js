@@ -15,14 +15,19 @@ let state = {
     searchTerm: '',
     filters: { service: 'all', status: 'all' },
     visibleColumns: ['Submission Date', 'Full Name', 'Primary Service Category', 'Status'],
-    currentView: 'list'
+    currentView: 'list',
+    // New state for clients tab
+    clientSearchTerm: '',
+    clientSortColumn: 'First Name',
+    clientSortDirection: 'asc'
 };
 const sortableColumns = ['Submission Date', 'Full Name', 'Email', 'Organization', 'Primary Service Category', 'Status'];
+const clientSortableColumns = ['First Name', 'Last Name', 'Email', 'Organization', 'Status'];
+
 
 // --- DOM ELEMENTS ---
 let tokenClient, gapiInited = false, gisInited = false;
-let authorizeButton, signoutButton, appContainer, addClientForm, serviceFilter, statusFilter, searchBar, detailsModal, columnModal, closeModalButtons, listViewBtn, cardViewBtn, modalSaveNoteBtn, archiveToggle, archiveContainer, columnSelectBtn, saveColumnsBtn, landingContainer;
-// This flag ensures we only try silent sign-in once per page load.
+let authorizeButton, signoutButton, appContainer, addClientForm, serviceFilter, statusFilter, searchBar, detailsModal, columnModal, closeModalButtons, listViewBtn, cardViewBtn, modalSaveNoteBtn, archiveToggle, archiveContainer, columnSelectBtn, saveColumnsBtn, landingContainer, clientSearchBar, clientTableContainer, clientDetailsModal;
 let silentAuthAttempted = false;
 
 
@@ -37,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
     searchBar = document.getElementById('search-bar');
     detailsModal = document.getElementById('details-modal');
     columnModal = document.getElementById('column-modal');
+    clientDetailsModal = document.getElementById('client-details-modal');
     closeModalButtons = document.querySelectorAll('.close-button');
     listViewBtn = document.getElementById('list-view-btn');
     cardViewBtn = document.getElementById('card-view-btn');
@@ -46,6 +52,8 @@ document.addEventListener('DOMContentLoaded', () => {
     columnSelectBtn = document.getElementById('column-select-btn');
     saveColumnsBtn = document.getElementById('save-columns-btn');
     landingContainer = document.getElementById('landing-container');
+    clientSearchBar = document.getElementById('client-search-bar');
+    clientTableContainer = document.getElementById('client-table-container');
 
     // Assign event listeners
     authorizeButton.onclick = handleAuthClick;
@@ -54,14 +62,17 @@ document.addEventListener('DOMContentLoaded', () => {
     serviceFilter.onchange = (e) => updateFilter('service', e.target.value);
     statusFilter.onchange = (e) => updateFilter('status', e.target.value);
     searchBar.oninput = (e) => updateSearch(e.target.value);
+    clientSearchBar.oninput = (e) => updateClientSearch(e.target.value);
     
     closeModalButtons.forEach(btn => btn.onclick = () => {
         detailsModal.style.display = 'none';
         columnModal.style.display = 'none';
+        clientDetailsModal.style.display = 'none';
     });
     window.onclick = (event) => { 
         if (event.target == detailsModal) detailsModal.style.display = 'none';
         if (event.target == columnModal) columnModal.style.display = 'none';
+        if (event.target == clientDetailsModal) clientDetailsModal.style.display = 'none';
     };
     
     listViewBtn.onclick = () => setView('list');
@@ -80,7 +91,6 @@ function checkLibsLoaded() {
     if (gapiInited && gisInited) {
         authorizeButton.disabled = false;
         authorizeButton.textContent = 'Authorize';
-        // Once both libraries are ready, try to sign in silently.
         attemptSilentSignIn();
     }
 }
@@ -91,15 +101,11 @@ function gisLoaded() {
     tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID,
         scope: SCOPES,
-        // This callback will handle both silent and manual authorization responses.
         callback: async (tokenResponse) => {
             if (tokenResponse.error) {
-                // This can happen if silent auth fails. We'll just log it and do nothing.
-                // The user can still click the "Authorize" button manually.
                 console.warn('Token response error:', tokenResponse.error);
                 return;
             }
-            // A token was successfully retrieved, either silently or manually.
             await onSignInSuccess();
         },
     });
@@ -115,11 +121,8 @@ async function initializeGapiClient() {
 }
 
 function attemptSilentSignIn() {
-    // We only want to try this once on page load.
     if (!silentAuthAttempted) {
         silentAuthAttempted = true;
-        // Using an empty prompt attempts to get a token without user interaction.
-        // The callback defined in `gisLoaded` will handle the response.
         tokenClient.requestAccessToken({ prompt: '' });
     }
 }
@@ -137,8 +140,6 @@ async function loadInitialData() {
 }
 
 function handleAuthClick() {
-    // When the user clicks the button, we want to force the consent screen to appear.
-    // The same callback from `gisLoaded` will handle the successful response.
     tokenClient.requestAccessToken({ prompt: 'consent' });
 }
 
@@ -149,7 +150,6 @@ function handleSignoutClick() {
         gapi.client.setToken('');
         appContainer.style.display = 'none';
         landingContainer.style.display = 'flex';
-        // Reset the flag so silent sign-in can be attempted if the page is reloaded.
         silentAuthAttempted = false;
     }
 }
@@ -193,6 +193,12 @@ function updateSearch(term) {
     state.currentPage = 1;
     renderRequests();
 }
+
+function updateClientSearch(term) {
+    state.clientSearchTerm = term.toLowerCase();
+    renderClients();
+}
+
 function setView(view) {
     state.currentView = view;
     listViewBtn.classList.toggle('active', view === 'list');
@@ -237,7 +243,7 @@ function renderRequests() {
         document.getElementById('archived-requests-container').innerHTML = '';
         return;
     }
-    const { headers, rows } = allRequests;
+    let { headers, rows } = allRequests;
     let processedRows = rows;
     if (state.searchTerm) {
         processedRows = processedRows.filter(row => row.some(cell => String(cell).toLowerCase().includes(state.searchTerm)));
@@ -298,7 +304,7 @@ function renderRequestsAsList(requestRows, container) {
         }
         headerHtml += `<th class="${classes}" data-sort="${headerText}">${headerText}</th>`;
     });
-    table.innerHTML = headerHtml += '</tr></thead>';
+    table.innerHTML = headerHtml + '</tr></thead>';
 
     const tbody = document.createElement('tbody');
     requestRows.forEach(row => {
@@ -317,8 +323,8 @@ function renderRequestsAsList(requestRows, container) {
                     const option = new Option(status, status, false, status === currentStatus);
                     statusSelect.add(option);
                 });
-                statusSelect.onclick = (e) => e.stopPropagation(); // Prevent modal from opening
-                statusSelect.onchange = handleStatusChange;
+                statusSelect.onclick = (e) => e.stopPropagation();
+                statusSelect.onchange = (e) => handleStatusChange(e, originalIndex);
                 td.appendChild(statusSelect);
             } else {
                 td.textContent = row[cellIndex] || '';
@@ -348,7 +354,6 @@ function renderRequestsAsCards(requestRows, container) {
         card.className = 'request-card';
         card.onclick = () => showRequestDetailsModal(row, headers);
         
-        // Dynamically add visible columns to the card
         let cardContent = '';
         state.visibleColumns.forEach(headerText => {
             const cellIndex = headers.indexOf(headerText);
@@ -369,7 +374,7 @@ function renderRequestsAsCards(requestRows, container) {
             statusSelect.add(option);
         });
         statusSelect.onclick = (e) => e.stopPropagation();
-        statusSelect.onchange = handleStatusChange;
+        statusSelect.onchange = (e) => handleStatusChange(e, originalIndex);
         
         card.appendChild(statusSelect);
         cardContainer.appendChild(card);
@@ -377,17 +382,17 @@ function renderRequestsAsCards(requestRows, container) {
     container.appendChild(cardContainer);
 }
 
-async function handleStatusChange(event) {
+async function handleStatusChange(event, rowIndex) {
     const selectElement = event.target;
     const newStatus = selectElement.value;
-    const rowIndex = parseInt(selectElement.dataset.rowIndex, 10);
     const dataToUpdate = { 'Status': newStatus };
     
     selectElement.disabled = true;
     try {
-        await updateRowData('Submissions', rowIndex, dataToUpdate);
+        const submissionId = allRequests.rows[rowIndex][allRequests.headers.indexOf('Submission ID')];
+        await updateSheetRow('Submissions', 'Submission ID', submissionId, dataToUpdate);
         allRequests.rows[rowIndex][allRequests.headers.indexOf('Status')] = newStatus;
-        renderRequests();
+        renderRequests(); // This will re-enable the select
     } catch(err) {
         alert('Could not update status. See console for details.');
         console.error("Status Update Error:", err);
@@ -407,7 +412,6 @@ function showRequestDetailsModal(rowData, headers) {
     contentHtml += '</ul>';
     modalBody.innerHTML = contentHtml;
     
-    // Notes section
     const notesTextarea = document.getElementById('modal-notes-textarea');
     const noteStatus = document.getElementById('modal-note-status');
     const originalIndex = allRequests.rows.indexOf(rowData);
@@ -416,7 +420,6 @@ function showRequestDetailsModal(rowData, headers) {
     notesTextarea.value = rowData[notesIndex] || '';
     modalSaveNoteBtn.onclick = () => handleSaveNote(originalIndex);
 
-    // Client section
     const createClientBtn = document.getElementById('modal-create-client-btn');
     const clientStatus = document.getElementById('modal-client-status');
     const submissionEmailIndex = headers.indexOf('Email');
@@ -457,7 +460,7 @@ async function handleCreateClient(submissionRow, submissionHeaders) {
         'First Name': firstName,
         'Last Name': lastName,
         'Email': submissionRow[submissionHeaders.indexOf('Email')] || '',
-        'Phone': submissionRow[submissionHeaders.indexOf('Phone Number')] || '',
+        'Phone': submissionRow[submissionHeaders.indexOf('Phone')] || '',
         'Organization': submissionRow[submissionHeaders.indexOf('Organization')] || '',
         'Status': 'Active',
         'ClientID': `C-${Date.now()}`,
@@ -468,7 +471,8 @@ async function handleCreateClient(submissionRow, submissionHeaders) {
     try {
         await writeData('Clients', clientData);
         clientStatus.textContent = 'Client created successfully!';
-        await loadClients(); // Refresh client data
+        await loadClients();
+        renderClients();
     } catch (err) {
         clientStatus.textContent = `Error: ${err.result.error.message}`;
         createClientBtn.disabled = false;
@@ -491,9 +495,10 @@ async function handleSaveNote(rowIndex) {
     noteStatus.textContent = 'Saving...';
     const newNote = document.getElementById('modal-notes-textarea').value;
     const dataToUpdate = { 'Notes': newNote };
-
+    
     try {
-        await updateRowData('Submissions', rowIndex, dataToUpdate);
+        const submissionId = allRequests.rows[rowIndex][allRequests.headers.indexOf('Submission ID')];
+        await updateSheetRow('Submissions', 'Submission ID', submissionId, dataToUpdate);
         allRequests.rows[rowIndex][allRequests.headers.indexOf('Notes')] = newNote;
         noteStatus.textContent = 'Saved successfully!';
     } catch (err) {
@@ -502,38 +507,8 @@ async function handleSaveNote(rowIndex) {
     }
 }
 
-// --- UTILITY & GENERIC DATA FUNCTIONS ---
-async function updateRowData(sheetName, localRowIndex, dataToUpdate) {
-    // This function remains the same
-    const { headers, rows } = allRequests;
-    const rowData = rows[localRowIndex];
-    const idColumnName = 'Submission ID';
-    const idIndex = headers.indexOf(idColumnName);
-    if (idIndex === -1) throw new Error(`'${idColumnName}' column not found.`);
-    const uniqueId = rowData[idIndex];
-    const sheetResponse = await gapi.client.sheets.spreadsheets.values.get({
-        spreadsheetId: SPREADSHEET_ID, range: sheetName,
-    });
-    const sheetValues = sheetResponse.result.values;
-    const sheetHeaders = sheetValues[0];
-    const visualRowIndex = sheetValues.findIndex(sheetRow => sheetRow && sheetRow[idIndex] === uniqueId);
-    if (visualRowIndex === -1) throw new Error("Could not find row in sheet.");
-    const originalRow = sheetValues[visualRowIndex];
-    const updatedRow = [...originalRow];
-    for (const columnName in dataToUpdate) {
-        const columnIndex = sheetHeaders.indexOf(columnName);
-        if (columnIndex > -1) {
-            updatedRow[columnIndex] = dataToUpdate[columnName];
-        }
-    }
-    const targetRowNumber = visualRowIndex + 1;
-    const targetRange = `${sheetName}!A${targetRowNumber}`;
-    return gapi.client.sheets.spreadsheets.values.update({
-        spreadsheetId: SPREADSHEET_ID, range: targetRange, valueInputOption: 'RAW',
-        resource: { values: [updatedRow] }
-    });
-}
 
+// --- CLIENTS TAB FUNCTIONS ---
 async function loadClients() {
     try {
         const response = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: 'Clients' });
@@ -545,77 +520,155 @@ async function loadClients() {
         }
     } catch (err) {
         console.error("Error loading clients:", err);
+        document.getElementById('client-table-container').innerHTML = `<p style="color:red;">Error loading clients.</p>`;
     }
 }
 
 function renderClients() {
-    const clientListDiv = document.getElementById('client-list');
-    clientListDiv.innerHTML = '';
+    clientTableContainer.innerHTML = '';
     if (!allClients.rows || allClients.rows.length === 0) {
-        clientListDiv.innerHTML = '<p>No clients found.</p>';
+        clientTableContainer.innerHTML = '<p>No clients found.</p>';
         return;
     }
-    const { headers, rows } = allClients;
-    const firstNameIndex = headers.indexOf('First Name');
-    const emailIndex = headers.indexOf('Email');
-    if (firstNameIndex === -1 || emailIndex === -1) {
-         clientListDiv.innerHTML = `<p style="color:red;">Error: Required client columns not found.</p>`;
-         return;
+
+    let { headers, rows } = allClients;
+    let processedRows = rows;
+    
+    if (state.clientSearchTerm) {
+        processedRows = processedRows.filter(row => row.some(cell => String(cell).toLowerCase().includes(state.clientSearchTerm)));
     }
-    const ul = document.createElement('ul');
-    rows.forEach(row => {
-        const li = document.createElement('li');
-        li.textContent = `${row[firstNameIndex] || 'N/A'} - (${row[emailIndex] || 'N/A'})`;
-        ul.appendChild(li);
-    });
-    clientListDiv.appendChild(ul);
-}
-async function writeData(sheetName, dataObject) {
-    const headerResponse = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!1:1` });
-    let headers = headerResponse.result.values ? headerResponse.result.values[0] : [];
-    if (headers.length === 0) {
-        headers = Object.keys(dataObject);
-        await gapi.client.sheets.spreadsheets.values.update({
-            spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!A1`,
-            valueInputOption: 'RAW', resource: { values: [headers] },
+    
+    const sortIndex = headers.indexOf(state.clientSortColumn);
+    if (sortIndex > -1) {
+        processedRows.sort((a, b) => {
+            let valA = a[sortIndex] || ''; let valB = b[sortIndex] || '';
+            if (valA < valB) return state.clientSortDirection === 'asc' ? -1 : 1;
+            if (valA > valB) return state.clientSortDirection === 'asc' ? 1 : -1;
+            return 0;
         });
     }
-    const newRow = headers.map(header => dataObject[header] || '');
-    return gapi.client.sheets.spreadsheets.values.append({
-        spreadsheetId: SPREADSHEET_ID, range: sheetName,
-        valueInputOption: 'USER_ENTERED', resource: { values: [newRow] },
-    });
-}
-function populateServiceFilter() {
-    if (!allRequests.rows || allRequests.rows.length === 0) return;
-    const { headers, rows } = allRequests;
-    const serviceIndex = headers.indexOf('Primary Service Category');
-    if (serviceIndex === -1) return;
-    const services = new Set(rows.map(row => row[serviceIndex]));
-    serviceFilter.innerHTML = '<option value="all">All Services</option>';
-    services.forEach(service => {
-        if(service) {
-            const option = new Option(service, service);
-            serviceFilter.add(option);
+
+    const table = document.createElement('table');
+    table.className = 'data-table';
+    let headerHtml = '<thead><tr>';
+    headers.forEach(headerText => {
+        let classes = '';
+        if (clientSortableColumns.includes(headerText)) {
+            classes += 'sortable';
+            if (state.clientSortColumn === headerText) {
+                classes += state.clientSortDirection === 'asc' ? ' sorted-asc' : ' sorted-desc';
+            }
         }
+        headerHtml += `<th class="${classes}" data-sort-client="${headerText}">${headerText}</th>`;
+    });
+    table.innerHTML = headerHtml + '</tr></thead>';
+
+    const tbody = document.createElement('tbody');
+    processedRows.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.onclick = () => showClientDetailsModal(row, headers);
+        headers.forEach(header => {
+            const cellIndex = headers.indexOf(header);
+            const td = document.createElement('td');
+            td.textContent = row[cellIndex] || '';
+            tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    clientTableContainer.appendChild(table);
+    
+    clientTableContainer.querySelectorAll('th.sortable').forEach(th => {
+        th.onclick = handleClientSort;
     });
 }
-function populateColumnSelector() {
-    const container = document.getElementById('column-checkboxes');
-    container.innerHTML = '';
-    allRequests.headers.forEach(header => {
-        if (!header) return;
-        const isChecked = state.visibleColumns.includes(header);
-        const wrapper = document.createElement('div');
-        wrapper.innerHTML = `
-            <label>
-                <input type="checkbox" value="${header}" ${isChecked ? 'checked' : ''}>
-                ${header}
-            </label>
-        `;
-        container.appendChild(wrapper);
-    });
+
+function handleClientSort(event) {
+    const newSortColumn = event.target.dataset.sortClient;
+    if (state.clientSortColumn === newSortColumn) {
+        state.clientSortDirection = state.clientSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        state.clientSortColumn = newSortColumn;
+        state.clientSortDirection = 'asc';
+    }
+    renderClients();
 }
+
+function showClientDetailsModal(rowData, headers) {
+    const modalBody = document.getElementById('client-modal-body');
+    const editBtn = document.getElementById('client-modal-edit-btn');
+    const saveBtn = document.getElementById('client-modal-save-btn');
+    const statusSpan = document.getElementById('client-modal-status');
+    statusSpan.textContent = '';
+    
+    const renderViewMode = () => {
+        let contentHtml = '<ul>';
+        headers.forEach((header, index) => {
+            contentHtml += `<li><strong>${header}:</strong> <span>${rowData[index] || ''}</span></li>`;
+        });
+        contentHtml += '</ul>';
+        modalBody.innerHTML = contentHtml;
+
+        editBtn.style.display = 'inline-block';
+        saveBtn.style.display = 'none';
+        editBtn.onclick = renderEditMode;
+    };
+
+    const renderEditMode = () => {
+        let contentHtml = '<ul>';
+        headers.forEach((header, index) => {
+            const isReadOnly = header === 'ClientID' || header === 'Original Submission ID';
+            contentHtml += `<li><strong>${header}:</strong> <input type="text" id="client-edit-${header.replace(/\s+/g, '')}" value="${rowData[index] || ''}" ${isReadOnly ? 'readonly' : ''}></li>`;
+        });
+        contentHtml += '</ul>';
+        modalBody.innerHTML = contentHtml;
+        
+        editBtn.style.display = 'none';
+        saveBtn.style.display = 'inline-block';
+        saveBtn.onclick = handleSaveClientUpdate;
+    };
+
+    const handleSaveClientUpdate = async () => {
+        statusSpan.textContent = 'Saving...';
+        const dataToUpdate = {};
+        let updatedRowData = [...rowData];
+
+        headers.forEach((header, index) => {
+            const inputId = `client-edit-${header.replace(/\s+/g, '')}`;
+            const inputElement = document.getElementById(inputId);
+            if (inputElement && !inputElement.readOnly) {
+                dataToUpdate[header] = inputElement.value;
+                updatedRowData[index] = inputElement.value;
+            }
+        });
+        
+        try {
+            const clientId = rowData[headers.indexOf('ClientID')];
+            await updateSheetRow('Clients', 'ClientID', clientId, dataToUpdate);
+            
+            // Update local data to avoid re-fetch
+            const originalIndex = allClients.rows.findIndex(r => r[headers.indexOf('ClientID')] === clientId);
+            if (originalIndex > -1) {
+                allClients.rows[originalIndex] = updatedRowData;
+            }
+            rowData = updatedRowData; // update rowData for the modal's renderViewMode
+            
+            statusSpan.textContent = 'Saved successfully!';
+            renderClients();
+            setTimeout(() => {
+                renderViewMode();
+            }, 1000);
+
+        } catch(err) {
+            statusSpan.textContent = 'Error saving.';
+            console.error('Client update error:', err);
+        }
+    };
+
+    renderViewMode();
+    clientDetailsModal.style.display = 'block';
+}
+
 async function handleAddClientSubmit(event) {
     event.preventDefault();
     const statusDiv = document.getElementById('add-client-status');
@@ -633,8 +686,96 @@ async function handleAddClientSubmit(event) {
         addClientForm.reset();
         await loadClients();
         renderClients();
+        setTimeout(() => { statusDiv.textContent = ''; }, 3000);
     } catch (err) {
         statusDiv.textContent = `Error: ${err.result.error.message}`;
     }
 }
 
+// --- UTILITY & GENERIC DATA FUNCTIONS ---
+async function updateSheetRow(sheetName, idColumnName, idValue, dataToUpdate) {
+    const sheetResponse = await gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID, range: sheetName,
+    });
+    
+    const sheetValues = sheetResponse.result.values;
+    const sheetHeaders = sheetValues[0];
+    const idIndex = sheetHeaders.indexOf(idColumnName);
+    if (idIndex === -1) throw new Error(`Unique ID column '${idColumnName}' not found in sheet '${sheetName}'.`);
+    
+    const visualRowIndex = sheetValues.findIndex(sheetRow => sheetRow && sheetRow[idIndex] === idValue);
+    if (visualRowIndex === -1) throw new Error(`Could not find row with ${idColumnName} = ${idValue} in sheet.`);
+
+    const originalRow = sheetValues[visualRowIndex];
+    const updatedRow = [...originalRow];
+
+    for (const columnName in dataToUpdate) {
+        const columnIndex = sheetHeaders.indexOf(columnName);
+        if (columnIndex > -1) {
+            updatedRow[columnIndex] = dataToUpdate[columnName];
+        } else {
+            console.warn(`Column "${columnName}" not found in sheet, could not update.`);
+        }
+    }
+
+    const targetRowNumber = visualRowIndex + 1;
+    const targetRange = `${sheetName}!A${targetRowNumber}`;
+
+    return gapi.client.sheets.spreadsheets.values.update({
+        spreadsheetId: SPREADSHEET_ID,
+        range: targetRange,
+        valueInputOption: 'USER_ENTERED',
+        resource: {
+            values: [updatedRow]
+        }
+    });
+}
+
+async function writeData(sheetName, dataObject) {
+    const headerResponse = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!1:1` });
+    let headers = headerResponse.result.values ? headerResponse.result.values[0] : [];
+    if (headers.length === 0) {
+        headers = Object.keys(dataObject);
+        await gapi.client.sheets.spreadsheets.values.update({
+            spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!A1`,
+            valueInputOption: 'RAW', resource: { values: [headers] },
+        });
+    }
+    const newRow = headers.map(header => dataObject[header] || '');
+    return gapi.client.sheets.spreadsheets.values.append({
+        spreadsheetId: SPREADSHEET_ID, range: sheetName,
+        valueInputOption: 'USER_ENTERED', resource: { values: [newRow] },
+    });
+}
+
+function populateServiceFilter() {
+    if (!allRequests.rows || allRequests.rows.length === 0) return;
+    const { headers, rows } = allRequests;
+    const serviceIndex = headers.indexOf('Primary Service Category');
+    if (serviceIndex === -1) return;
+    const services = new Set(rows.map(row => row[serviceIndex]));
+    serviceFilter.innerHTML = '<option value="all">All Services</option>';
+    services.forEach(service => {
+        if(service) {
+            const option = new Option(service, service);
+            serviceFilter.add(option);
+        }
+    });
+}
+
+function populateColumnSelector() {
+    const container = document.getElementById('column-checkboxes');
+    container.innerHTML = '';
+    allRequests.headers.forEach(header => {
+        if (!header) return;
+        const isChecked = state.visibleColumns.includes(header);
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = `
+            <label>
+                <input type="checkbox" value="${header}" ${isChecked ? 'checked' : ''}>
+                ${header}
+            </label>
+        `;
+        container.appendChild(wrapper);
+    });
+}
