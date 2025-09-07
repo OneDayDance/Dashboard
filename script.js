@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
         layout.classList.toggle('collapsed');
         column.classList.toggle('collapsed');
         if(column.classList.contains('collapsed')) {
-            title.innerHTML = title.textContent.split('').map(char => `<span>${char}</span>`).join('');
+            title.innerHTML = "P\r\no\r\nj\r\ne\r\nc\r\nt\r\ns";
         } else {
             title.innerHTML = 'Projects';
         }
@@ -490,10 +490,7 @@ function showProjectDetails(projectId, isEditMode = false) {
     });
     detailsColumn.querySelectorAll('.task-item, .task-card').forEach(el => {
         el.setAttribute('draggable', true);
-        el.ondragstart = (e) => {
-            e.dataTransfer.setData('text/plain', e.currentTarget.dataset.taskId);
-            e.currentTarget.classList.add('dragging');
-        };
+        el.ondragstart = (e) => { e.dataTransfer.setData('text/plain', e.currentTarget.dataset.taskId); e.currentTarget.classList.add('dragging'); };
         el.ondragend = (e) => e.currentTarget.classList.remove('dragging');
         el.onclick = (e) => {
             if (e.currentTarget.classList.contains('dragging')) return;
@@ -504,11 +501,7 @@ function showProjectDetails(projectId, isEditMode = false) {
     });
      detailsColumn.querySelectorAll('.task-bucket, .task-board-column').forEach(bucket => {
         bucket.setAttribute('draggable', true);
-        bucket.ondragstart = (e) => {
-            e.stopPropagation();
-            e.dataTransfer.setData('text/bucket', e.currentTarget.dataset.bucket);
-            e.currentTarget.classList.add('dragging');
-        };
+        bucket.ondragstart = (e) => { e.stopPropagation(); e.dataTransfer.setData('text/bucket', e.currentTarget.dataset.bucket); e.currentTarget.classList.add('dragging'); };
         bucket.ondragend = (e) => e.currentTarget.classList.remove('dragging');
         bucket.ondragover = (e) => { e.preventDefault(); e.currentTarget.classList.add('drag-over'); };
         bucket.ondragleave = (e) => e.currentTarget.classList.remove('drag-over');
@@ -654,44 +647,43 @@ function getProjectBuckets(projectId) {
 async function handleDrop(e) {
     e.preventDefault(); e.stopPropagation();
     e.currentTarget.classList.remove('drag-over');
-    const bucket = e.currentTarget.dataset.bucket;
+    const droppedOnBucketName = e.currentTarget.dataset.bucket;
     const taskId = e.dataTransfer.getData('text/plain');
-    const bucketName = e.dataTransfer.getData('text/bucket');
+    const draggedBucketName = e.dataTransfer.getData('text/bucket');
 
-    if (bucketName) { // A bucket was dropped
-        const droppedOnBucket = e.currentTarget.dataset.bucket;
-        const buckets = getProjectBuckets(state.selectedProjectId);
-        const fromIndex = buckets.indexOf(bucketName);
-        const toIndex = buckets.indexOf(droppedOnBucket);
-        if (fromIndex !== -1 && toIndex !== -1) {
-            buckets.splice(toIndex, 0, buckets.splice(fromIndex, 1)[0]);
+    // --- Optimistic UI Update ---
+    const draggedElement = document.querySelector('.dragging');
+    if (!draggedElement) return;
+    const originalParent = draggedElement.parentNode;
+    const originalNextSibling = draggedElement.nextSibling;
+
+    if (draggedBucketName) { // A BUCKET was dropped
+        const parent = e.currentTarget.parentNode;
+        parent.insertBefore(draggedElement, e.currentTarget);
+    } else if (taskId) { // A TASK was dropped
+        const targetElement = e.target.closest('.task-item, .task-card, .task-board-column, .task-bucket');
+        targetElement.parentNode.insertBefore(draggedElement, targetElement.nextSibling);
+    }
+
+    // --- Save Data and Rollback on Failure ---
+    try {
+        if (draggedBucketName) { // Save new BUCKET order
+            const buckets = Array.from(e.currentTarget.parentNode.children).map(el => el.dataset.bucket);
             await updateSheetRow('Projects', 'ProjectID', state.selectedProjectId, { 'Task Buckets': JSON.stringify(buckets) });
             await loadProjects();
-            showProjectDetails(state.selectedProjectId);
+        } else if (taskId) { // Save new TASK order/bucket
+            const newTasksInBucket = Array.from(e.currentTarget.closest('.task-bucket, .task-board-column').querySelectorAll('[data-task-id]'));
+            const updates = newTasksInBucket.map((taskEl, index) => {
+                return updateSheetRow('Tasks', 'TaskID', taskEl.dataset.taskId, { 'Bucket': droppedOnBucketName, 'SortIndex': index });
+            });
+            await Promise.all(updates);
+            await loadTasks();
         }
-    } else if (taskId) { // A task was dropped
-        const tasksInBucket = getProjectTasksSorted(state.selectedProjectId).filter(t => (t.row[allTasks.headers.indexOf('Bucket')] || 'General') === bucket);
-        const droppedTaskIndex = tasksInBucket.findIndex(t => t.row[allTasks.headers.indexOf('TaskID')] === taskId);
-        const targetElement = e.target.closest('.task-item, .task-card');
-        let newIndex = tasksInBucket.length;
-        if (targetElement) {
-            const targetTaskId = targetElement.dataset.taskId;
-            newIndex = tasksInBucket.findIndex(t => t.row[allTasks.headers.indexOf('TaskID')] === targetTaskId);
-        }
-        
-        const updates = [];
-        const taskToUpdate = allTasks.rows.find(t => t[allTasks.headers.indexOf('TaskID')] === taskId);
-        updates.push(updateSheetRow('Tasks', 'TaskID', taskId, { 'Bucket': bucket, 'SortIndex': newIndex }));
-        
-        tasksInBucket.forEach((task, i) => {
-            if (i >= newIndex) {
-                 updates.push(updateSheetRow('Tasks', 'TaskID', task.row[allTasks.headers.indexOf('TaskID')], { 'SortIndex': i + 1 }));
-            }
-        });
-        
-        await Promise.all(updates);
-        await loadTasks();
-        showProjectDetails(state.selectedProjectId);
+    } catch (err) {
+        alert("Error saving new order. Reverting changes.");
+        console.error("Drag/drop save error:", err);
+        // Rollback UI on failure
+        originalParent.insertBefore(draggedElement, originalNextSibling);
     }
 }
 function renderAdvancedDetails(data, headers) {
