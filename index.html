@@ -104,12 +104,16 @@
         </main>
 
         <main id="tab-projects" class="tab-content" style="display: none;">
-            <div class="project-layout-container">
+            <div id="project-layout-container" class="project-layout-container">
                 <div class="project-list-column card">
-                    <h2>Active Projects</h2>
+                    <div class="project-list-header">
+                        <h2>Projects</h2>
+                        <button id="project-list-collapse-btn" title="Toggle Project List">‹</button>
+                    </div>
+                    <h3>Active Projects</h3>
                     <div id="active-projects-list" class="project-list"></div>
                     <div class="collapsible-header" id="archived-projects-toggle">
-                        <h2>Archived Projects</h2>
+                        <h3>Archived Projects</h3>
                          <span class="toggle-arrow">&#9662;</span>
                     </div>
                     <div id="archived-projects-list" class="collapsible-content project-list"></div>
@@ -260,7 +264,23 @@
                     </div>
                     <div class="form-field">
                         <label for="task-bucket">Bucket</label>
-                        <input type="text" id="task-bucket" placeholder="e.g., Pre-Production">
+                        <select id="task-bucket"></select>
+                    </div>
+                </div>
+                <div class="form-field">
+                    <label>Subtasks</label>
+                    <div id="subtasks-container"></div>
+                    <div class="add-item-form">
+                        <input type="text" id="new-subtask-name" placeholder="New subtask...">
+                        <button type="button" id="add-subtask-btn">Add</button>
+                    </div>
+                </div>
+                 <div class="form-field">
+                    <label>Links</label>
+                    <div id="links-container"></div>
+                    <div class="add-item-form">
+                        <input type="text" id="new-link-url" placeholder="https://example.com">
+                        <button type="button" id="add-link-btn">Add</button>
                     </div>
                 </div>
                  <div class="modal-footer">
