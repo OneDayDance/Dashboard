@@ -86,9 +86,13 @@ async function initializeGapiClient() {
 function handleAuthClick() {
     tokenClient.callback = async (tokenResponse) => {
         if (tokenResponse.error !== undefined) { throw (tokenResponse); }
+        
+        // --- NEW: Hide auth screen, show app ---
+        document.getElementById('auth-screen').style.display = 'none';
+        document.getElementById('app-wrapper').style.display = 'block';
+
+        // --- Existing logic ---
         signoutButton.style.display = 'block';
-        authorizeButton.style.display = 'none';
-        appContainer.style.display = 'block';
         setupTabs();
         loadDataForActiveTab();
     };
