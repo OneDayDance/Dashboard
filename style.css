@@ -1,4 +1,4 @@
-/* --- Fluid Gradient Background --- */
+/* --- Fluid Gradient Background & Body --- */
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     margin: 0;
@@ -6,7 +6,7 @@ body {
     background: linear-gradient(45deg, #FF9D76, #76F1FF, #C176FF, #FFE176);
     background-size: 400% 400%;
     animation: gradientAnimation 15s ease infinite;
-    padding: 20px;
+    min-height: 100vh;
 }
 
 @keyframes gradientAnimation {
@@ -15,79 +15,63 @@ body {
     100% { background-position: 0% 50%; }
 }
 
+/* --- NEW: Authorization Screen --- */
+#auth-screen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    padding: 20px;
+    box-sizing: border-box;
+}
+.auth-card {
+    background-color: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    text-align: center;
+}
+#authorize_button {
+    background-color: #FF9D76; /* Orange */
+    margin-top: 20px;
+    padding: 12px 24px;
+    font-size: 16px;
+}
 
-/* --- General Layout & Themed UI --- */
-header, .card, main {
-    background-color: rgba(255, 255, 255, 0.85); /* Semi-transparent white */
-    backdrop-filter: blur(10px); /* Frosted glass effect */
+/* --- Main App Layout --- */
+#app-wrapper {
+    padding: 20px;
+}
+header {
+    background-color: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.2);
     padding: 20px;
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-header {
     text-align: center;
     margin-bottom: 20px;
     position: relative;
 }
-
-main {
-    padding: 0; /* Remove default padding for card consistency */
+#app-container {
+    background-color: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
-#auth-container {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-}
-
-/* --- Themed Buttons --- */
-button, #modal-save-note-btn, #save-columns-btn {
-    border: none;
-    padding: 8px 16px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: bold;
-    color: white;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-button:hover, #modal-save-note-btn:hover, #save-columns-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-}
-
-#authorize_button, .view-controls button.active, #modal-save-note-btn, #save-columns-btn {
-    background-color: #FF9D76; /* Orange */
-}
-
-#signout_button {
-    background-color: #6c757d; /* Gray for less emphasis */
-}
-
-/* --- Themed Tabs --- */
+/* --- FIX: Tab Bar Background & Content Padding --- */
 .tab-nav {
     display: flex;
-    border-bottom: 2px solid #ccc;
-    margin-bottom: 20px;
+    border-bottom: 2px solid #ddd;
+    background-color: rgba(249, 250, 251, 0.9); /* Solid, slightly transparent background */
+    border-radius: 12px 12px 0 0; /* Rounded top corners */
 }
-
-.tab-button {
-    padding: 10px 20px;
-    cursor: pointer;
-    background-color: transparent;
-    font-size: 16px;
-    border-bottom: 3px solid transparent;
-    margin-bottom: -2px;
-}
-.tab-button:hover {
-    background-color: rgba(255, 255, 255, 0.5);
-}
-.tab-button.active {
-    border-bottom-color: #76F1FF; /* Blue */
-    font-weight: bold;
+#tab-content-wrapper {
+    padding: 15px; /* Internal padding for all tab content */
 }
 
 /* --- Controls & Table Styles --- */
