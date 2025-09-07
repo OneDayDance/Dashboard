@@ -103,11 +103,27 @@
             </div>
         </main>
 
-        <main id="tab-projects" class="tab-content" style="display: none;"><h2>Projects</h2><p>Project tracking will go here.</p></main>
+        <main id="tab-projects" class="tab-content" style="display: none;">
+            <div class="project-layout-container">
+                <div class="project-list-column card">
+                    <h2>Active Projects</h2>
+                    <div id="active-projects-list"></div>
+                    <div class="collapsible-header" id="archived-projects-toggle">
+                        <h2>Archived Projects</h2>
+                         <span class="toggle-arrow">&#9662;</span>
+                    </div>
+                    <div id="archived-projects-list" class="collapsible-content"></div>
+                </div>
+                <div id="project-details-column" class="card">
+                    <p>Select a project to view its details.</p>
+                </div>
+            </div>
+        </main>
         <main id="tab-costumes" class="tab-content" style="display: none;"><h2>Costumes</h2><p>Costume inventory management will go here.</p></main>
         <main id="tab-equipment" class="tab-content" style="display: none;"><h2>Equipment</h2><p>Equipment tracking will go here.</p></main>
     </div>
 
+    <!-- MODALS -->
     <!-- Request Details Modal -->
     <div id="details-modal" class="modal">
         <div class="modal-content">
@@ -176,6 +192,15 @@
                     <input type="text" id="project-name" required>
                 </div>
                 <div class="form-field">
+                    <label for="project-type">Project Type</label>
+                    <select id="project-type">
+                        <option>General</option>
+                        <option>Film</option>
+                        <option>Photography</option>
+                        <option>Design</option>
+                    </select>
+                </div>
+                <div class="form-field">
                     <label for="project-status">Status</label>
                     <select id="project-status">
                         <option>Not Started</option>
@@ -197,6 +222,20 @@
                     <span id="create-project-status"></span>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-client-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Confirm Deletion</h2>
+            <p>Are you sure you want to delete this client? This action cannot be undone. To proceed, please type "Delete" in the box below.</p>
+            <input type="text" id="delete-confirm-input" placeholder="Type Delete to confirm">
+            <div class="modal-footer">
+                <button id="delete-confirm-btn" disabled>Delete Client</button>
+                <span id="delete-client-status"></span>
+            </div>
         </div>
     </div>
 
