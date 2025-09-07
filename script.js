@@ -519,7 +519,7 @@ function showProjectDetails(projectId, isEditMode = false) {
     document.getElementById('project-delete-action').onclick = () => showDeleteProjectModal(projectId);
 
     if (isEditMode) document.getElementById('project-save-btn').onclick = () => handleSaveProjectUpdate(projectId);
-// ... existing code ... */
+
     detailsColumn.querySelectorAll('.collapsible-header').forEach(header => header.onclick = () => {
         header.classList.toggle('collapsed');
         header.nextElementSibling.classList.toggle('collapsed');
@@ -714,7 +714,7 @@ function getProjectBuckets(projectId) {
     }
     return ['General'];
 }
-// ... existing code ... */
+
 // --- DRAG AND DROP LOGIC ---
 function getDragAfterElementVertical(container, y, selector) {
     const draggableElements = [...container.querySelectorAll(`${selector}:not(.dragging)`)];
@@ -756,58 +756,64 @@ function handleDragOver(e) {
         }
     };
 
-    if (draggingEl.matches('.task-bucket, .task-board-column')) { // BUCKET
+    const isBucket = draggingEl.matches('.task-bucket, .task-board-column');
+    
+    if (isBucket) {
         const isListView = draggingEl.matches('.task-bucket');
         const container = isListView ? document.getElementById('project-task-list') : document.getElementById('project-task-board');
-        const afterBucket = isListView ? getDragAfterElementVertical(container, e.clientY, '.task-bucket') : getDragAfterBucketHorizontal(container, e.clientX);
+        const afterEl = isListView ? getDragAfterElementVertical(container, e.clientY, '.task-bucket') : getDragAfterBucketHorizontal(container, e.clientX);
 
-        // Redundancy check
-        if (draggingEl.nextElementSibling === afterBucket) {
+        // Redundancy Check for buckets
+        if (draggingEl.nextElementSibling === afterEl || (afterEl && afterEl.previousElementSibling === draggingEl)) {
             removePlaceholder();
             return;
         }
-        if (afterBucket && afterBucket.previousElementSibling === draggingEl) {
-             removePlaceholder();
+        if (!afterEl && container.lastElementChild === draggingEl) { // already at the end
+            removePlaceholder();
             return;
         }
-
+        
         if (!placeholder) {
             placeholder = document.createElement('div');
             placeholder.className = 'bucket-placeholder';
         }
         if(isListView) placeholder.style.height = `${draggingEl.offsetHeight}px`;
         
-        if (afterBucket) {
-            container.insertBefore(placeholder, afterBucket);
+        if (afterEl) {
+            container.insertBefore(placeholder, afterEl);
         } else {
             container.appendChild(placeholder);
         }
     } else { // TASK
         const container = e.target.closest('.task-bucket, .task-board-column');
-        if (!container) return;
-
-        const afterTask = getDragAfterElementVertical(container, e.clientY, '.task-item, .task-card');
-
-        // Redundancy check
-        const isSameContainer = draggingEl.parentNode === container;
-        if (isSameContainer && draggingEl.nextElementSibling === afterTask) {
+        if (!container) {
             removePlaceholder();
             return;
         }
-        // Check if dragging to the end of a list where it already is
-        if (isSameContainer && afterTask === null && !draggingEl.nextElementSibling.matches('[data-task-id]')) {
-             removePlaceholder();
-             return;
-        }
 
+        const afterEl = getDragAfterElementVertical(container, e.clientY, '.task-item, .task-card');
+        const isSameContainer = draggingEl.parentNode === container;
+
+        // Redundancy Check for tasks
+        if (isSameContainer) {
+            if (draggingEl.nextElementSibling === afterEl) {
+                 removePlaceholder();
+                 return;
+            }
+            if (!afterEl && container.querySelector('.add-task-to-bucket-btn').previousElementSibling === draggingEl) { // already at the end
+                 removePlaceholder();
+                 return;
+            }
+        }
+        
         if (!placeholder) {
             placeholder = document.createElement('div');
             placeholder.className = 'task-placeholder';
         }
         placeholder.style.height = `${draggingEl.offsetHeight}px`;
 
-        if (afterTask) {
-            container.insertBefore(placeholder, afterTask);
+        if (afterEl) {
+            container.insertBefore(placeholder, afterEl);
         } else {
             const addTaskBtn = container.querySelector('.add-task-to-bucket-btn');
             container.insertBefore(placeholder, addTaskBtn);
@@ -1063,7 +1069,7 @@ async function handleSaveTask(event) {
         'Assignee': document.getElementById('task-assignee').value,
         'Status': document.getElementById('task-status').value,
         'Bucket': document.getElementById('task-bucket').value || 'General',
-// ... existing code ... */
+        'Subtasks': document.getElementById('subtasks-data').value,
         'Links': document.getElementById('links-data').value
     };
     try {
