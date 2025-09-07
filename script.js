@@ -558,11 +558,15 @@ function showProjectDetails(projectId, isEditMode = false) {
 
     detailsColumn.querySelectorAll('.task-item, .task-card').forEach(el => {
         el.onclick = (e) => {
+            if (e.target.matches('input[type="checkbox"]')) return; // Allow checkbox clicks
             if (e.currentTarget.classList.contains('dragging')) return;
             const taskId = e.currentTarget.dataset.taskId;
-            if(e.target.type === 'checkbox') handleTaskStatusChange(taskId, e.target.checked);
-            else showTaskModal(projectId, taskId);
+            showTaskModal(projectId, taskId);
         };
+    });
+
+    detailsColumn.querySelectorAll('.subtask-item input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', handleSubtaskStatusChange);
     });
      
     detailsColumn.querySelectorAll('.add-task-to-bucket-btn').forEach(btn => btn.onclick = () => showTaskModal(projectId, null, btn.dataset.bucket));
@@ -665,7 +669,9 @@ function renderTaskItem(taskRow, subtasks) {
     let subtasksHtml = '';
     if (subtasks.length > 0) {
         subtasksHtml += '<ul class="subtask-list">';
-        subtasks.forEach(sub => subtasksHtml += `<li class="subtask-item"><input type="checkbox" ${sub.completed ? 'checked' : ''} disabled> ${sub.name}</li>`);
+        subtasks.forEach((sub, i) => {
+            subtasksHtml += `<li class="subtask-item"><input type="checkbox" data-task-id="${taskRow[idIdx]}" data-subtask-index="${i}" ${sub.completed ? 'checked' : ''}> ${sub.name}</li>`;
+        });
         subtasksHtml += '</ul>';
         const completedCount = subtasks.filter(s => s.completed).length;
         const progress = subtasks.length > 0 ? (completedCount / subtasks.length) * 100 : 0;
@@ -673,7 +679,7 @@ function renderTaskItem(taskRow, subtasks) {
     }
     return `<div class="task-item" draggable="true" data-task-id="${taskRow[idIdx]}">
                 <div class="task-main ${isCompleted ? 'completed' : ''}">
-                    <input type="checkbox" ${isCompleted ? 'checked' : ''}>
+                    <input type="checkbox" ${isCompleted ? 'checked' : ''} onchange="handleTaskStatusChange('${taskRow[idIdx]}', this.checked)">
                     <label>${taskRow[nameIdx]}</label>
                 </div>
                 ${subtasksHtml}
@@ -735,6 +741,15 @@ function handleDragOver(e) {
     const draggingEl = document.querySelector('.dragging');
     if (!draggingEl) return;
 
+    // --- Prevent redundant placeholder ---
+    const afterElement = e.target.closest('[draggable="true"]');
+    if (afterElement) {
+        if (afterElement === draggingEl.nextElementSibling || afterElement.previousElementSibling === draggingEl) {
+             document.querySelectorAll('.task-placeholder, .bucket-placeholder').forEach(p => p.remove());
+             return;
+        }
+    }
+
     let placeholder = document.querySelector('.task-placeholder, .bucket-placeholder');
     if (!placeholder) {
         placeholder = document.createElement('div');
@@ -742,23 +757,20 @@ function handleDragOver(e) {
     
     if (draggingEl.matches('.task-bucket')) { // LIST VIEW BUCKET
         const container = document.getElementById('project-task-list');
-        const afterElement = getDragAfterElementVertical(container, e.clientY, '.task-bucket');
+        const afterBucket = getDragAfterElementVertical(container, e.clientY, '.task-bucket');
         placeholder.className = 'bucket-placeholder';
         placeholder.style.height = `${draggingEl.offsetHeight}px`;
-        placeholder.style.width = ''; 
-        if (afterElement) {
-            container.insertBefore(placeholder, afterElement);
+        if (afterBucket) {
+            container.insertBefore(placeholder, afterBucket);
         } else {
             container.appendChild(placeholder);
         }
     } else if (draggingEl.matches('.task-board-column')) { // BOARD VIEW BUCKET
         const container = document.getElementById('project-task-board');
-        const afterElement = getDragAfterBucketHorizontal(container, e.clientX);
+        const afterBucket = getDragAfterBucketHorizontal(container, e.clientX);
         placeholder.className = 'bucket-placeholder';
-        placeholder.style.height = ''; 
-        placeholder.style.width = '';
-        if (afterElement) {
-            container.insertBefore(placeholder, afterElement);
+        if (afterBucket) {
+            container.insertBefore(placeholder, afterBucket);
         } else {
             container.appendChild(placeholder);
         }
@@ -766,13 +778,12 @@ function handleDragOver(e) {
         const container = e.target.closest('.task-bucket, .task-board-column');
         if (!container) return;
 
-        const afterElement = getDragAfterElementVertical(container, e.clientY, '.task-item, .task-card');
+        const afterTask = getDragAfterElementVertical(container, e.clientY, '.task-item, .task-card');
         placeholder.className = 'task-placeholder';
         placeholder.style.height = `${draggingEl.offsetHeight}px`;
-        placeholder.style.width = '';
 
-        if (afterElement) {
-            container.insertBefore(placeholder, afterElement);
+        if (afterTask) {
+            container.insertBefore(placeholder, afterTask);
         } else {
             const addTaskBtn = container.querySelector('.add-task-to-bucket-btn');
             container.insertBefore(placeholder, addTaskBtn);
@@ -1055,6 +1066,45 @@ async function handleTaskStatusChange(taskId, isChecked) {
         if(projectId) showProjectDetails(projectId);
     } catch(err) { console.error('Task status update error', err); alert('Could not update task status.'); }
 }
+async function handleSubtaskStatusChange(event) {
+    const checkbox = event.target;
+    const taskId = checkbox.dataset.taskId;
+    const subtaskIndex = parseInt(checkbox.dataset.subtaskIndex, 10);
+    const isChecked = checkbox.checked;
+
+    checkbox.disabled = true;
+
+    const taskIndex = allTasks.rows.findIndex(t => t[allTasks.headers.indexOf('TaskID')] === taskId);
+    if (taskIndex === -1) return;
+
+    const taskRow = allTasks.rows[taskIndex];
+    const subtasksJson = taskRow[allTasks.headers.indexOf('Subtasks')] || '[]';
+    let subtasks = [];
+    try {
+        subtasks = JSON.parse(subtasksJson);
+    } catch (e) {
+        console.error("Error parsing subtasks for task:", taskId, e);
+        return;
+    }
+
+    if (subtasks[subtaskIndex]) {
+        subtasks[subtaskIndex].completed = isChecked;
+    }
+
+    const updatedSubtasksJson = JSON.stringify(subtasks);
+
+    try {
+        await updateSheetRow('Tasks', 'TaskID', taskId, { 'Subtasks': updatedSubtasksJson });
+        await loadTasks(); // Reload tasks to get fresh data
+        showProjectDetails(state.selectedProjectId); // Re-render view
+    } catch (err) {
+        console.error('Subtask status update error', err);
+        alert('Could not update subtask status.');
+        // Re-render to revert to last known good state from memory
+        showProjectDetails(state.selectedProjectId);
+    }
+}
+
 
 // --- CLIENTS TAB FUNCTIONS ---
 async function loadClients() {
