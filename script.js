@@ -1,246 +1,558 @@
-/* --- Fluid Gradient Background --- */
-body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    margin: 0;
-    color: #333;
-    background: linear-gradient(45deg, #FF9D76, #76F1FF, #C176FF, #FFE176);
-    background-size: 400% 400%;
-    animation: gradientAnimation 15s ease infinite;
-    padding: 20px;
+// --- CONFIGURATION ---
+const CLIENT_ID = "555797317893-ce2nrrf49e5dol0c6lurln0c3it76c2r.apps.googleusercontent.com";
+const SPREADSHEET_ID = "1G3kVQdR0yd1j362oZKYRXMby1Ve6PVcY8CrsQnuxVfY";
+const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
+// --- END OF CONFIGURATION ---
+
+// --- STATE MANAGEMENT ---
+let allRequests = { headers: [], rows: [] };
+let state = {
+    currentPage: 1,
+    rowsPerPage: 10,
+    sortColumn: 'Submission Date',
+    sortDirection: 'desc',
+    searchTerm: '',
+    filters: { service: 'all', status: 'all' },
+    visibleColumns: ['Submission Date', 'Full Name', 'Primary Service Category', 'Status'],
+    currentView: 'list'
+};
+const sortableColumns = ['Submission Date', 'Full Name', 'Email', 'Organization', 'Primary Service Category', 'Status'];
+
+// --- DOM ELEMENTS ---
+let tokenClient, gapiInited = false, gisInited = false;
+let authorizeButton, signoutButton, appContainer, addClientForm, serviceFilter, statusFilter, searchBar, detailsModal, columnModal, closeModalButtons, listViewBtn, cardViewBtn, modalSaveNoteBtn, archiveToggle, archiveContainer, columnSelectBtn, saveColumnsBtn, landingContainer;
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Assign all elements
+    authorizeButton = document.getElementById('authorize_button');
+    signoutButton = document.getElementById('signout_button');
+    appContainer = document.getElementById('app-container');
+    addClientForm = document.getElementById('add-client-form');
+    serviceFilter = document.getElementById('service-filter');
+    statusFilter = document.getElementById('status-filter');
+    searchBar = document.getElementById('search-bar');
+    detailsModal = document.getElementById('details-modal');
+    columnModal = document.getElementById('column-modal');
+    closeModalButtons = document.querySelectorAll('.close-button');
+    listViewBtn = document.getElementById('list-view-btn');
+    cardViewBtn = document.getElementById('card-view-btn');
+    modalSaveNoteBtn = document.getElementById('modal-save-note-btn');
+    archiveToggle = document.getElementById('archive-toggle');
+    archiveContainer = document.getElementById('archived-requests-container');
+    columnSelectBtn = document.getElementById('column-select-btn');
+    saveColumnsBtn = document.getElementById('save-columns-btn');
+    landingContainer = document.getElementById('landing-container');
+
+    // Assign event listeners
+    authorizeButton.onclick = handleAuthClick;
+    signoutButton.onclick = handleSignoutClick;
+    addClientForm.addEventListener('submit', handleAddClientSubmit);
+    serviceFilter.onchange = (e) => updateFilter('service', e.target.value);
+    statusFilter.onchange = (e) => updateFilter('status', e.target.value);
+    searchBar.oninput = (e) => updateSearch(e.target.value);
+    
+    closeModalButtons.forEach(btn => btn.onclick = () => {
+        detailsModal.style.display = 'none';
+        columnModal.style.display = 'none';
+    });
+    window.onclick = (event) => { 
+        if (event.target == detailsModal) detailsModal.style.display = 'none';
+        if (event.target == columnModal) columnModal.style.display = 'none';
+    };
+    
+    listViewBtn.onclick = () => setView('list');
+    cardViewBtn.onclick = () => setView('card');
+    columnSelectBtn.onclick = () => columnModal.style.display = 'block';
+    saveColumnsBtn.onclick = handleSaveColumns;
+    
+    archiveToggle.onclick = () => {
+        archiveToggle.classList.toggle('collapsed');
+        archiveContainer.classList.toggle('collapsed');
+    };
+});
+
+// --- INITIALIZATION & AUTH ---
+function gapiLoaded() { gapi.load('client', initializeGapiClient); }
+function gisLoaded() {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID, scope: SCOPES, callback: '',
+    });
+    gisInited = true;
+}
+async function initializeGapiClient() {
+    await gapi.client.init({});
+    await gapi.client.load('https://sheets.googleapis.com/$discovery/rest?version=v4');
+    gapiInited = true;
+}
+function handleAuthClick() {
+    tokenClient.callback = async (tokenResponse) => {
+        if (tokenResponse.error !== undefined) { throw (tokenResponse); }
+        landingContainer.style.display = 'none';
+        appContainer.style.display = 'block';
+        setupTabs();
+        loadDataForActiveTab();
+    };
+    if (gapi.client.getToken() === null) {
+        tokenClient.requestAccessToken({ prompt: 'consent' });
+    } else {
+        tokenClient.requestAccessToken({ prompt: '' });
+    }
+}
+function handleSignoutClick() {
+    const token = gapi.client.getToken();
+    if (token !== null) {
+        google.accounts.oauth2.revoke(token.access_token);
+        gapi.client.setToken('');
+        appContainer.style.display = 'none';
+        landingContainer.style.display = 'flex';
+    }
 }
 
-@keyframes gradientAnimation {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+// --- TAB NAVIGATION & CORE LOGIC ---
+function setupTabs() {
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+    document.querySelector('.tab-button[data-tab="requests"]').classList.add('active');
+    document.querySelector('#tab-requests').style.display = 'block';
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            const tabId = button.dataset.tab;
+            tabContents.forEach(content => {
+                content.style.display = (content.id === `tab-${tabId}`) ? 'block' : 'none';
+            });
+            loadDataForActiveTab();
+        });
+    });
+}
+function loadDataForActiveTab() {
+    const activeTab = document.querySelector('.tab-button.active').dataset.tab;
+    switch (activeTab) {
+        case 'requests':
+            loadRequests();
+            break;
+        case 'clients':
+            loadClients();
+            break;
+    }
+}
+function updateFilter(key, value) {
+    state.filters[key] = value;
+    state.currentPage = 1;
+    renderRequests();
+}
+function updateSearch(term) {
+    state.searchTerm = term.toLowerCase();
+    state.currentPage = 1;
+    renderRequests();
+}
+function setView(view) {
+    state.currentView = view;
+    listViewBtn.classList.toggle('active', view === 'list');
+    cardViewBtn.classList.toggle('active', view === 'card');
+    renderRequests();
+}
+function handleSaveColumns() {
+    const selectedColumns = [];
+    document.querySelectorAll('#column-checkboxes input[type="checkbox"]:checked').forEach(checkbox => {
+        selectedColumns.push(checkbox.value);
+    });
+    state.visibleColumns = selectedColumns;
+    columnModal.style.display = 'none';
+    renderRequests();
 }
 
-/* --- Landing Page --- */
-#landing-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    z-index: 2000;
+// --- REQUESTS TAB FUNCTIONS ---
+async function loadRequests() {
+    const container = document.getElementById('requests-container');
+    container.innerHTML = '<p>Loading new service requests...</p>';
+    try {
+        const response = await gapi.client.sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID, range: 'Submissions',
+        });
+        const values = response.result.values;
+        if (values && values.length > 1) {
+            allRequests = { headers: values[0], rows: values.slice(1) };
+            populateServiceFilter();
+            populateColumnSelector();
+        } else {
+            allRequests = { headers: [], rows: [] };
+        }
+    } catch (err) {
+        container.innerHTML = `<p style="color:red;">Error loading requests: ${err.result.error.message}</p>`;
+        return;
+    }
+    archiveToggle.classList.add('collapsed');
+    archiveContainer.classList.add('collapsed');
+    setView('list');
 }
 
-.landing-box {
-    background-color: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    padding: 40px;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    text-align: center;
+function renderRequests() {
+    if (!allRequests.rows || allRequests.rows.length === 0) {
+        document.getElementById('requests-container').innerHTML = '<p>No submissions found.</p>';
+        document.getElementById('archived-requests-container').innerHTML = '';
+        return;
+    }
+    const { headers, rows } = allRequests;
+    let processedRows = rows;
+    if (state.searchTerm) {
+        processedRows = processedRows.filter(row => row.some(cell => String(cell).toLowerCase().includes(state.searchTerm)));
+    }
+    if (state.filters.service !== 'all') {
+        const serviceIndex = headers.indexOf('Primary Service Category');
+        processedRows = processedRows.filter(row => row[serviceIndex] === state.filters.service);
+    }
+    const sortIndex = headers.indexOf(state.sortColumn);
+    if (sortIndex > -1) {
+        processedRows.sort((a, b) => {
+            let valA = a[sortIndex] || ''; let valB = b[sortIndex] || '';
+            if (state.sortColumn === 'Submission Date') {
+                valA = new Date(valA).getTime() || 0;
+                valB = new Date(valB).getTime() || 0;
+            }
+            if (valA < valB) return state.sortDirection === 'asc' ? -1 : 1;
+            if (valA > valB) return state.sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }
+
+    const statusIndex = headers.indexOf('Status');
+    const newRequests = [], archivedRequests = [];
+    
+    processedRows.forEach(row => {
+        const isArchived = row[statusIndex] === 'Archived';
+        if (state.filters.status === 'all') {
+            if (isArchived) archivedRequests.push(row);
+            else newRequests.push(row);
+        } else if (state.filters.status === 'archived' && isArchived) {
+            archivedRequests.push(row);
+        } else if (state.filters.status === 'new' && !isArchived) {
+            newRequests.push(row);
+        }
+    });
+
+    const renderFn = state.currentView === 'list' ? renderRequestsAsList : renderRequestsAsCards;
+    renderFn(newRequests, document.getElementById('requests-container'));
+    renderFn(archivedRequests, document.getElementById('archived-requests-container'));
 }
 
-.landing-box h1 {
-    margin-top: 0;
+function renderRequestsAsList(requestRows, container) {
+    container.innerHTML = '';
+    if (requestRows.length === 0) {
+        container.innerHTML = `<p>No submissions to display.</p>`;
+        return;
+    }
+    const { headers } = allRequests;
+    const table = document.createElement('table');
+    table.className = 'data-table';
+    let headerHtml = '<thead><tr>';
+    state.visibleColumns.forEach(headerText => {
+        let classes = '';
+        if (sortableColumns.includes(headerText)) {
+            classes += 'sortable';
+            if (state.sortColumn === headerText) { classes += state.sortDirection === 'asc' ? ' sorted-asc' : ' sorted-desc'; }
+        }
+        headerHtml += `<th class="${classes}" data-sort="${headerText}">${headerText}</th>`;
+    });
+    table.innerHTML = headerHtml += '</tr></thead>';
+
+    const tbody = document.createElement('tbody');
+    requestRows.forEach(row => {
+        const originalIndex = allRequests.rows.indexOf(row);
+        const tr = document.createElement('tr');
+        tr.onclick = () => showRequestDetailsModal(row, headers);
+        
+        state.visibleColumns.forEach(headerText => {
+            const cellIndex = headers.indexOf(headerText);
+            const td = document.createElement('td');
+            if (headerText === 'Status') {
+                const statusSelect = document.createElement('select');
+                statusSelect.dataset.rowIndex = originalIndex;
+                const currentStatus = row[cellIndex] || 'New';
+                ['New', 'Contacted', 'Archived'].forEach(status => {
+                    const option = new Option(status, status, false, status === currentStatus);
+                    statusSelect.add(option);
+                });
+                statusSelect.onclick = (e) => e.stopPropagation(); // Prevent modal from opening
+                statusSelect.onchange = handleStatusChange;
+                td.appendChild(statusSelect);
+            } else {
+                td.textContent = row[cellIndex] || '';
+            }
+            tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    container.appendChild(table);
+    container.querySelectorAll('th.sortable').forEach(th => th.onclick = handleSort);
 }
 
-.landing-box p {
-    margin-bottom: 20px;
+function renderRequestsAsCards(requestRows, container) {
+    container.innerHTML = '';
+    if (requestRows.length === 0) {
+        container.innerHTML = `<p>No submissions to display.</p>`;
+        return;
+    }
+    const { headers } = allRequests;
+    const cardContainer = document.createElement('div');
+    cardContainer.className = 'card-container';
+    
+    requestRows.forEach(row => {
+        const originalIndex = allRequests.rows.indexOf(row);
+        const card = document.createElement('div');
+        card.className = 'request-card';
+        card.onclick = () => showRequestDetailsModal(row, headers);
+        
+        // Dynamically add visible columns to the card
+        let cardContent = '';
+        state.visibleColumns.forEach(headerText => {
+            const cellIndex = headers.indexOf(headerText);
+            if (headerText === "Full Name") {
+                cardContent += `<h3>${row[cellIndex] || 'No Name'}</h3>`;
+            } else if (headerText !== "Status") {
+                cardContent += `<p><strong>${headerText}:</strong> ${row[cellIndex] || 'N/A'}</p>`;
+            }
+        });
+        card.innerHTML = cardContent;
+
+        const statusIndex = headers.indexOf('Status');
+        const statusSelect = document.createElement('select');
+        statusSelect.dataset.rowIndex = originalIndex;
+        const currentStatus = row[statusIndex] || 'New';
+        ['New', 'Contacted', 'Archived'].forEach(status => {
+            const option = new Option(status, status, false, status === currentStatus);
+            statusSelect.add(option);
+        });
+        statusSelect.onclick = (e) => e.stopPropagation();
+        statusSelect.onchange = handleStatusChange;
+        
+        card.appendChild(statusSelect);
+        cardContainer.appendChild(card);
+    });
+    container.appendChild(cardContainer);
 }
 
-/* --- General Layout & Themed UI --- */
-header, .card, main {
-    background-color: rgba(255, 255, 255, 0.85); /* Semi-transparent white */
-    backdrop-filter: blur(10px); /* Frosted glass effect */
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+async function handleStatusChange(event) {
+    const selectElement = event.target;
+    const newStatus = selectElement.value;
+    const rowIndex = parseInt(selectElement.dataset.rowIndex, 10);
+    const dataToUpdate = { 'Status': newStatus };
+    
+    selectElement.disabled = true;
+    try {
+        await updateRowData('Submissions', rowIndex, dataToUpdate);
+        allRequests.rows[rowIndex][allRequests.headers.indexOf('Status')] = newStatus;
+        renderRequests();
+    } catch(err) {
+        alert('Could not update status. See console for details.');
+        console.error("Status Update Error:", err);
+        selectElement.disabled = false;
+    }
 }
 
-header {
-    text-align: center;
-    margin-bottom: 20px;
-    position: relative;
+function showRequestDetailsModal(rowData, headers) {
+    const modalBody = document.getElementById('modal-body');
+    const ignoredFields = ['Raw Payload', 'All Services JSON', 'Submission ID', 'Timestamp', 'Notes'];
+    let contentHtml = '<ul>';
+    headers.forEach((header, index) => {
+        if (rowData[index] && !ignoredFields.includes(header)) {
+            contentHtml += `<li><strong>${header}:</strong> ${rowData[index]}</li>`;
+        }
+    });
+    contentHtml += '</ul>';
+    modalBody.innerHTML = contentHtml;
+    
+    const notesTextarea = document.getElementById('modal-notes-textarea');
+    const noteStatus = document.getElementById('modal-note-status');
+    const originalIndex = allRequests.rows.indexOf(rowData);
+    noteStatus.textContent = '';
+    const notesIndex = headers.indexOf('Notes');
+    notesTextarea.value = rowData[notesIndex] || '';
+    modalSaveNoteBtn.onclick = () => handleSaveNote(originalIndex);
+    detailsModal.style.display = 'block';
 }
 
-main {
-    padding: 0; /* Remove default padding for card consistency */
+function handleSort(event) {
+    const newSortColumn = event.target.dataset.sort;
+    if (state.sortColumn === newSortColumn) {
+        state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        state.sortColumn = newSortColumn;
+        state.sortDirection = 'asc';
+    }
+    renderRequests();
 }
 
-#auth-container {
-    position: absolute;
-    top: 20px;
-    right: 20px;
+async function handleSaveNote(rowIndex) {
+    const noteStatus = document.getElementById('modal-note-status');
+    noteStatus.textContent = 'Saving...';
+    const newNote = document.getElementById('modal-notes-textarea').value;
+    const dataToUpdate = { 'Notes': newNote };
+
+    try {
+        await updateRowData('Submissions', rowIndex, dataToUpdate);
+        allRequests.rows[rowIndex][allRequests.headers.indexOf('Notes')] = newNote;
+        noteStatus.textContent = 'Saved successfully!';
+    } catch (err) {
+        noteStatus.textContent = 'Error saving note.';
+        console.error("Save Note Error:", err);
+    }
 }
 
-/* --- Themed Buttons --- */
-button, #modal-save-note-btn, #save-columns-btn {
-    border: none;
-    padding: 8px 16px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: bold;
-    color: white;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+// --- UTILITY & GENERIC DATA FUNCTIONS ---
+
+/**
+ * NEW: A robust, centralized function for updating any row.
+ * It reads headers from the sheet to guarantee writing to the correct column.
+ */
+async function updateRowData(sheetName, localRowIndex, dataToUpdate) {
+    const { headers, rows } = allRequests;
+    const rowData = rows[localRowIndex];
+    const idColumnName = 'Submission ID';
+    const idIndex = headers.indexOf(idColumnName);
+    
+    if (idIndex === -1) throw new Error(`'${idColumnName}' column not found.`);
+    
+    const uniqueId = rowData[idIndex];
+    
+    // Fetch fresh sheet data to find the absolute row index
+    const sheetResponse = await gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID,
+        range: sheetName,
+    });
+    
+    const sheetValues = sheetResponse.result.values;
+    const sheetHeaders = sheetValues[0];
+    const visualRowIndex = sheetValues.findIndex(sheetRow => sheetRow && sheetRow[idIndex] === uniqueId);
+
+    if (visualRowIndex === -1) throw new Error("Could not find row in sheet. It may have been modified by someone else.");
+
+    const originalRow = sheetValues[visualRowIndex];
+    const updatedRow = [...originalRow]; // Create a copy
+
+    // For each piece of data to update, find its column and update the value
+    for (const columnName in dataToUpdate) {
+        const columnIndex = sheetHeaders.indexOf(columnName);
+        if (columnIndex > -1) {
+            updatedRow[columnIndex] = dataToUpdate[columnName];
+        } else {
+            console.warn(`Column "${columnName}" not found in sheet, could not update.`);
+        }
+    }
+
+    const targetRowNumber = visualRowIndex + 1;
+    const targetRange = `${sheetName}!A${targetRowNumber}`;
+
+    return gapi.client.sheets.spreadsheets.values.update({
+        spreadsheetId: SPREADSHEET_ID,
+        range: targetRange,
+        valueInputOption: 'RAW',
+        resource: {
+            values: [updatedRow]
+        }
+    });
 }
 
-button:hover, #modal-save-note-btn:hover, #save-columns-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+// ... All other utility and data functions (loadClients, writeData, etc.) remain here ...
+async function loadClients() {
+    const clientListDiv = document.getElementById('client-list');
+    clientListDiv.innerHTML = '<p>Loading clients...</p>';
+    try {
+        const response = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: 'Clients' });
+        const values = response.result.values;
+        if (!values || values.length < 1) {
+            clientListDiv.innerHTML = '<p>No client data found.</p>';
+            return;
+        }
+        const headers = values[0];
+        const dataRows = values.slice(1);
+        const firstNameIndex = headers.indexOf('First Name');
+        const emailIndex = headers.indexOf('Email');
+        if (firstNameIndex === -1 || emailIndex === -1) {
+             clientListDiv.innerHTML = `<p style="color:red;">Error: Required column not found.</p>`;
+             return;
+        }
+        clientListDiv.innerHTML = '';
+        if (dataRows.length === 0) {
+            clientListDiv.innerHTML = '<p>No clients found.</p>';
+            return;
+        }
+        const ul = document.createElement('ul');
+        dataRows.forEach(row => {
+            const li = document.createElement('li');
+            li.textContent = `${row[firstNameIndex] || 'N/A'} - (${row[emailIndex] || 'N/A'})`;
+            ul.appendChild(li);
+        });
+        clientListDiv.appendChild(ul);
+    } catch (err) {
+        clientListDiv.innerHTML = `<p style="color:red;">Error: ${err.result.error.message}`;
+    }
 }
-
-#authorize_button, .view-controls button.active, #modal-save-note-btn, #save-columns-btn {
-    background-color: #FF9D76; /* Orange */
+async function writeData(sheetName, dataObject) {
+    const headerResponse = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!1:1` });
+    let headers = headerResponse.result.values ? headerResponse.result.values[0] : [];
+    if (headers.length === 0) {
+        headers = Object.keys(dataObject);
+        await gapi.client.sheets.spreadsheets.values.update({
+            spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!A1`,
+            valueInputOption: 'RAW', resource: { values: [headers] },
+        });
+    }
+    const newRow = headers.map(header => dataObject[header] || '');
+    return gapi.client.sheets.spreadsheets.values.append({
+        spreadsheetId: SPREADSHEET_ID, range: sheetName,
+        valueInputOption: 'USER_ENTERED', resource: { values: [newRow] },
+    });
 }
-
-#signout_button {
-    background-color: #6c757d; /* Gray for less emphasis */
+function populateServiceFilter() {
+    if (!allRequests.rows || allRequests.rows.length === 0) return;
+    const { headers, rows } = allRequests;
+    const serviceIndex = headers.indexOf('Primary Service Category');
+    if (serviceIndex === -1) return;
+    const services = new Set(rows.map(row => row[serviceIndex]));
+    serviceFilter.innerHTML = '<option value="all">All Services</option>';
+    services.forEach(service => {
+        if(service) {
+            const option = new Option(service, service);
+            serviceFilter.add(option);
+        }
+    });
 }
-
-/* --- Themed Tabs --- */
-.tab-nav {
-    display: flex;
-    border-bottom: 2px solid #ccc;
-    margin-bottom: 20px;
+function populateColumnSelector() {
+    const container = document.getElementById('column-checkboxes');
+    container.innerHTML = '';
+    allRequests.headers.forEach(header => {
+        if (!header) return;
+        const isChecked = state.visibleColumns.includes(header);
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = `
+            <label>
+                <input type="checkbox" value="${header}" ${isChecked ? 'checked' : ''}>
+                ${header}
+            </label>
+        `;
+        container.appendChild(wrapper);
+    });
 }
-
-.tab-button {
-    padding: 10px 20px;
-    cursor: pointer;
-    background-color: transparent;
-    font-size: 16px;
-    border-bottom: 3px solid transparent;
-    margin-bottom: -2px;
+async function handleAddClientSubmit(event) {
+    event.preventDefault();
+    const statusDiv = document.getElementById('add-client-status');
+    statusDiv.textContent = 'Adding client...';
+    const clientData = {
+        'First Name': document.getElementById('client-first-name').value,
+        'Last Name': document.getElementById('client-last-name').value,
+        'Email': document.getElementById('client-email').value,
+        'Status': 'Active', 
+        'ClientID': `C-${Date.now()}`
+    };
+    try {
+        await writeData('Clients', clientData);
+        statusDiv.textContent = 'Client added successfully!';
+        addClientForm.reset();
+        await loadClients();
+    } catch (err) {
+        statusDiv.textContent = `Error: ${err.result.error.message}`;
+    }
 }
-.tab-button:hover {
-    background-color: rgba(255, 255, 255, 0.5);
-}
-.tab-button.active {
-    border-bottom-color: #76F1FF; /* Blue */
-    font-weight: bold;
-}
-
-/* --- Controls & Table Styles --- */
-.controls-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    padding: 0 20px;
-}
-.filter-controls {
-    display: flex;
-    gap: 10px;
-}
-.filter-controls input, .filter-controls select {
-    padding: 8px;
-    border-radius: 4px;
-    border: 1px solid #ccc;
-}
-.view-controls {
-    display: flex;
-    gap: 10px;
-}
-.view-controls button {
-    background-color: #fff;
-    color: #333;
-}
-.data-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-}
-.data-table th, .data-table td {
-    border: 1px solid #ddd;
-    padding: 12px;
-    text-align: left;
-}
-.data-table th {
-    background-color: rgba(255, 255, 255, 0.6);
-}
-.data-table th.sortable {
-    cursor: pointer;
-    position: relative;
-}
-.data-table th.sortable:hover {
-    background-color: #e2e2e2;
-}
-.data-table th.sortable::after {
-    content: '\2195';
-    opacity: 0.3;
-    position: absolute;
-    right: 8px;
-}
-.data-table th.sorted-asc::after {
-    content: '\25B2';
-    opacity: 1;
-}
-.data-table th.sorted-desc::after {
-    content: '\25BC';
-    opacity: 1;
-}
-.data-table tbody tr:hover {
-    background-color: #e9ecef;
-    cursor: pointer;
-}
-
-/* --- Themed Badges & Status --- */
-.badge {
-    padding: 3px 8px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: bold;
-    color: white;
-}
-.request-card select {
-    width: 100%;
-    margin-top: 10px;
-    padding: 5px;
-}
-
-/* --- Themed Modals --- */
-.modal {
-    display: none; 
-    position: fixed; 
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0,0,0,0.5);
-    backdrop-filter: blur(5px);
-}
-.modal-content {
-    background-color: #fefefe;
-    margin: 10% auto;
-    padding: 20px;
-    border: 1px solid #888;
-    width: 80%;
-    max-width: 700px;
-    border-radius: 12px;
-    position: relative;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-}
-
-/* --- Other styles --- */
-.close-button { color: #aaa; position: absolute; top: 10px; right: 20px; font-size: 28px; font-weight: bold; }
-.close-button:hover, .close-button:focus { color: black; text-decoration: none; cursor: pointer; }
-#modal-body ul { list-style-type: none; padding: 0; }
-#modal-body li { padding: 8px 0; border-bottom: 1px solid #eee; }
-#modal-body li strong { display: inline-block; width: 150px; color: #555; }
-#modal-notes-section { margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
-#modal-notes-textarea { width: 98%; min-height: 80px; margin-top: 10px; padding: 5px; }
-#column-checkboxes { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin: 20px 0; }
-#column-checkboxes label { display: flex; align-items: center; gap: 8px; }
-.collapsible-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 10px 20px; border-top: 1px solid #ccc; margin-top: 40px; }
-.collapsible-header h2 { margin: 0; }
-.toggle-arrow { font-size: 18px; transition: transform 0.3s ease; }
-.collapsible-content { max-height: 2000px; overflow: hidden; transition: max-height 0.5s ease-in-out; padding: 0 20px; }
-.collapsible-content.collapsed { max-height: 0; padding: 0 20px;}
-.collapsible-header.collapsed .toggle-arrow { transform: rotate(-90deg); }
-.card-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; padding: 20px; }
-.request-card { border: 1px solid #ddd; border-radius: 8px; padding: 15px; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; transition: all 0.2s ease-in-out; }
-.request-card:hover { border-color: #FF9D76; box-shadow: 0 4px 8px rgba(0,0,0,0.1); transform: translateY(-3px); }
-.request-card h3 { margin-top: 0; }
-.request-card p { margin: 5px 0; color: #555; font-size: 14px; }
