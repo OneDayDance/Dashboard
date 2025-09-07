@@ -25,7 +25,8 @@ let state = {
     visibleClientColumns: ['First Name', 'Last Name', 'Email', 'Organization', 'Status'],
     clientFilters: { status: 'all' },
     // projects tab state
-    selectedProjectId: null
+    selectedProjectId: null,
+    projectTaskView: 'list' // 'list' or 'board'
 };
 const sortableColumns = ['Submission Date', 'Full Name', 'Email', 'Organization', 'Primary Service Category', 'Status'];
 const clientSortableColumns = ['First Name', 'Last Name', 'Email', 'Organization', 'Status'];
@@ -96,16 +97,17 @@ document.addEventListener('DOMContentLoaded', () => {
     clientColumnSelectBtn.onclick = () => showColumnModal('clients');
     document.getElementById('save-client-columns-btn').onclick = () => handleSaveColumns('clients');
     
-    archiveToggle.onclick = (e) => {
-        e.currentTarget.classList.toggle('collapsed');
-        archiveContainer.classList.toggle('collapsed');
-    }
+    archiveToggle.onclick = (e) => e.currentTarget.classList.toggle('collapsed');
     document.getElementById('archived-projects-toggle').onclick = (e) => {
         e.currentTarget.classList.toggle('collapsed');
         document.getElementById('archived-projects-list').classList.toggle('collapsed');
     };
     document.getElementById('create-project-form').addEventListener('submit', handleCreateProjectSubmit);
     document.getElementById('task-details-form').addEventListener('submit', handleSaveTask);
+    document.getElementById('project-list-collapse-btn').onclick = () => {
+        document.getElementById('project-layout-container').classList.toggle('collapsed');
+        document.querySelector('.project-list-column').classList.toggle('collapsed');
+    };
 });
 
 // --- INITIALIZATION & AUTH ---
@@ -225,12 +227,8 @@ async function loadRequests() {
             allRequests = { headers: values[0], rows: values.slice(1) };
             populateServiceFilter();
         } else { allRequests = { headers: [], rows: [] }; }
-    } catch (err) {
-        console.error("Error loading requests:", err);
-        document.getElementById('requests-container').innerHTML = `<p style="color:red;">Error loading requests.</p>`;
-    }
+    } catch (err) { console.error("Error loading requests:", err); document.getElementById('requests-container').innerHTML = `<p style="color:red;">Error loading requests.</p>`; }
 }
-
 function renderRequests() {
     if (!allRequests.rows || allRequests.rows.length === 0) {
         document.getElementById('requests-container').innerHTML = '<p>No submissions found.</p>';
@@ -239,9 +237,7 @@ function renderRequests() {
     }
     let { headers, rows } = allRequests;
     let processedRows = [...rows];
-    if (state.searchTerm) {
-        processedRows = processedRows.filter(row => row.some(cell => String(cell).toLowerCase().includes(state.searchTerm)));
-    }
+    if (state.searchTerm) processedRows = processedRows.filter(row => row.some(cell => String(cell).toLowerCase().includes(state.searchTerm)));
     if (state.filters.service !== 'all') {
         const serviceIndex = headers.indexOf('Primary Service Category');
         processedRows = processedRows.filter(row => row[serviceIndex] === state.filters.service);
@@ -259,26 +255,19 @@ function renderRequests() {
             return 0;
         });
     }
-
     const statusIndex = headers.indexOf('Status');
     const newRequests = [], archivedRequests = [];
-    
     processedRows.forEach(row => {
         const isArchived = row[statusIndex] === 'Archived';
         if (state.filters.status === 'all') {
             if (isArchived) archivedRequests.push(row); else newRequests.push(row);
-        } else if (state.filters.status === 'archived' && isArchived) {
-            archivedRequests.push(row);
-        } else if (state.filters.status === 'new' && !isArchived) {
-            newRequests.push(row);
-        }
+        } else if (state.filters.status === 'archived' && isArchived) { archivedRequests.push(row); } 
+        else if (state.filters.status === 'new' && !isArchived) { newRequests.push(row); }
     });
-
     const renderFn = state.currentView === 'list' ? renderRequestsAsList : renderRequestsAsCards;
     renderFn(newRequests, document.getElementById('requests-container'));
     renderFn(archivedRequests, document.getElementById('archived-requests-container'));
 }
-
 function renderRequestsAsList(requestRows, container) {
     container.innerHTML = '';
     if (requestRows.length === 0) { container.innerHTML = `<p>No submissions to display.</p>`; return; }
@@ -321,7 +310,6 @@ function renderRequestsAsList(requestRows, container) {
     container.appendChild(table);
     container.querySelectorAll('th.sortable').forEach(th => th.onclick = handleSort);
 }
-
 function renderRequestsAsCards(requestRows, container) {
     container.innerHTML = '';
     if (requestRows.length === 0) { container.innerHTML = `<p>No submissions to display.</p>`; return; }
@@ -354,10 +342,8 @@ function renderRequestsAsCards(requestRows, container) {
     });
     container.appendChild(cardContainer);
 }
-
 async function handleStatusChange(event, rowIndex) {
-    const newStatus = event.target.value;
-    event.target.disabled = true;
+    const newStatus = event.target.value; event.target.disabled = true;
     try {
         const submissionId = allRequests.rows[rowIndex][allRequests.headers.indexOf('Submission ID')];
         await updateSheetRow('Submissions', 'Submission ID', submissionId, { 'Status': newStatus });
@@ -365,42 +351,33 @@ async function handleStatusChange(event, rowIndex) {
         renderRequests();
     } catch(err) { alert('Could not update status.'); console.error("Status Update Error:", err); event.target.disabled = false; }
 }
-
 function showRequestDetailsModal(rowData, headers) {
     const modalBody = document.getElementById('modal-body');
     const ignoredFields = ['Raw Payload', 'All Services JSON', 'Submission ID', 'Timestamp', 'Notes'];
     let contentHtml = '<ul>';
     headers.forEach((header, index) => {
-        if (rowData[index] && !ignoredFields.includes(header)) {
-            contentHtml += `<li><strong>${header}:</strong> ${rowData[index]}</li>`;
-        }
+        if (rowData[index] && !ignoredFields.includes(header)) contentHtml += `<li><strong>${header}:</strong> ${rowData[index]}</li>`;
     });
     modalBody.innerHTML = contentHtml + '</ul>';
-    
     const notesTextarea = document.getElementById('modal-notes-textarea');
     const noteStatus = document.getElementById('modal-note-status');
     const originalIndex = allRequests.rows.indexOf(rowData);
-    noteStatus.textContent = '';
-    notesTextarea.value = rowData[headers.indexOf('Notes')] || '';
+    noteStatus.textContent = ''; notesTextarea.value = rowData[headers.indexOf('Notes')] || '';
     modalSaveNoteBtn.onclick = () => handleSaveNote(originalIndex);
-
     const createClientBtn = document.getElementById('modal-create-client-btn');
     const clientStatus = document.getElementById('modal-client-status');
     const submissionEmail = rowData[headers.indexOf('Email')];
-    if (!submissionEmail) {
-        createClientBtn.disabled = true; clientStatus.textContent = "No email in submission.";
-    } else {
-        const clientExists = allClients.rows.some(clientRow => clientRow[allClients.headers.indexOf('Email')] === submissionEmail);
-        if(clientExists) {
-            createClientBtn.disabled = true; clientStatus.textContent = "Client with this email already exists.";
-        } else {
+    if (!submissionEmail) { createClientBtn.disabled = true; clientStatus.textContent = "No email in submission."; } 
+    else {
+        const clientExists = allClients.rows.some(r => r[allClients.headers.indexOf('Email')] === submissionEmail);
+        if(clientExists) { createClientBtn.disabled = true; clientStatus.textContent = "Client with this email already exists."; } 
+        else {
             createClientBtn.disabled = false; clientStatus.textContent = "";
             createClientBtn.onclick = () => handleCreateClient(rowData, headers);
         }
     }
     detailsModal.style.display = 'block';
 }
-
 async function handleCreateClient(submissionRow, submissionHeaders) {
     const createClientBtn = document.getElementById('modal-create-client-btn');
     const clientStatus = document.getElementById('modal-client-status');
@@ -409,11 +386,9 @@ async function handleCreateClient(submissionRow, submissionHeaders) {
     const nameParts = fullName.split(' ');
     const clientData = {
         'First Name': nameParts[0], 'Last Name': nameParts.length > 1 ? nameParts.slice(1).join(' ') : '',
-        'Email': submissionRow[submissionHeaders.indexOf('Email')] || '',
-        'Phone': submissionRow[submissionHeaders.indexOf('Phone')] || '',
-        'Organization': submissionRow[submissionHeaders.indexOf('Organization')] || '',
-        'Status': 'Active', 'ClientID': `C-${Date.now()}`, 'Source': 'Submission',
-        'Original Submission ID': submissionRow[submissionHeaders.indexOf('Submission ID')] || ''
+        'Email': submissionRow[submissionHeaders.indexOf('Email')] || '', 'Phone': submissionRow[submissionHeaders.indexOf('Phone')] || '',
+        'Organization': submissionRow[submissionHeaders.indexOf('Organization')] || '', 'Status': 'Active', 'ClientID': `C-${Date.now()}`,
+        'Source': 'Submission', 'Original Submission ID': submissionRow[submissionHeaders.indexOf('Submission ID')] || ''
     };
     try {
         await writeData('Clients', clientData);
@@ -421,15 +396,12 @@ async function handleCreateClient(submissionRow, submissionHeaders) {
         await loadClients(); renderClients();
     } catch (err) { clientStatus.textContent = `Error: ${err.result.error.message}`; createClientBtn.disabled = false; }
 }
-
 function handleSort(event) {
     const newSortColumn = event.target.dataset.sort;
-    if (state.sortColumn === newSortColumn) {
-        state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc';
-    } else { state.sortColumn = newSortColumn; state.sortDirection = 'asc'; }
+    if (state.sortColumn === newSortColumn) { state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc'; } 
+    else { state.sortColumn = newSortColumn; state.sortDirection = 'asc'; }
     renderRequests();
 }
-
 async function handleSaveNote(rowIndex) {
     const noteStatus = document.getElementById('modal-note-status');
     noteStatus.textContent = 'Saving...';
@@ -447,40 +419,30 @@ async function loadProjects() {
     try {
         const response = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: 'Projects' });
         const values = response.result.values;
-        if (values && values.length > 1) {
-            allProjects = { headers: values[0], rows: values.slice(1) };
-        } else { allProjects = { headers: [], rows: [] }; }
+        if (values && values.length > 1) { allProjects = { headers: values[0], rows: values.slice(1) }; } 
+        else { allProjects = { headers: [], rows: [] }; }
     } catch (err) { console.warn("Could not load 'Projects' sheet.", err); allProjects = { headers: [], rows: [] }; }
 }
 async function loadTasks() {
     try {
         const response = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: 'Tasks' });
         const values = response.result.values;
-        if (values && values.length > 1) {
-            allTasks = { headers: values[0], rows: values.slice(1) };
-        } else { allTasks = { headers: [], rows: [] }; }
+        if (values && values.length > 1) { allTasks = { headers: values[0], rows: values.slice(1) }; } 
+        else { allTasks = { headers: [], rows: [] }; }
     } catch (err) { console.warn("Could not load 'Tasks' sheet.", err); allTasks = { headers: [], rows: [] }; }
 }
 function renderProjectsTab() {
-    const activeList = document.getElementById('active-projects-list');
-    const archivedList = document.getElementById('archived-projects-list');
-    const detailsColumn = document.getElementById('project-details-column');
+    const activeList = document.getElementById('active-projects-list'), archivedList = document.getElementById('archived-projects-list'), detailsColumn = document.getElementById('project-details-column');
     activeList.innerHTML = ''; archivedList.innerHTML = '';
     const archivedStatuses = ['Completed', 'Cancelled', 'Archived'];
     const { headers, rows } = allProjects;
     const [statusIndex, nameIndex, clientEmailIndex, projectIdIndex] = ['Status', 'Project Name', 'Client Email', 'ProjectID'].map(h => headers.indexOf(h));
-    
-    if ([statusIndex, nameIndex, clientEmailIndex, projectIdIndex].includes(-1)) {
-        activeList.innerHTML = '<p>Project sheet is missing required columns.</p>';
-        detailsColumn.innerHTML = ''; return;
-    }
-    
+    if ([statusIndex, nameIndex, clientEmailIndex, projectIdIndex].includes(-1)) { activeList.innerHTML = '<p>Project sheet is missing required columns.</p>'; detailsColumn.innerHTML = ''; return; }
     rows.forEach(proj => {
         const isArchived = archivedStatuses.includes(proj[statusIndex]);
         const targetList = isArchived ? archivedList : activeList;
         const client = allClients.rows.find(c => c[allClients.headers.indexOf('Email')] === proj[clientEmailIndex]);
         const clientName = client ? `${client[allClients.headers.indexOf('First Name')]} ${client[allClients.headers.indexOf('Last Name')]}` : 'Unknown Client';
-        
         const item = document.createElement('div');
         item.className = 'project-list-item'; item.dataset.projectId = proj[projectIdIndex];
         item.innerHTML = `<h4>${proj[nameIndex]}</h4><p>${clientName}</p>`;
@@ -492,7 +454,6 @@ function renderProjectsTab() {
         };
         targetList.appendChild(item);
     });
-
     if (state.selectedProjectId) {
         const item = document.querySelector(`.project-list-item[data-project-id="${state.selectedProjectId}"]`);
         if (item) { item.classList.add('active'); showProjectDetails(state.selectedProjectId); } 
@@ -503,43 +464,47 @@ function showProjectDetails(projectId, isEditMode = false) {
     const detailsColumn = document.getElementById('project-details-column');
     const project = allProjects.rows.find(p => p[allProjects.headers.indexOf('ProjectID')] === projectId);
     if (!project) { detailsColumn.innerHTML = '<p>Could not find project details.</p>'; return; }
-    
     const { headers } = allProjects;
-    const typeIndex = headers.indexOf('Project Type');
-    const projectType = typeIndex > -1 ? project[typeIndex] : 'General';
-    
     let detailsHtml = `<h3>${isEditMode ? `<input type="text" id="project-edit-ProjectName" value="${project[headers.indexOf('Project Name')]}">` : project[headers.indexOf('Project Name')]}</h3>`;
-    
     detailsHtml += renderGenericProjectDetails(project, headers, isEditMode);
-    
     detailsHtml += `<div class="modal-footer"><button id="project-edit-btn">Edit</button><button id="project-save-btn" style="display:none;">Save</button></div>`;
     detailsColumn.innerHTML = detailsHtml;
-
     document.getElementById('project-edit-btn').style.display = isEditMode ? 'none' : 'inline-block';
     document.getElementById('project-save-btn').style.display = isEditMode ? 'inline-block' : 'none';
     document.getElementById('project-edit-btn').onclick = () => showProjectDetails(projectId, true);
     document.getElementById('project-save-btn').onclick = () => handleSaveProjectUpdate(projectId);
-    
-    detailsColumn.querySelectorAll('.collapsible-header').forEach(header => {
-        header.onclick = () => {
-            header.classList.toggle('collapsed');
-            header.nextElementSibling.classList.toggle('collapsed');
-        };
+    detailsColumn.querySelectorAll('.collapsible-header').forEach(header => header.onclick = () => {
+        header.classList.toggle('collapsed');
+        header.nextElementSibling.classList.toggle('collapsed');
     });
-    
-    detailsColumn.querySelectorAll('.task-item label, .task-item input').forEach(el => {
-        el.onclick = (e) => {
-            const taskId = e.currentTarget.closest('.task-item').dataset.taskId;
-            if(e.target.type === 'checkbox') { handleTaskStatusChange(taskId, e.target.checked); } 
-            else { showTaskModal(projectId, taskId); }
-        };
+    detailsColumn.querySelectorAll('.task-item, .task-card').forEach(el => el.onclick = (e) => {
+        const taskId = e.currentTarget.dataset.taskId;
+        if(e.target.type === 'checkbox') { handleTaskStatusChange(taskId, e.target.checked); } 
+        else { showTaskModal(projectId, taskId); }
     });
-    
-    detailsColumn.querySelector('#add-task-form').onsubmit = (e) => {
-        e.preventDefault();
-        showTaskModal(projectId);
+    detailsColumn.querySelector('#add-task-form button').onclick = (e) => { e.preventDefault(); showTaskModal(projectId); };
+    document.getElementById('task-view-toggle').onclick = () => {
+        state.projectTaskView = state.projectTaskView === 'list' ? 'board' : 'list';
+        showProjectDetails(projectId, isEditMode);
     };
-
+    document.getElementById('add-bucket-btn').onclick = () => {
+        const bucketName = prompt("Enter new bucket name:");
+        if (bucketName) {
+            const taskList = document.getElementById('project-task-list');
+            if (taskList) { // list view
+                const bucketDiv = document.createElement('div');
+                bucketDiv.className = 'task-bucket';
+                bucketDiv.innerHTML = `<h5>${bucketName}</h5>`;
+                taskList.appendChild(bucketDiv);
+            } else { // board view
+                const board = document.getElementById('project-task-board');
+                const column = document.createElement('div');
+                column.className = 'task-board-column';
+                column.innerHTML = `<h5>${bucketName}</h5>`;
+                board.appendChild(column);
+            }
+        }
+    };
     const clientLink = detailsColumn.querySelector('.project-client-card a');
     if (clientLink) clientLink.onclick = () => {
         const client = allClients.rows.find(c => c[allClients.headers.indexOf('Email')] === clientLink.dataset.clientEmail);
@@ -557,7 +522,6 @@ function renderGenericProjectDetails(data, headers, isEditMode) {
     const clientName = client ? `${client[allClients.headers.indexOf('First Name')]} ${client[allClients.headers.indexOf('Last Name')]}` : 'Unknown Client';
     const coreDetails = ['Status', 'Start Date', 'Value'];
     const personnelDetails = ['Service Provider', 'Location'];
-    
     let html = `<div class="project-client-card"><h4>Client</h4><a href="#" data-client-email="${clientEmail}">${clientName}</a></div>
     <div class="project-details-grid">
         <div class="project-details-section"><h4>Core Details</h4><ul>`;
@@ -576,25 +540,16 @@ function renderGenericProjectDetails(data, headers, isEditMode) {
     return html;
 }
 function renderTasksSection(projectId) {
-    let html = `<div class="project-details-section"><h4>Tasks</h4><div id="project-task-list">`;
-    const { headers, rows } = allTasks;
-    const [idIdx, nameIdx, statusIdx, bucketIdx] = ['TaskID', 'Task Name', 'Status', 'Bucket'].map(h => headers.indexOf(h));
-    const projectTasks = rows.filter(t => t[headers.indexOf('ProjectID')] === projectId);
-    const buckets = [...new Set(projectTasks.map(t => t[bucketIdx] || 'General'))];
-
-    buckets.forEach(bucket => {
-        html += `<div class="task-bucket"><h5>${bucket}</h5>`;
-        projectTasks.filter(t => (t[bucketIdx] || 'General') === bucket).forEach(task => {
-            const isCompleted = task[statusIdx] === 'Done';
-            html += `<div class="task-item ${isCompleted ? 'completed' : ''}" data-task-id="${task[idIdx]}">
-                        <input type="checkbox" ${isCompleted ? 'checked' : ''}>
-                        <label>${task[nameIdx]}</label>
-                    </div>`;
-        });
-        html += `</div>`;
-    });
-    
-    html += `</div>
+    const renderFn = state.projectTaskView === 'list' ? renderTasksAsList : renderTasksAsBoard;
+    let html = `<div class="project-details-section">
+        <div class="project-details-section-header">
+            <h4>Tasks</h4>
+            <div class="view-controls">
+                <button id="add-bucket-btn">+</button>
+                <button id="task-view-toggle">${state.projectTaskView === 'list' ? 'Board' : 'List'} View</button>
+            </div>
+        </div>
+        ${renderFn(projectId)}
         <form id="add-task-form">
             <input type="text" id="new-task-name" placeholder="Add a new task..." required>
             <button type="submit">Add</button>
@@ -602,21 +557,48 @@ function renderTasksSection(projectId) {
     </div>`;
     return html;
 }
+function renderTasksAsList(projectId) {
+    let html = `<div id="project-task-list">`;
+    const { headers, rows } = allTasks, [idIdx, nameIdx, statusIdx, bucketIdx] = ['TaskID', 'Task Name', 'Status', 'Bucket'].map(h => headers.indexOf(h));
+    const projectTasks = rows.filter(t => t[headers.indexOf('ProjectID')] === projectId);
+    const buckets = [...new Set(projectTasks.map(t => t[bucketIdx] || 'General'))];
+    buckets.forEach(bucket => {
+        html += `<div class="task-bucket"><h5>${bucket}</h5>`;
+        projectTasks.filter(t => (t[bucketIdx] || 'General') === bucket).forEach(task => {
+            const isCompleted = task[statusIdx] === 'Done';
+            html += `<div class="task-item ${isCompleted ? 'completed' : ''}" data-task-id="${task[idIdx]}"><input type="checkbox" ${isCompleted ? 'checked' : ''}><label>${task[nameIdx]}</label></div>`;
+        });
+        html += `</div>`;
+    });
+    return html + `</div>`;
+}
+function renderTasksAsBoard(projectId) {
+    let html = `<div id="project-task-board" class="task-board">`;
+    const { headers, rows } = allTasks, [idIdx, nameIdx, statusIdx, bucketIdx] = ['TaskID', 'Task Name', 'Status', 'Bucket'].map(h => headers.indexOf(h));
+    const projectTasks = rows.filter(t => t[headers.indexOf('ProjectID')] === projectId);
+    const buckets = [...new Set(projectTasks.map(t => t[bucketIdx] || 'General'))];
+    buckets.forEach(bucket => {
+        html += `<div class="task-board-column"><h5>${bucket}</h5>`;
+        projectTasks.filter(t => (t[bucketIdx] || 'General') === bucket).forEach(task => {
+            html += `<div class="task-card" data-task-id="${task[idIdx]}"><p>${task[nameIdx]}</p></div>`;
+        });
+        html += `</div>`;
+    });
+    return html + `</div>`;
+}
 function renderAdvancedDetails(data, headers) {
     const reqId = data[headers.indexOf('Source Request ID')];
-    let html = `<div class="project-details-section collapsible-header collapsed"><h4>Advanced Details</h4><span class="toggle-arrow">&#9662;</span></div>
+    return `<div class="project-details-section collapsible-header collapsed"><h4>Advanced Details</h4><span class="toggle-arrow">&#9662;</span></div>
     <div class="collapsible-content collapsed"><ul>
         <li><strong>ProjectID:</strong> ${data[headers.indexOf('ProjectID')]}</li>
         <li><strong>Source Request ID:</strong> ${reqId ? `<a href="#" class="source-request-link" data-req-id="${reqId}">${reqId}</a>` : 'N/A'}</li>
     </ul></div>`;
-    return html;
 }
 async function handleSaveProjectUpdate(projectId) {
     const btn = document.getElementById('project-save-btn');
     btn.textContent = 'Saving...'; btn.disabled = true;
     const dataToUpdate = {};
-    const fields = ['Project Name', 'Status', 'Start Date', 'Value', 'Service Provider', 'Location'];
-    fields.forEach(h => {
+    ['Project Name', 'Status', 'Start Date', 'Value', 'Service Provider', 'Location'].forEach(h => {
         const input = document.getElementById(`project-edit-${h.replace(/\s+/g, '')}`);
         if(input) dataToUpdate[h] = input.value;
     });
@@ -624,11 +606,7 @@ async function handleSaveProjectUpdate(projectId) {
         await updateSheetRow('Projects', 'ProjectID', projectId, dataToUpdate);
         await loadProjects();
         renderProjectsTab();
-    } catch(err) {
-        console.error('Project update error', err);
-        alert('Could not save project updates.');
-        btn.textContent = 'Save'; btn.disabled = false;
-    }
+    } catch(err) { console.error('Project update error', err); alert('Could not save project updates.'); btn.textContent = 'Save'; btn.disabled = false; }
 }
 async function handleCreateProjectSubmit(event) {
     event.preventDefault();
@@ -636,14 +614,10 @@ async function handleCreateProjectSubmit(event) {
     statusSpan.textContent = 'Creating project...';
     const sourceRequestSelect = document.getElementById('project-source-request');
     const projectData = {
-        'Project Name': document.getElementById('project-name').value,
-        'Client Email': sourceRequestSelect.dataset.clientEmail,
-        'Status': document.getElementById('project-status').value,
-        'Value': document.getElementById('project-value').value,
-        'Start Date': document.getElementById('project-start-date').value,
-        'ProjectID': `P-${Date.now()}`,
-        'Source Request ID': sourceRequestSelect.value,
-        'Project Type': document.getElementById('project-type').value
+        'Project Name': document.getElementById('project-name').value, 'Client Email': sourceRequestSelect.dataset.clientEmail,
+        'Status': document.getElementById('project-status').value, 'Value': document.getElementById('project-value').value,
+        'Start Date': document.getElementById('project-start-date').value, 'ProjectID': `P-${Date.now()}`,
+        'Source Request ID': sourceRequestSelect.value, 'Project Type': document.getElementById('project-type').value
     };
     try {
         await writeData('Projects', projectData);
@@ -665,26 +639,77 @@ function showTaskModal(projectId, taskId = null) {
     form.reset();
     document.getElementById('task-project-id-input').value = projectId;
     document.getElementById('task-modal-status').textContent = '';
-    
+    const { headers, rows } = allTasks;
+    const projectTasks = rows.filter(t => t[headers.indexOf('ProjectID')] === projectId);
+    const buckets = [...new Set(projectTasks.map(t => t[headers.indexOf('Bucket')] || 'General'))];
+    const bucketSelect = document.getElementById('task-bucket');
+    bucketSelect.innerHTML = '';
+    buckets.forEach(b => bucketSelect.add(new Option(b, b)));
+
     if (taskId) {
         document.getElementById('task-modal-title').textContent = 'Edit Task';
         document.getElementById('task-id-input').value = taskId;
         const task = allTasks.rows.find(t => t[allTasks.headers.indexOf('TaskID')] === taskId);
         if(task) {
-            const { headers } = allTasks;
             document.getElementById('task-title').value = task[headers.indexOf('Task Name')] || '';
             document.getElementById('task-description').value = task[headers.indexOf('Description')] || '';
             document.getElementById('task-due-date').value = task[headers.indexOf('Due Date')] || '';
             document.getElementById('task-assignee').value = task[headers.indexOf('Assignee')] || '';
             document.getElementById('task-status').value = task[headers.indexOf('Status')] || 'To Do';
-            document.getElementById('task-bucket').value = task[headers.indexOf('Bucket')] || 'General';
+            bucketSelect.value = task[headers.indexOf('Bucket')] || 'General';
+            renderSubtasks(JSON.parse(task[headers.indexOf('Subtasks')] || '[]'));
+            renderLinks(JSON.parse(task[headers.indexOf('Links')] || '[]'));
         }
     } else {
         document.getElementById('task-modal-title').textContent = 'New Task';
         const newTaskName = document.getElementById('new-task-name')?.value;
         if(newTaskName) document.getElementById('task-title').value = newTaskName;
+        renderSubtasks([]); renderLinks([]);
     }
+    document.getElementById('add-subtask-btn').onclick = () => {
+        const name = document.getElementById('new-subtask-name').value; if(!name) return;
+        const subtasks = JSON.parse(document.getElementById('subtasks-data').value);
+        subtasks.push({ name, completed: false });
+        renderSubtasks(subtasks);
+        document.getElementById('new-subtask-name').value = '';
+    };
+    document.getElementById('add-link-btn').onclick = () => {
+        const url = document.getElementById('new-link-url').value; if(!url) return;
+        const links = JSON.parse(document.getElementById('links-data').value);
+        links.push(url);
+        renderLinks(links);
+        document.getElementById('new-link-url').value = '';
+    };
     taskDetailsModal.style.display = 'block';
+}
+function renderSubtasks(subtasks) {
+    const container = document.getElementById('subtasks-container');
+    container.innerHTML = `<input type="hidden" id="subtasks-data" value='${JSON.stringify(subtasks)}'>`;
+    subtasks.forEach((sub, i) => {
+        container.innerHTML += `<div class="item-tag"><input type="checkbox" ${sub.completed ? 'checked' : ''} onchange="updateSubtaskStatus(${i}, this.checked)"> ${sub.name} <button onclick="removeSubtask(${i})">&times;</button></div>`;
+    });
+}
+function updateSubtaskStatus(index, completed) {
+    const subtasks = JSON.parse(document.getElementById('subtasks-data').value);
+    subtasks[index].completed = completed;
+    renderSubtasks(subtasks);
+}
+function removeSubtask(index) {
+    const subtasks = JSON.parse(document.getElementById('subtasks-data').value);
+    subtasks.splice(index, 1);
+    renderSubtasks(subtasks);
+}
+function renderLinks(links) {
+    const container = document.getElementById('links-container');
+    container.innerHTML = `<input type="hidden" id="links-data" value='${JSON.stringify(links)}'>`;
+    links.forEach((link, i) => {
+        container.innerHTML += `<div class="item-tag"><a href="${link}" target="_blank">${link}</a> <button onclick="removeLink(${i})">&times;</button></div>`;
+    });
+}
+function removeLink(index) {
+    const links = JSON.parse(document.getElementById('links-data').value);
+    links.splice(index, 1);
+    renderLinks(links);
 }
 async function handleSaveTask(event) {
     event.preventDefault();
@@ -699,14 +724,12 @@ async function handleSaveTask(event) {
         'Assignee': document.getElementById('task-assignee').value,
         'Status': document.getElementById('task-status').value,
         'Bucket': document.getElementById('task-bucket').value || 'General',
+        'Subtasks': document.getElementById('subtasks-data').value,
+        'Links': document.getElementById('links-data').value
     };
     try {
-        if (taskId) { // Update existing task
-            await updateSheetRow('Tasks', 'TaskID', taskId, taskData);
-        } else { // Create new task
-            taskData.TaskID = `T-${Date.now()}`;
-            await writeData('Tasks', taskData);
-        }
+        if (taskId) await updateSheetRow('Tasks', 'TaskID', taskId, taskData);
+        else { taskData.TaskID = `T-${Date.now()}`; await writeData('Tasks', taskData); }
         await loadTasks();
         showProjectDetails(taskData.ProjectID);
         statusSpan.textContent = 'Saved!';
@@ -721,12 +744,8 @@ async function handleTaskStatusChange(taskId, isChecked) {
         const task = allTasks.rows.find(t => t[allTasks.headers.indexOf('TaskID')] === taskId);
         const projectId = task ? task[allTasks.headers.indexOf('ProjectID')] : state.selectedProjectId;
         if(projectId) showProjectDetails(projectId);
-    } catch(err) {
-        console.error('Task status update error', err);
-        alert('Could not update task status.');
-    }
+    } catch(err) { console.error('Task status update error', err); alert('Could not update task status.'); }
 }
-
 
 // --- CLIENTS TAB FUNCTIONS ---
 async function loadClients() {
@@ -816,9 +835,8 @@ function renderClientsAsCards() {
 }
 function handleClientSort(event) {
     const newSortColumn = event.target.dataset.sortClient;
-    if (state.clientSortColumn === newSortColumn) {
-        state.clientSortDirection = state.clientSortDirection === 'asc' ? 'desc' : 'asc';
-    } else { state.clientSortColumn = newSortColumn; state.clientSortDirection = 'asc'; }
+    if (state.clientSortColumn === newSortColumn) { state.clientSortDirection = state.clientSortDirection === 'asc' ? 'desc' : 'asc'; } 
+    else { state.clientSortColumn = newSortColumn; state.clientSortDirection = 'asc'; }
     renderClients();
 }
 function showClientDetailsModal(rowData, headers) {
@@ -828,19 +846,16 @@ function showClientDetailsModal(rowData, headers) {
     statusSpan.textContent = '';
     
     const tabButtons = clientDetailsModal.querySelectorAll('.client-tab-button');
-    tabButtons.forEach(button => {
-        button.onclick = (e) => {
-            tabButtons.forEach(btn => btn.classList.remove('active'));
-            e.currentTarget.classList.add('active');
-            clientDetailsModal.querySelectorAll('.client-tab-content').forEach(c => c.classList.remove('active'));
-            document.getElementById(`client-tab-${e.currentTarget.dataset.tab}`).classList.add('active');
-            const isEditable = e.currentTarget.dataset.editable === 'true';
-            editBtn.style.display = isEditable ? 'inline-block' : 'none';
-            saveBtn.style.display = 'none';
-        };
+    tabButtons.forEach(button => button.onclick = (e) => {
+        tabButtons.forEach(btn => btn.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        clientDetailsModal.querySelectorAll('.client-tab-content').forEach(c => c.classList.remove('active'));
+        document.getElementById(`client-tab-${e.currentTarget.dataset.tab}`).classList.add('active');
+        const isEditable = e.currentTarget.dataset.editable === 'true';
+        editBtn.style.display = isEditable ? 'inline-block' : 'none';
+        saveBtn.style.display = 'none';
     });
     tabButtons[0].click();
-
     const renderViewMode = (data) => {
         populateClientDetailsTab(data, headers, false);
         populateClientHistoryTab(data[headers.indexOf('Email')]);
@@ -907,7 +922,6 @@ function populateClientHistoryTab(clientEmail) {
         });
         contentHtml += '</ul>';
     } else { contentHtml += '<p>No service requests found for this client.</p>'; }
-
     contentHtml += '<h3>Projects</h3>';
     const clientProjects = allProjects.rows.filter(row => row[allProjects.headers.indexOf('Client Email')] === clientEmail);
     if (clientProjects.length > 0) {
@@ -937,7 +951,6 @@ function populateClientNotesTab(rowData, headers, isEditMode) {
     if (isEditMode) {
         contentHtml += `<textarea id="client-edit-Notes">${rowData[notesIndex] || ''}</textarea>`;
     } else { contentHtml += `<p>${(rowData[notesIndex] || 'No notes.').replace(/\n/g, '<br>')}</p>`; }
-
     contentHtml += '<h3>Contact Logs</h3>';
     let logs = []; try { logs = JSON.parse(rowData[logsIndex] || '[]'); } catch(e) { console.error("Could not parse logs", e); }
     if (logs.length > 0) logs.forEach(log => contentHtml += `<div class="contact-log"><small>${new Date(log.date).toLocaleString()}</small><p>${log.note}</p></div>`);
@@ -964,10 +977,8 @@ function populateClientFinancialsTab(clientEmail) {
         const currentYear = new Date().getFullYear();
         let ytdIncome = 0;
         allProjects.rows.forEach(row => {
-            if (row[dateIdx]) {
-                if (row[emailIdx] === clientEmail && new Date(row[dateIdx]).getFullYear() === currentYear) {
-                    ytdIncome += parseFloat(row[valIdx]) || 0;
-                }
+            if (row[dateIdx] && row[emailIdx] === clientEmail && new Date(row[dateIdx]).getFullYear() === currentYear) {
+                ytdIncome += parseFloat(row[valIdx]) || 0;
             }
         });
         contentHtml += `<h2>$${ytdIncome.toFixed(2)}</h2>`;
