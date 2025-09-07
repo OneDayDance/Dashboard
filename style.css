@@ -122,6 +122,14 @@ button[disabled] {
     background-color: #FF9D76; /* Orange */
 }
 
+/* Specific button overrides */
+#client-tab-actions button {
+    background-color: #FF9D76;
+}
+#delete-client-btn {
+    background-color: #dc3545 !important; /* Danger color */
+}
+
 
 /* --- Themed Tabs --- */
 .tabs-container {
@@ -302,6 +310,34 @@ button[disabled] {
     padding-bottom: 5px;
     margin-bottom: 10px;
 }
+.project-details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+.project-client-card {
+    background: #f9f9f9;
+    border: 1px solid #eee;
+    padding: 15px;
+    border-radius: 8px;
+}
+.project-client-card h4 {
+    margin: 0 0 10px 0;
+}
+.project-client-card a {
+    text-decoration: none;
+    font-weight: bold;
+    color: #FF9D76;
+}
+
+.task-list { list-style-type: none; padding: 0; }
+.task-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #eee; }
+.task-item input[type="checkbox"] { width: 20px; height: 20px; }
+.task-item label { flex-grow: 1; }
+.task-item.completed label { text-decoration: line-through; color: #888; }
+#add-task-form { display: flex; gap: 10px; margin-top: 10px; }
+#add-task-form input { flex-grow: 1; }
+
 
 /* --- Themed Modals --- */
 .modal {
@@ -371,6 +407,7 @@ button[disabled] {
 /* Modal Content Styling */
 #modal-body ul, .client-tab-content ul { list-style-type: none; padding: 0; }
 #modal-body li, .client-tab-content li { padding: 8px 0; border-bottom: 1px solid #eee; display: flex; align-items: center; }
+.client-tab-content a { color: #FF9D76; text-decoration: none; font-weight: bold; cursor: pointer; }
 #modal-body li strong, .client-tab-content li strong { display: inline-block; width: 180px; color: #555; flex-shrink: 0;}
 .client-tab-content input, .client-tab-content textarea, .client-tab-content select, #delete-confirm-input {
     width: 100%;
@@ -379,6 +416,14 @@ button[disabled] {
     border: 1px solid #ccc;
 }
 #delete-confirm-input { margin-top: 10px; }
+.warning-box {
+    background-color: #fff3cd;
+    border: 1px solid #ffeeba;
+    color: #856404;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+}
 .client-tab-content textarea {
     min-height: 80px;
     resize: vertical;
@@ -390,6 +435,7 @@ button[disabled] {
 #client-tab-notes h3:first-child, #client-tab-history h3:first-child, #client-tab-actions h3:first-child {
     margin-top: 0;
 }
+#client-tab-actions { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
 .contact-log {
     border: 1px solid #eee;
     padding: 10px;
