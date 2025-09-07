@@ -7,15 +7,21 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <header>
-        <h1>Client Management Dashboard</h1>
-        <div id="auth-container">
+    <div id="landing-container">
+        <div class="landing-box">
+            <h1>Client Management Dashboard</h1>
+            <p>Please authorize to manage your clients.</p>
             <button id="authorize_button">Authorize</button>
-            <button id="signout_button" style="display: none;">Sign Out</button>
         </div>
-    </header>
+    </div>
 
     <div id="app-container" style="display: none;">
+        <header>
+            <h1>Client Management Dashboard</h1>
+            <div id="auth-container">
+                <button id="signout_button">Sign Out</button>
+            </div>
+        </header>
         <nav class="tab-nav">
             <button class="tab-button active" data-tab="requests">Requests</button>
             <button class="tab-button" data-tab="analytics">Analytics</button>
