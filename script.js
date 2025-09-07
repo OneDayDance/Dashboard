@@ -530,23 +530,30 @@ function showProjectDetails(projectId, isEditMode = false) {
         header.classList.toggle('collapsed');
         header.nextElementSibling.classList.toggle('collapsed');
     });
-    detailsColumn.querySelectorAll('.task-item, .task-card, .task-bucket, .task-board-column').forEach(el => {
-        el.setAttribute('draggable', true);
-        el.ondragstart = (e) => {
+
+    // --- Drag and Drop Event Listeners ---
+    detailsColumn.querySelectorAll('[draggable="true"]').forEach(el => {
+        el.addEventListener('dragstart', (e) => {
             e.stopPropagation();
-            const type = el.matches('.task-bucket, .task-board-column') ? 'text/bucket' : 'text/plain';
-            const value = el.matches('.task-bucket, .task-board-column') ? el.dataset.bucket : el.dataset.taskId;
-            e.dataTransfer.setData(type, value);
-            e.currentTarget.classList.add('dragging');
-        };
-        el.ondragend = (e) => e.currentTarget.classList.remove('dragging');
-        el.ondragover = handleDragOver;
-        el.ondragleave = (e) => {
-             e.currentTarget.classList.remove('drag-over');
-             const indicator = document.querySelector('.drop-indicator');
-             if (indicator) indicator.remove();
-        };
-        el.ondrop = handleDrop;
+            const isBucket = el.matches('.task-bucket, .task-board-column');
+            if (isBucket) {
+                e.dataTransfer.setData('text/bucket-id', el.dataset.bucket);
+            } else {
+                e.dataTransfer.setData('text/task-id', el.dataset.taskId);
+            }
+            e.dataTransfer.effectAllowed = 'move';
+            setTimeout(() => el.classList.add('dragging'), 0);
+        });
+        el.addEventListener('dragend', () => {
+            el.classList.remove('dragging');
+            document.querySelectorAll('.task-placeholder, .bucket-placeholder').forEach(p => p.remove());
+        });
+    });
+
+    const dropzones = detailsColumn.querySelectorAll('.task-bucket, .task-board-column, #project-task-board');
+    dropzones.forEach(zone => {
+        zone.addEventListener('dragover', handleDragOver);
+        zone.addEventListener('drop', handleDrop);
     });
 
     detailsColumn.querySelectorAll('.task-item, .task-card').forEach(el => {
@@ -631,7 +638,7 @@ function renderTasksAsList(projectId) {
     const projectTasks = getProjectTasksSorted(projectId);
     const buckets = getProjectBuckets(projectId);
     buckets.forEach(bucket => {
-        html += `<div class="task-bucket" data-bucket="${bucket}"><h5>${bucket}</h5>`;
+        html += `<div class="task-bucket" draggable="true" data-bucket="${bucket}"><h5>${bucket}</h5>`;
         projectTasks.filter(t => (t.row[allTasks.headers.indexOf('Bucket')] || 'General') === bucket).forEach(task => {
             html += renderTaskItem(task.row, task.subtasks);
         });
@@ -644,7 +651,7 @@ function renderTasksAsBoard(projectId) {
     const projectTasks = getProjectTasksSorted(projectId);
     const buckets = getProjectBuckets(projectId);
     buckets.forEach(bucket => {
-        html += `<div class="task-board-column" data-bucket="${bucket}"><h5>${bucket}</h5>`;
+        html += `<div class="task-board-column" draggable="true" data-bucket="${bucket}"><h5>${bucket}</h5>`;
         projectTasks.filter(t => (t.row[allTasks.headers.indexOf('Bucket')] || 'General') === bucket).forEach(task => {
             html += renderTaskCard(task.row, task.subtasks);
         });
@@ -664,7 +671,7 @@ function renderTaskItem(taskRow, subtasks) {
         const progress = subtasks.length > 0 ? (completedCount / subtasks.length) * 100 : 0;
         subtasksHtml += `<div class="task-progress" title="${completedCount}/${subtasks.length} complete"><div class="task-progress-bar" style="width:${progress}%"></div></div>`;
     }
-    return `<div class="task-item" data-task-id="${taskRow[idIdx]}">
+    return `<div class="task-item" draggable="true" data-task-id="${taskRow[idIdx]}">
                 <div class="task-main ${isCompleted ? 'completed' : ''}">
                     <input type="checkbox" ${isCompleted ? 'checked' : ''}>
                     <label>${taskRow[nameIdx]}</label>
@@ -679,7 +686,7 @@ function renderTaskCard(taskRow, subtasks) {
         const completedCount = subtasks.filter(s => s.completed).length;
         subtaskSummary = `<p class="subtask-summary">✓ ${completedCount}/${subtasks.length}</p>`;
      }
-    return `<div class="task-card" data-task-id="${taskRow[idIdx]}"><p>${taskRow[nameIdx]}</p>${subtaskSummary}</div>`;
+    return `<div class="task-card" draggable="true" data-task-id="${taskRow[idIdx]}"><p>${taskRow[nameIdx]}</p>${subtaskSummary}</div>`;
 }
 function getProjectTasksSorted(projectId) {
     const { headers, rows } = allTasks, [idIdx, sortIdx, subtaskIdx] = ['ProjectID', 'SortIndex', 'Subtasks'].map(h => headers.indexOf(h));
@@ -695,28 +702,10 @@ function getProjectBuckets(projectId) {
     }
     return ['General'];
 }
-function handleDragOver(e) {
-    e.preventDefault();
-    const container = e.currentTarget;
-    const draggingEl = document.querySelector('.dragging');
-    if (!draggingEl) return;
-    if (draggingEl.matches('.task-bucket, .task-board-column')) { // If dragging a bucket
-        container.classList.add('drag-over');
-        return;
-    }
-    const afterElement = getDragAfterElement(container, e.clientY);
-    const indicator = document.querySelector('.drop-indicator');
-    if (indicator) indicator.remove();
-    const newIndicator = document.createElement('div');
-    newIndicator.className = 'drop-indicator';
-    if (afterElement == null) {
-        container.appendChild(newIndicator);
-    } else {
-        container.insertBefore(newIndicator, afterElement);
-    }
-}
+
+// --- DRAG AND DROP LOGIC ---
 function getDragAfterElement(container, y) {
-    const draggableElements = [...container.querySelectorAll('[draggable="true"]:not(.dragging):not(.task-bucket):not(.task-board-column)')];
+    const draggableElements = [...container.querySelectorAll('.task-item:not(.dragging), .task-card:not(.dragging)')];
     return draggableElements.reduce((closest, child) => {
         const box = child.getBoundingClientRect();
         const offset = y - box.top - box.height / 2;
@@ -727,57 +716,116 @@ function getDragAfterElement(container, y) {
         }
     }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
-async function handleDrop(e) {
-    e.preventDefault(); e.stopPropagation();
-    e.currentTarget.classList.remove('drag-over');
-    const indicator = document.querySelector('.drop-indicator');
-    if(indicator) indicator.remove();
-    
-    const draggedElement = document.querySelector('.dragging');
-    if (!draggedElement) return;
 
-    const originalParent = draggedElement.parentNode;
-    const originalNextSibling = draggedElement.nextSibling;
-    
-    const draggedBucketName = e.dataTransfer.getData('text/bucket');
-    const taskId = e.dataTransfer.getData('text/plain');
-
-    // --- Optimistic UI Update ---
-    if (draggedBucketName) { // Dropping a bucket
-        const container = e.currentTarget.parentNode;
-        container.insertBefore(draggedElement, e.currentTarget);
-    } else if (taskId) { // Dropping a task
-        const container = e.currentTarget.closest('.task-bucket, .task-board-column');
-        const afterElement = getDragAfterElement(container, e.clientY);
-        if (afterElement == null) {
-            container.appendChild(draggedElement);
+function getDragAfterBucket(container, x) {
+    const draggableElements = [...container.querySelectorAll('.task-board-column:not(.dragging)')];
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = x - box.left - box.width / 2;
+        if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
         } else {
-            container.insertBefore(draggedElement, afterElement);
+            return closest;
+        }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    const draggingEl = document.querySelector('.dragging');
+    if (!draggingEl) return;
+
+    // Remove any existing placeholder before creating a new one
+    document.querySelectorAll('.task-placeholder, .bucket-placeholder').forEach(p => p.remove());
+
+    if (draggingEl.matches('.task-bucket, .task-board-column')) {
+        // --- BUCKET DRAGGING LOGIC ---
+        const container = document.getElementById('project-task-board');
+        const afterElement = getDragAfterBucket(container, e.clientX);
+        const placeholder = document.createElement('div');
+        placeholder.className = 'bucket-placeholder';
+        if (afterElement == null) {
+            container.appendChild(placeholder);
+        } else {
+            container.insertBefore(placeholder, afterElement);
+        }
+    } else {
+        // --- TASK DRAGGING LOGIC ---
+        const container = e.target.closest('.task-bucket, .task-board-column');
+        if (!container) return;
+
+        const afterElement = getDragAfterElement(container, e.clientY);
+        const placeholder = document.createElement('div');
+        placeholder.className = 'task-placeholder';
+        placeholder.style.height = `${draggingEl.offsetHeight}px`;
+
+        if (afterElement == null) {
+            const addTaskBtn = container.querySelector('.add-task-to-bucket-btn');
+            container.insertBefore(placeholder, addTaskBtn);
+        } else {
+            container.insertBefore(placeholder, afterElement);
         }
     }
+}
 
-    // --- Save Data and Rollback on Failure ---
+async function handleDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const placeholder = document.querySelector('.task-placeholder, .bucket-placeholder');
+    const draggedElement = document.querySelector('.dragging');
+    
+    if (!draggedElement || !placeholder) {
+        if (draggedElement) draggedElement.classList.remove('dragging');
+        if (placeholder) placeholder.remove();
+        return;
+    }
+
+    const taskId = e.dataTransfer.getData('text/task-id');
+    const bucketId = e.dataTransfer.getData('text/bucket-id');
+
+    // Optimistic UI Update: Replace placeholder with the actual element
+    placeholder.parentNode.replaceChild(draggedElement, placeholder);
+    draggedElement.classList.remove('dragging');
+
     try {
-        if (draggedBucketName) {
-            const newBucketsOrder = Array.from(draggedElement.parentNode.children).map(el => el.dataset.bucket);
+        if (bucketId) {
+            // --- BUCKET DROP SAVE LOGIC ---
+            const newBucketsOrder = Array.from(draggedElement.parentNode.children)
+                                         .filter(el => el.matches('[data-bucket]'))
+                                         .map(el => el.dataset.bucket);
             await updateSheetRow('Projects', 'ProjectID', state.selectedProjectId, { 'Task Buckets': JSON.stringify(newBucketsOrder) });
             await loadProjects();
         } else if (taskId) {
-            const droppedOnBucketName = e.currentTarget.closest('.task-bucket, .task-board-column').dataset.bucket;
-            const taskContainer = draggedElement.parentNode;
-            const newTasksInBucket = Array.from(taskContainer.querySelectorAll('[data-task-id]'));
-            const updates = newTasksInBucket.map((taskEl, index) => {
-                return updateSheetRow('Tasks', 'TaskID', taskEl.dataset.taskId, { 'Bucket': droppedOnBucketName, 'SortIndex': index });
+            // --- TASK DROP SAVE LOGIC ---
+            const allBuckets = document.querySelectorAll('.task-bucket, .task-board-column');
+            const allPromises = [];
+            allBuckets.forEach(bucketEl => {
+                const bucketName = bucketEl.dataset.bucket;
+                const tasksInBucket = Array.from(bucketEl.querySelectorAll('[data-task-id]'));
+                tasksInBucket.forEach((taskEl, index) => {
+                     allPromises.push(
+                        updateSheetRow('Tasks', 'TaskID', taskEl.dataset.taskId, { 
+                            'Bucket': bucketName, 
+                            'SortIndex': index 
+                        })
+                    );
+                });
             });
-            await Promise.all(updates);
+            await Promise.all(allPromises);
             await loadTasks();
         }
+        // Re-render the project details to ensure UI is perfectly in sync with data
+        showProjectDetails(state.selectedProjectId);
     } catch (err) {
-        alert("Error saving new order. Reverting changes.");
+        alert("Error saving new order. The view will be refreshed to reflect the last saved state.");
         console.error("Drag/drop save error:", err);
-        originalParent.insertBefore(draggedElement, originalNextSibling); // Rollback UI
+        // On failure, re-render from the last known good state
+        showProjectDetails(state.selectedProjectId);
     }
 }
+
+
 function renderAdvancedDetails(data, headers) {
     const reqId = data[headers.indexOf('Source Request ID')];
     return `<div class="project-details-section collapsible-header collapsed"><h4>Advanced Details</h4><span class="toggle-arrow">&#9662;</span></div>
@@ -1391,4 +1439,3 @@ function populateColumnSelector(headers, visibleColumns, containerId) {
         container.innerHTML += `<div><label><input type="checkbox" value="${header}" ${isChecked ? 'checked' : ''}>${header}</label></div>`;
     });
 }
-
