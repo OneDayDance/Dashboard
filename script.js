@@ -8,6 +8,7 @@ const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
 let allRequests = { headers: [], rows: [] };
 let allClients = { headers: [], rows: [] };
 let allProjects = { headers: [], rows: [] };
+let allTasks = { headers: [], rows: [] };
 let state = {
     // requests tab state
     sortColumn: 'Submission Date',
@@ -77,19 +78,16 @@ document.addEventListener('DOMContentLoaded', () => {
     clientSearchBar.oninput = (e) => updateClientSearch(e.target.value);
     clientStatusFilter.onchange = (e) => updateClientFilter('status', e.target.value);
     
-    closeModalButtons.forEach(btn => btn.onclick = () => {
-        detailsModal.style.display = 'none';
-        columnModal.style.display = 'none';
-        clientDetailsModal.style.display = 'none';
-        createProjectModal.style.display = 'none';
-        deleteClientModal.style.display = 'none';
-        clientColumnModal.style.display = 'none';
-    });
     window.onclick = (event) => { 
         if (event.target.classList.contains('modal')) {
             event.target.style.display = 'none';
         }
     };
+    closeModalButtons.forEach(btn => btn.parentElement.parentElement.onclick = (e) => {
+        if (e.target.classList.contains('close-button')) {
+            e.currentTarget.style.display = 'none';
+        }
+    });
     
     listViewBtn.onclick = () => setView('list');
     cardViewBtn.onclick = () => setView('card');
@@ -101,10 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
     clientColumnSelectBtn.onclick = () => showColumnModal('clients');
     document.getElementById('save-client-columns-btn').onclick = () => handleSaveColumns('clients');
     
-    archiveToggle.onclick = () => {
-        archiveToggle.classList.toggle('collapsed');
-        archiveContainer.classList.toggle('collapsed');
-    };
+    archiveToggle.onclick = (e) => e.currentTarget.classList.toggle('collapsed');
     document.getElementById('archived-projects-toggle').onclick = (e) => {
         e.currentTarget.classList.toggle('collapsed');
         document.getElementById('archived-projects-list').classList.toggle('collapsed');
@@ -162,7 +157,7 @@ async function onSignInSuccess() {
 }
 
 async function loadInitialData() {
-    await Promise.all([loadRequests(), loadClients(), loadProjects()]);
+    await Promise.all([loadRequests(), loadClients(), loadProjects(), loadTasks()]);
 }
 
 function handleAuthClick() {
@@ -201,34 +196,15 @@ function setupTabs() {
 function loadDataForActiveTab() {
     const activeTab = document.querySelector('.tab-button.active').dataset.tab;
     switch (activeTab) {
-        case 'requests':
-            renderRequests();
-            break;
-        case 'clients':
-            renderClients();
-            break;
-        case 'projects':
-            renderProjectsTab();
-            break;
+        case 'requests': renderRequests(); break;
+        case 'clients': renderClients(); break;
+        case 'projects': renderProjectsTab(); break;
     }
 }
-function updateFilter(key, value) {
-    state.filters[key] = value;
-    renderRequests();
-}
-function updateSearch(term) {
-    state.searchTerm = term.toLowerCase();
-    renderRequests();
-}
-function updateClientFilter(key, value) {
-    state.clientFilters[key] = value;
-    renderClients();
-}
-
-function updateClientSearch(term) {
-    state.clientSearchTerm = term.toLowerCase();
-    renderClients();
-}
+function updateFilter(key, value) { state.filters[key] = value; renderRequests(); }
+function updateSearch(term) { state.searchTerm = term.toLowerCase(); renderRequests(); }
+function updateClientFilter(key, value) { state.clientFilters[key] = value; renderClients(); }
+function updateClientSearch(term) { state.clientSearchTerm = term.toLowerCase(); renderClients(); }
 
 function setView(view) {
     state.currentView = view;
@@ -268,16 +244,12 @@ function handleSaveColumns(type) {
 // --- REQUESTS TAB FUNCTIONS ---
 async function loadRequests() {
     try {
-        const response = await gapi.client.sheets.spreadsheets.values.get({
-            spreadsheetId: SPREADSHEET_ID, range: 'Submissions',
-        });
+        const response = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: 'Submissions' });
         const values = response.result.values;
         if (values && values.length > 1) {
             allRequests = { headers: values[0], rows: values.slice(1) };
             populateServiceFilter();
-        } else {
-            allRequests = { headers: [], rows: [] };
-        }
+        } else { allRequests = { headers: [], rows: [] }; }
     } catch (err) {
         console.error("Error loading requests:", err);
         document.getElementById('requests-container').innerHTML = `<p style="color:red;">Error loading requests.</p>`;
@@ -304,7 +276,7 @@ function renderRequests() {
     const sortIndex = headers.indexOf(state.sortColumn);
     if (sortIndex > -1) {
         processedRows.sort((a, b) => {
-            let valA = a[sortIndex] || ''; let valB = b[sortIndex] || '';
+            let valA = a[sortIndex] || '', valB = b[sortIndex] || '';
             if (state.sortColumn === 'Submission Date') {
                 valA = new Date(valA).getTime() || 0;
                 valB = new Date(valB).getTime() || 0;
@@ -321,8 +293,7 @@ function renderRequests() {
     processedRows.forEach(row => {
         const isArchived = row[statusIndex] === 'Archived';
         if (state.filters.status === 'all') {
-            if (isArchived) archivedRequests.push(row);
-            else newRequests.push(row);
+            if (isArchived) archivedRequests.push(row); else newRequests.push(row);
         } else if (state.filters.status === 'archived' && isArchived) {
             archivedRequests.push(row);
         } else if (state.filters.status === 'new' && !isArchived) {
@@ -563,14 +534,25 @@ async function loadProjects() {
         const values = response.result.values;
         if (values && values.length > 1) {
             allProjects = { headers: values[0], rows: values.slice(1) };
-        } else {
-            allProjects = { headers: [], rows: [] };
-        }
+        } else { allProjects = { headers: [], rows: [] }; }
     } catch (err) {
         console.warn("Could not load 'Projects' sheet.", err);
         allProjects = { headers: [], rows: [] };
     }
 }
+async function loadTasks() {
+    try {
+        const response = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: 'Tasks' });
+        const values = response.result.values;
+        if (values && values.length > 1) {
+            allTasks = { headers: values[0], rows: values.slice(1) };
+        } else { allTasks = { headers: [], rows: [] }; }
+    } catch (err) {
+        console.warn("Could not load 'Tasks' sheet.", err);
+        allTasks = { headers: [], rows: [] };
+    }
+}
+
 
 function renderProjectsTab() {
     const activeList = document.getElementById('active-projects-list');
@@ -578,20 +560,21 @@ function renderProjectsTab() {
     const detailsColumn = document.getElementById('project-details-column');
     activeList.innerHTML = '';
     archivedList.innerHTML = '';
-    detailsColumn.innerHTML = '<p>Select a project to view its details.</p>';
 
     const archivedStatuses = ['Completed', 'Cancelled', 'Archived'];
-    const statusIndex = allProjects.headers.indexOf('Status');
-    const nameIndex = allProjects.headers.indexOf('Project Name');
-    const clientEmailIndex = allProjects.headers.indexOf('Client Email');
-    const projectIdIndex = allProjects.headers.indexOf('ProjectID');
+    const { headers, rows } = allProjects;
+    const statusIndex = headers.indexOf('Status');
+    const nameIndex = headers.indexOf('Project Name');
+    const clientEmailIndex = headers.indexOf('Client Email');
+    const projectIdIndex = headers.indexOf('ProjectID');
     
-    if (statusIndex === -1 || nameIndex === -1 || clientEmailIndex === -1 || projectIdIndex === -1) {
+    if ([statusIndex, nameIndex, clientEmailIndex, projectIdIndex].includes(-1)) {
         activeList.innerHTML = '<p>Project sheet is missing required columns (Status, Project Name, Client Email, ProjectID).</p>';
+        detailsColumn.innerHTML = '';
         return;
     }
     
-    allProjects.rows.forEach(proj => {
+    rows.forEach(proj => {
         const isArchived = archivedStatuses.includes(proj[statusIndex]);
         const targetList = isArchived ? archivedList : activeList;
         
@@ -610,6 +593,19 @@ function renderProjectsTab() {
         };
         targetList.appendChild(item);
     });
+
+    if (state.selectedProjectId) {
+        const item = document.querySelector(`.project-list-item[data-project-id="${state.selectedProjectId}"]`);
+        if (item) {
+            item.classList.add('active');
+            showProjectDetails(state.selectedProjectId);
+        } else {
+            state.selectedProjectId = null;
+            detailsColumn.innerHTML = '<p>Select a project to view its details.</p>';
+        }
+    } else {
+        detailsColumn.innerHTML = '<p>Select a project to view its details.</p>';
+    }
 }
 
 function showProjectDetails(projectId) {
@@ -620,44 +616,120 @@ function showProjectDetails(projectId) {
         return;
     }
     
-    const typeIndex = allProjects.headers.indexOf('Project Type');
+    const { headers } = allProjects;
+    const typeIndex = headers.indexOf('Project Type');
     const projectType = typeIndex > -1 ? project[typeIndex] : 'General';
     
-    let detailsHtml = `<h3>${project[allProjects.headers.indexOf('Project Name')]}</h3>`;
+    let detailsHtml = `<h3>${project[headers.indexOf('Project Name')]}</h3>`;
     
     // This is where modular views would go
     switch(projectType) {
-        case 'Film': detailsHtml += renderFilmProjectDetails(project, allProjects.headers); break;
-        case 'Photography': detailsHtml += renderPhotographyProjectDetails(project, allProjects.headers); break;
-        case 'Design': detailsHtml += renderDesignProjectDetails(project, allProjects.headers); break;
-        default: detailsHtml += renderGenericProjectDetails(project, allProjects.headers);
+        case 'Film': detailsHtml += renderFilmProjectDetails(project, headers); break;
+        case 'Photography': detailsHtml += renderPhotographyProjectDetails(project, headers); break;
+        case 'Design': detailsHtml += renderDesignProjectDetails(project, headers); break;
+        default: detailsHtml += renderGenericProjectDetails(project, headers);
     }
     detailsColumn.innerHTML = detailsHtml;
+
+    // Add event listeners for new interactive elements
+    const clientLink = detailsColumn.querySelector('.project-client-card a');
+    if (clientLink) {
+        clientLink.onclick = () => {
+            const client = allClients.rows.find(c => c[allClients.headers.indexOf('Email')] === clientLink.dataset.clientEmail);
+            if (client) showClientDetailsModal(client, allClients.headers);
+        };
+    }
+    const sourceReqLink = detailsColumn.querySelector('.source-request-link');
+    if(sourceReqLink){
+        sourceReqLink.onclick = () => {
+            const req = allRequests.rows.find(r => r[allRequests.headers.indexOf('Submission ID')] === sourceReqLink.dataset.reqId);
+            if (req) showRequestDetailsModal(req, allRequests.headers);
+        };
+    }
 }
 
 // Modular Project Detail Renderers
 function renderGenericProjectDetails(data, headers) {
-    let html = '<div class="project-details-section"><h4>Details</h4><ul>';
-    headers.forEach((h, i) => {
-        if(data[i]) html += `<li><strong>${h}:</strong> ${data[i]}</li>`;
-    });
-    return html + '</ul></div>';
+    const clientEmail = data[headers.indexOf('Client Email')];
+    const client = allClients.rows.find(c => c[allClients.headers.indexOf('Email')] === clientEmail);
+    const clientName = client ? `${client[allClients.headers.indexOf('First Name')]} ${client[allClients.headers.indexOf('Last Name')]}` : 'Unknown Client';
+    
+    let html = `
+    <div class="project-client-card">
+        <h4>Client</h4>
+        <a href="#" data-client-email="${clientEmail}">${clientName}</a>
+    </div>
+    <div class="project-details-grid">
+        <div class="project-details-section">
+            <h4>Core Details</h4>
+            <ul>
+                <li><strong>Status:</strong> ${data[headers.indexOf('Status')] || 'N/A'}</li>
+                <li><strong>Start Date:</strong> ${data[headers.indexOf('Start Date')] || 'N/A'}</li>
+                <li><strong>Value:</strong> $${parseFloat(data[headers.indexOf('Value')] || 0).toFixed(2)}</li>
+            </ul>
+        </div>
+        <div class="project-details-section">
+            <h4>Personnel & Location</h4>
+             <ul>
+                <li><strong>Service Provider:</strong> ${data[headers.indexOf('Service Provider')] || 'Not Assigned'}</li>
+                <li><strong>Location:</strong> ${data[headers.indexOf('Location')] || 'Not Set'}</li>
+            </ul>
+        </div>
+    </div>
+    ${renderTasksSection(data[headers.indexOf('ProjectID')])}
+    ${renderAdvancedDetails(data, headers)}
+    `;
+    return html;
 }
+
 function renderFilmProjectDetails(data, headers) {
-    let html = renderGenericProjectDetails(data, headers); // Start with generic details
-    // Add film-specific sections
-    html += `<div class="project-details-section"><h4>Pre-Production</h4><p>Shot list status, storyboard link, etc.</p></div>`;
-    html += `<div class="project-details-section"><h4>Production</h4><p>Call sheets, crew lists, etc.</p></div>`;
+    let html = renderGenericProjectDetails(data, headers);
+    html += `<div class="project-details-section"><h4>Film Production</h4><p>Shot list, storyboard, etc.</p></div>`;
     return html;
 }
 function renderPhotographyProjectDetails(data, headers) {
     let html = renderGenericProjectDetails(data, headers);
-    html += `<div class="project-details-section"><h4>Planning</h4><p>Moodboard link, location, gear list, etc.</p></div>`;
+    html += `<div class="project-details-section"><h4>Photo Shoot</h4><p>Moodboard, locations, etc.</p></div>`;
     return html;
 }
 function renderDesignProjectDetails(data, headers) {
     let html = renderGenericProjectDetails(data, headers);
-    html += `<div class="project-details-section"><h4>Assets</h4><p>Brief link, revision count, final files, etc.</p></div>`;
+    html += `<div class="project-details-section"><h4>Design Process</h4><p>Brief, revisions, etc.</p></div>`;
+    return html;
+}
+function renderTasksSection(projectId) {
+    let html = `<div class="project-details-section"><h4>Tasks</h4><div id="project-task-list">`;
+    const taskIdIndex = allTasks.headers.indexOf('TaskID');
+    const taskNameIndex = allTasks.headers.indexOf('Task Name');
+    const taskStatusIndex = allTasks.headers.indexOf('Status');
+    const projectTasks = allTasks.rows.filter(t => t[allTasks.headers.indexOf('ProjectID')] === projectId);
+
+    if(projectTasks.length > 0) {
+        projectTasks.forEach(task => {
+            const isCompleted = task[taskStatusIndex] === 'Completed';
+            html += `<div class="task-item ${isCompleted ? 'completed' : ''}">
+                        <input type="checkbox" ${isCompleted ? 'checked' : ''} data-task-id="${task[taskIdIndex]}">
+                        <label>${task[taskNameIndex]}</label>
+                    </div>`;
+        });
+    } else {
+        html += '<p>No tasks for this project yet.</p>';
+    }
+    html += `</div>
+        <form id="add-task-form">
+            <input type="text" id="new-task-name" placeholder="Add a new task..." required>
+            <button type="submit">Add</button>
+        </form>
+    </div>`;
+    return html;
+}
+function renderAdvancedDetails(data, headers) {
+    const reqId = data[headers.indexOf('Source Request ID')];
+    let html = `<div class="project-details-section collapsible-header"><h4>Advanced Details</h4><span class="toggle-arrow">&#9662;</span></div>
+    <div class="collapsible-content collapsed"><ul>
+        <li><strong>ProjectID:</strong> ${data[headers.indexOf('ProjectID')]}</li>
+        <li><strong>Source Request ID:</strong> ${reqId ? `<a href="#" class="source-request-link" data-req-id="${reqId}">${reqId}</a>` : 'N/A'}</li>
+    </ul></div>`;
     return html;
 }
 
@@ -858,17 +930,25 @@ function showClientDetailsModal(rowData, headers) {
     const tabButtons = clientDetailsModal.querySelectorAll('.client-tab-button');
     const tabContents = clientDetailsModal.querySelectorAll('.client-tab-content');
     tabButtons.forEach(button => {
-        button.onclick = () => {
+        button.onclick = (e) => {
             tabButtons.forEach(btn => btn.classList.remove('active'));
             button.classList.add('active');
             tabContents.forEach(content => content.classList.remove('active'));
             document.getElementById(`client-tab-${button.dataset.tab}`).classList.add('active');
+
+            // Show/hide edit button based on tab
+            const isEditable = e.currentTarget.dataset.editable === 'true';
+            editBtn.style.display = isEditable ? 'inline-block' : 'none';
+            saveBtn.style.display = 'none'; // Always hide save button on tab switch
         };
     });
+    // Set initial state for the first tab
     tabButtons.forEach(btn => btn.classList.remove('active'));
     tabContents.forEach(content => content.classList.remove('active'));
     tabButtons[0].classList.add('active');
     tabContents[0].classList.add('active');
+    editBtn.style.display = 'inline-block'; // First tab is editable
+    saveBtn.style.display = 'none';
 
     const renderViewMode = (data) => {
         populateClientDetailsTab(data, headers, false);
@@ -877,15 +957,17 @@ function showClientDetailsModal(rowData, headers) {
         populateClientFinancialsTab(clientEmail);
         populateClientActionsTab(data, headers);
 
-        editBtn.style.display = 'inline-block';
+        const currentTabIsEditable = clientDetailsModal.querySelector('.client-tab-button.active').dataset.editable === 'true';
+        editBtn.style.display = currentTabIsEditable ? 'inline-block' : 'none';
         saveBtn.style.display = 'none';
         editBtn.onclick = () => renderEditMode(data);
     };
 
     const renderEditMode = (data) => {
         populateClientDetailsTab(data, headers, true);
-        populateClientHistoryTab(clientEmail);
         populateClientNotesTab(data, headers, true);
+        // Non-editable tabs remain in view mode
+        populateClientHistoryTab(clientEmail);
         populateClientFinancialsTab(clientEmail);
         populateClientActionsTab(data, headers);
 
@@ -964,44 +1046,48 @@ function populateClientDetailsTab(rowData, headers, isEditMode) {
 function populateClientHistoryTab(clientEmail) {
     const container = document.getElementById('client-tab-history');
     let contentHtml = '<h3>Service Requests</h3>';
-    const reqEmailIndex = allRequests.headers.indexOf('Email');
-    const clientRequests = allRequests.rows.filter(row => row[reqEmailIndex] === clientEmail);
+    const clientRequests = allRequests.rows.filter(row => row[allRequests.headers.indexOf('Email')] === clientEmail);
     
     if (clientRequests.length > 0) {
         contentHtml += '<ul>';
         clientRequests.forEach(req => {
             const reqDate = req[allRequests.headers.indexOf('Submission Date')] || 'No Date';
             const reqService = req[allRequests.headers.indexOf('Primary Service Category')] || 'No Service';
-            const reqStatus = req[allRequests.headers.indexOf('Status')] || '';
-            contentHtml += `<li><strong>${reqDate}:</strong> ${reqService} <em>(${reqStatus})</em></li>`;
+            contentHtml += `<li><strong>${reqDate}:</strong> <a href="#" onclick="showLinkedRequest('${req[allRequests.headers.indexOf('Submission ID')]}'); return false;">${reqService}</a></li>`;
         });
         contentHtml += '</ul>';
-    } else {
-        contentHtml += '<p>No service requests found for this client.</p>';
-    }
+    } else { contentHtml += '<p>No service requests found for this client.</p>'; }
 
     contentHtml += '<h3>Projects</h3>';
-    if(allProjects.headers.length > 0) {
-        const projEmailIndex = allProjects.headers.indexOf('Client Email');
-        const clientProjects = allProjects.rows.filter(row => row[projEmailIndex] === clientEmail);
-        if (clientProjects.length > 0) {
-            contentHtml += '<ul>';
-            clientProjects.forEach(proj => {
-                const projDate = proj[allProjects.headers.indexOf('Start Date')] || 'No Date';
-                const projName = proj[allProjects.headers.indexOf('Project Name')] || 'No Name';
-                const projStatus = proj[allProjects.headers.indexOf('Status')] || 'No Status';
-                contentHtml += `<li><strong>${projDate}:</strong> ${projName} <em>(${projStatus})</em></li>`;
-            });
-            contentHtml += '</ul>';
-        } else {
-            contentHtml += '<p>No projects found for this client.</p>';
-        }
-    } else {
-        contentHtml += '<p>Project data is not available.</p>';
-    }
+    const clientProjects = allProjects.rows.filter(row => row[allProjects.headers.indexOf('Client Email')] === clientEmail);
+    if (clientProjects.length > 0) {
+        contentHtml += '<ul>';
+        clientProjects.forEach(proj => {
+            const projDate = proj[allProjects.headers.indexOf('Start Date')] || 'No Date';
+            const projName = proj[allProjects.headers.indexOf('Project Name')] || 'No Name';
+            contentHtml += `<li><strong>${projDate}:</strong> <a href="#" onclick="showLinkedProject('${proj[allProjects.headers.indexOf('ProjectID')]}'); return false;">${projName}</a></li>`;
+        });
+        contentHtml += '</ul>';
+    } else { contentHtml += '<p>No projects found for this client.</p>'; }
 
     container.innerHTML = contentHtml;
 }
+function showLinkedRequest(reqId) {
+    const request = allRequests.rows.find(r => r[allRequests.headers.indexOf('Submission ID')] === reqId);
+    if (request) {
+        clientDetailsModal.style.display = 'none';
+        showRequestDetailsModal(request, allRequests.headers);
+    }
+}
+function showLinkedProject(projId) {
+    clientDetailsModal.style.display = 'none';
+    document.querySelector('.tab-button[data-tab="projects"]').click();
+    setTimeout(() => { // Allow tab to render first
+        state.selectedProjectId = projId;
+        renderProjectsTab();
+    }, 100);
+}
+
 
 function populateClientNotesTab(rowData, headers, isEditMode) {
     const container = document.getElementById('client-tab-notes');
@@ -1092,9 +1178,8 @@ function populateClientActionsTab(rowData, headers) {
     container.appendChild(createProjectBtn);
     
     const deleteClientBtn = document.createElement('button');
+    deleteClientBtn.id = 'delete-client-btn';
     deleteClientBtn.textContent = 'Delete Client';
-    deleteClientBtn.style.backgroundColor = '#dc3545'; // A distinct danger color
-    deleteClientBtn.style.marginTop = '10px';
     deleteClientBtn.onclick = () => showDeleteClientModal(rowData, headers);
     container.appendChild(deleteClientBtn);
 }
@@ -1111,18 +1196,12 @@ function showCreateProjectModal(clientRow, clientHeaders) {
     sourceRequestSelect.innerHTML = '<option value="">Start from scratch</option>';
     sourceRequestSelect.dataset.clientEmail = clientEmail;
 
-    const statusIndex = allRequests.headers.indexOf('Status');
-    const emailIndex = allRequests.headers.indexOf('Email');
-    const serviceIndex = allRequests.headers.indexOf('Primary Service Category');
-    const dateIndex = allRequests.headers.indexOf('Submission Date');
-    const idIndex = allRequests.headers.indexOf('Submission ID');
-
-    const activeClientRequests = allRequests.rows.filter(r => r[emailIndex] === clientEmail && r[statusIndex] !== 'Archived');
+    const activeClientRequests = allRequests.rows.filter(r => r[allRequests.headers.indexOf('Email')] === clientEmail && r[allRequests.headers.indexOf('Status')] !== 'Archived');
     
     activeClientRequests.forEach(req => {
-        const date = req[dateIndex] || 'No Date';
-        const service = req[serviceIndex] || 'No Service';
-        const id = req[idIndex];
+        const date = req[allRequests.headers.indexOf('Submission Date')] || 'No Date';
+        const service = req[allRequests.headers.indexOf('Primary Service Category')] || 'No Service';
+        const id = req[allRequests.headers.indexOf('Submission ID')];
         const option = new Option(`${date} - ${service}`, id);
         sourceRequestSelect.add(option);
     });
@@ -1134,12 +1213,10 @@ function showCreateProjectModal(clientRow, clientHeaders) {
             document.getElementById('project-value').value = '';
             return;
         }
-
-        const selectedRequest = allRequests.rows.find(r => r[idIndex] === selectedRequestId);
+        const selectedRequest = allRequests.rows.find(r => r[allRequests.headers.indexOf('Submission ID')] === selectedRequestId);
         if (selectedRequest) {
-            const quoteIndex = allRequests.headers.indexOf('Quote Total');
-            document.getElementById('project-name').value = selectedRequest[serviceIndex] || '';
-            document.getElementById('project-value').value = quoteIndex > -1 ? (selectedRequest[quoteIndex] || '') : '';
+            document.getElementById('project-name').value = selectedRequest[allRequests.headers.indexOf('Primary Service Category')] || '';
+            document.getElementById('project-value').value = selectedRequest[allRequests.headers.indexOf('Quote Total')] || '';
         }
     };
     sourceRequestSelect.dispatchEvent(new Event('change')); 
@@ -1213,33 +1290,24 @@ function columnToLetter(column) {
 }
 
 async function updateSheetRow(sheetName, idColumnName, idValue, dataToUpdate) {
-    let sheetResponse = await gapi.client.sheets.spreadsheets.values.get({
-        spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!1:1`,
-    });
-    
+    let sheetResponse = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!1:1`});
     let sheetHeaders = (sheetResponse.result.values ? sheetResponse.result.values[0] : []) || [];
-
     const newHeaders = Object.keys(dataToUpdate).filter(h => !sheetHeaders.includes(h));
+
     if (newHeaders.length > 0) {
         const firstEmptyColumn = columnToLetter(sheetHeaders.length + 1);
-        const newHeadersRange = `${sheetName}!${firstEmptyColumn}1`;
-        
         await gapi.client.sheets.spreadsheets.values.update({
-            spreadsheetId: SPREADSHEET_ID,
-            range: newHeadersRange,
-            valueInputOption: 'RAW',
-            resource: { values: [newHeaders] }
+            spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!${firstEmptyColumn}1`,
+            valueInputOption: 'RAW', resource: { values: [newHeaders] }
         });
         sheetHeaders = sheetHeaders.concat(newHeaders);
     }
 
-    const fullSheetResponse = await gapi.client.sheets.spreadsheets.values.get({
-        spreadsheetId: SPREADSHEET_ID, range: sheetName,
-    });
+    const fullSheetResponse = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: sheetName });
     const sheetValues = fullSheetResponse.result.values || [];
     
     const idIndex = sheetHeaders.indexOf(idColumnName);
-    if (idIndex === -1) throw new Error(`Unique ID column '${idColumnName}' not found.`);
+    if (idIndex === -1) throw new Error(`Unique ID column '${idColumnName}' not found in ${sheetName}.`);
     
     const visualRowIndex = sheetValues.findIndex(row => row && row[idIndex] === idValue);
     if (visualRowIndex === -1) throw new Error(`Could not find row with ${idColumnName} = ${idValue}.`);
@@ -1259,17 +1327,13 @@ async function updateSheetRow(sheetName, idColumnName, idValue, dataToUpdate) {
     const targetRange = `${sheetName}!A${targetRowNumber}`;
 
     return gapi.client.sheets.spreadsheets.values.update({
-        spreadsheetId: SPREADSHEET_ID,
-        range: targetRange,
-        valueInputOption: 'USER_ENTERED',
-        resource: { values: [updatedRow] }
+        spreadsheetId: SPREADSHEET_ID, range: targetRange,
+        valueInputOption: 'USER_ENTERED', resource: { values: [updatedRow] }
     });
 }
 
 async function clearSheetRow(sheetName, idColumnName, idValue) {
-    const fullSheetResponse = await gapi.client.sheets.spreadsheets.values.get({
-        spreadsheetId: SPREADSHEET_ID, range: sheetName,
-    });
+    const fullSheetResponse = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: sheetName });
     const sheetValues = fullSheetResponse.result.values || [];
     const sheetHeaders = sheetValues[0] || [];
     const idIndex = sheetHeaders.indexOf(idColumnName);
@@ -1281,10 +1345,7 @@ async function clearSheetRow(sheetName, idColumnName, idValue) {
     const targetRowNumber = visualRowIndex + 1;
     const targetRange = `${sheetName}!A${targetRowNumber}:${columnToLetter(sheetHeaders.length)}${targetRowNumber}`;
 
-    return gapi.client.sheets.spreadsheets.values.clear({
-        spreadsheetId: SPREADSHEET_ID,
-        range: targetRange,
-    });
+    return gapi.client.sheets.spreadsheets.values.clear({ spreadsheetId: SPREADSHEET_ID, range: targetRange });
 }
 
 
