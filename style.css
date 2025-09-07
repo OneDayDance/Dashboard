@@ -119,10 +119,19 @@ button:hover, #modal-save-note-btn:hover, #save-columns-btn:hover {
 }
 
 /* --- Themed Tabs --- */
+.tabs-container {
+    background-color: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 10px 20px 0;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
 .tab-nav {
     display: flex;
     border-bottom: 2px solid #ccc;
-    margin-bottom: 20px;
 }
 
 .tab-button {
@@ -132,9 +141,10 @@ button:hover, #modal-save-note-btn:hover, #save-columns-btn:hover {
     font-size: 16px;
     border-bottom: 3px solid transparent;
     margin-bottom: -2px;
+    color: #333; /* Dark text for legibility */
 }
 .tab-button:hover {
-    background-color: rgba(255, 255, 255, 0.5);
+    background-color: rgba(0, 0, 0, 0.05); /* Subtle hover effect */
 }
 .tab-button.active {
     border-bottom-color: #76F1FF; /* Blue */
