@@ -107,8 +107,8 @@
             <div id="project-layout-container" class="project-layout-container">
                 <div class="project-list-column card">
                     <div class="project-list-header">
-                        <h2>Projects</h2>
                         <button id="project-list-collapse-btn" title="Toggle Project List">‹</button>
+                        <h2 id="project-list-title">Projects</h2>
                     </div>
                     <h3>Active Projects</h3>
                     <div id="active-projects-list" class="project-list"></div>
@@ -269,7 +269,7 @@
                 </div>
                 <div class="form-field">
                     <label>Subtasks</label>
-                    <div id="subtasks-container"></div>
+                    <div id="subtasks-container-modal" class="subtasks-container"></div>
                     <div class="add-item-form">
                         <input type="text" id="new-subtask-name" placeholder="New subtask...">
                         <button type="button" id="add-subtask-btn">Add</button>
