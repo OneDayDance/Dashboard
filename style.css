@@ -197,7 +197,6 @@ button[disabled] {
     writing-mode: vertical-rl;
     text-orientation: mixed;
     white-space: pre;
-    transform: rotate(180deg);
     margin: 20px 0;
     line-height: 1;
 }
@@ -234,6 +233,7 @@ button[disabled] {
 .task-main.completed label { text-decoration: line-through; color: #888; }
 .subtask-list { list-style: none; padding-left: 30px; margin-top: 5px; width: 100%;}
 .subtask-item { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 2px 0;}
+.subtask-item input { cursor: pointer; }
 .task-progress { width: 100%; background-color: #eee; border-radius: 4px; height: 6px; margin-top: 4px;}
 .task-progress-bar { background-color: #76F1FF; height: 100%; border-radius: 4px; }
 .task-board { display: flex; gap: 15px; overflow-x: auto; padding: 10px 0; min-height: 200px; }
@@ -249,17 +249,16 @@ button[disabled] {
     background: #cceeff !important;
 }
 
-.task-placeholder {
+.task-placeholder, .bucket-placeholder {
     background-color: rgba(118, 241, 255, 0.3);
     border: 2px dashed #76F1FF;
     border-radius: 4px;
     margin-bottom: 5px; /* Match task-item */
     box-sizing: border-box;
+    transition: all 0.1s ease;
 }
 
 .bucket-placeholder {
-    background-color: rgba(0, 0, 0, 0.05);
-    border: 2px dashed #ccc;
     border-radius: 8px;
     flex: 0 0 300px; /* Match .task-board-column */
 }
@@ -338,11 +337,24 @@ button[disabled] {
     background-color: #fdfdfd;
 }
 #subtasks-container-modal .subtask-item { 
-    display: flex; gap: 8px; align-items: center; padding: 5px; background-color: #f9f9f9; border-radius: 3px; margin-top: 3px;
-    flex-shrink: 0; 
+    display: flex; 
+    gap: 8px; 
+    align-items: center; 
+    padding: 5px; 
+    background-color: #f9f9f9; 
+    border-radius: 3px; 
+    margin-top: 3px;
 } 
-#subtasks-container-modal .subtask-item input { flex-shrink: 0; }
-#subtasks-container-modal .subtask-item label { flex-grow: 1; }
+#subtasks-container-modal .subtask-item input { 
+    flex-shrink: 0; 
+}
+#subtasks-container-modal .subtask-item label { 
+    flex-grow: 1; 
+    min-width: 0;
+}
+#subtasks-container-modal .subtask-item button {
+    flex-shrink: 0;
+}
 
 
 /* Form Field & Grid styles for modals */
