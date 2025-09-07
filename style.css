@@ -295,6 +295,7 @@ button:hover, #modal-save-note-btn:hover, #save-columns-btn:hover {
     font-size: 16px;
     border-bottom: 3px solid transparent;
     margin-bottom: -1px;
+    color: #333; /* FIX: Set explicit dark color */
 }
 .client-tab-button.active {
     border-bottom-color: #76F1FF;
