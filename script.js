@@ -97,7 +97,10 @@ document.addEventListener('DOMContentLoaded', () => {
     clientColumnSelectBtn.onclick = () => showColumnModal('clients');
     document.getElementById('save-client-columns-btn').onclick = () => handleSaveColumns('clients');
     
-    archiveToggle.onclick = (e) => e.currentTarget.classList.toggle('collapsed');
+    archiveToggle.onclick = (e) => {
+        e.currentTarget.classList.toggle('collapsed');
+        archiveContainer.classList.toggle('collapsed');
+    }
     document.getElementById('archived-projects-toggle').onclick = (e) => {
         e.currentTarget.classList.toggle('collapsed');
         document.getElementById('archived-projects-list').classList.toggle('collapsed');
@@ -482,26 +485,26 @@ function showProjectDetails(projectId, isEditMode = false) {
         if(e.target.type === 'checkbox') { handleTaskStatusChange(taskId, e.target.checked); } 
         else { showTaskModal(projectId, taskId); }
     });
-    detailsColumn.querySelector('#add-task-form button').onclick = (e) => { e.preventDefault(); showTaskModal(projectId); };
+    detailsColumn.querySelectorAll('.add-task-to-bucket-btn').forEach(btn => btn.onclick = () => showTaskModal(projectId, null, btn.dataset.bucket));
     document.getElementById('task-view-toggle').onclick = () => {
         state.projectTaskView = state.projectTaskView === 'list' ? 'board' : 'list';
         showProjectDetails(projectId, isEditMode);
     };
-    document.getElementById('add-bucket-btn').onclick = () => {
+    document.getElementById('add-bucket-btn').onclick = async () => {
         const bucketName = prompt("Enter new bucket name:");
-        if (bucketName) {
-            const taskList = document.getElementById('project-task-list');
-            if (taskList) { // list view
-                const bucketDiv = document.createElement('div');
-                bucketDiv.className = 'task-bucket';
-                bucketDiv.innerHTML = `<h5>${bucketName}</h5>`;
-                taskList.appendChild(bucketDiv);
-            } else { // board view
-                const board = document.getElementById('project-task-board');
-                const column = document.createElement('div');
-                column.className = 'task-board-column';
-                column.innerHTML = `<h5>${bucketName}</h5>`;
-                board.appendChild(column);
+        if (bucketName && bucketName.trim() !== '') {
+            const bucketsIndex = allProjects.headers.indexOf('Task Buckets');
+            let currentBuckets = [];
+            if (bucketsIndex > -1 && project[bucketsIndex]) {
+                try { currentBuckets = JSON.parse(project[bucketsIndex]); } catch (e) {}
+            }
+            if (!currentBuckets.includes(bucketName.trim())) {
+                currentBuckets.push(bucketName.trim());
+                try {
+                    await updateSheetRow('Projects', 'ProjectID', projectId, { 'Task Buckets': JSON.stringify(currentBuckets) });
+                    await loadProjects();
+                    showProjectDetails(projectId);
+                } catch (err) { alert("Could not save new bucket."); console.error(err); }
             }
         }
     };
@@ -541,7 +544,7 @@ function renderGenericProjectDetails(data, headers, isEditMode) {
 }
 function renderTasksSection(projectId) {
     const renderFn = state.projectTaskView === 'list' ? renderTasksAsList : renderTasksAsBoard;
-    let html = `<div class="project-details-section">
+    return `<div class="project-details-section">
         <div class="project-details-section-header">
             <h4>Tasks</h4>
             <div class="view-controls">
@@ -550,25 +553,25 @@ function renderTasksSection(projectId) {
             </div>
         </div>
         ${renderFn(projectId)}
-        <form id="add-task-form">
-            <input type="text" id="new-task-name" placeholder="Add a new task..." required>
-            <button type="submit">Add</button>
-        </form>
     </div>`;
-    return html;
 }
 function renderTasksAsList(projectId) {
     let html = `<div id="project-task-list">`;
     const { headers, rows } = allTasks, [idIdx, nameIdx, statusIdx, bucketIdx] = ['TaskID', 'Task Name', 'Status', 'Bucket'].map(h => headers.indexOf(h));
     const projectTasks = rows.filter(t => t[headers.indexOf('ProjectID')] === projectId);
-    const buckets = [...new Set(projectTasks.map(t => t[bucketIdx] || 'General'))];
+    const project = allProjects.rows.find(p => p[allProjects.headers.indexOf('ProjectID')] === projectId);
+    let buckets = ['General'];
+    if (project) {
+        const bucketsJSON = project[allProjects.headers.indexOf('Task Buckets')];
+        if (bucketsJSON) try { buckets = JSON.parse(bucketsJSON); } catch(e){}
+    }
     buckets.forEach(bucket => {
         html += `<div class="task-bucket"><h5>${bucket}</h5>`;
         projectTasks.filter(t => (t[bucketIdx] || 'General') === bucket).forEach(task => {
             const isCompleted = task[statusIdx] === 'Done';
             html += `<div class="task-item ${isCompleted ? 'completed' : ''}" data-task-id="${task[idIdx]}"><input type="checkbox" ${isCompleted ? 'checked' : ''}><label>${task[nameIdx]}</label></div>`;
         });
-        html += `</div>`;
+        html += `<button class="add-task-to-bucket-btn" data-bucket="${bucket}">+ Add Task</button></div>`;
     });
     return html + `</div>`;
 }
@@ -576,13 +579,18 @@ function renderTasksAsBoard(projectId) {
     let html = `<div id="project-task-board" class="task-board">`;
     const { headers, rows } = allTasks, [idIdx, nameIdx, statusIdx, bucketIdx] = ['TaskID', 'Task Name', 'Status', 'Bucket'].map(h => headers.indexOf(h));
     const projectTasks = rows.filter(t => t[headers.indexOf('ProjectID')] === projectId);
-    const buckets = [...new Set(projectTasks.map(t => t[bucketIdx] || 'General'))];
+    const project = allProjects.rows.find(p => p[allProjects.headers.indexOf('ProjectID')] === projectId);
+    let buckets = ['General'];
+    if (project) {
+        const bucketsJSON = project[allProjects.headers.indexOf('Task Buckets')];
+        if (bucketsJSON) try { buckets = JSON.parse(bucketsJSON); } catch(e){}
+    }
     buckets.forEach(bucket => {
         html += `<div class="task-board-column"><h5>${bucket}</h5>`;
         projectTasks.filter(t => (t[bucketIdx] || 'General') === bucket).forEach(task => {
             html += `<div class="task-card" data-task-id="${task[idIdx]}"><p>${task[nameIdx]}</p></div>`;
         });
-        html += `</div>`;
+        html += `<button class="add-task-to-bucket-btn" data-bucket="${bucket}">+ Add Task</button></div>`;
     });
     return html + `</div>`;
 }
@@ -634,14 +642,16 @@ async function handleCreateProjectSubmit(event) {
         }, 1500);
     } catch (err) { statusSpan.textContent = 'Error creating project.'; console.error('Project creation error', err); }
 }
-function showTaskModal(projectId, taskId = null) {
-    const form = document.getElementById('task-details-form');
-    form.reset();
+function showTaskModal(projectId, taskId = null, bucketName = null) {
+    const form = document.getElementById('task-details-form'); form.reset();
     document.getElementById('task-project-id-input').value = projectId;
     document.getElementById('task-modal-status').textContent = '';
-    const { headers, rows } = allTasks;
-    const projectTasks = rows.filter(t => t[headers.indexOf('ProjectID')] === projectId);
-    const buckets = [...new Set(projectTasks.map(t => t[headers.indexOf('Bucket')] || 'General'))];
+    const project = allProjects.rows.find(p => p[allProjects.headers.indexOf('ProjectID')] === projectId);
+    let buckets = ['General'];
+    if (project) {
+        const bucketsJSON = project[allProjects.headers.indexOf('Task Buckets')];
+        if (bucketsJSON) try { buckets = JSON.parse(bucketsJSON); } catch(e){}
+    }
     const bucketSelect = document.getElementById('task-bucket');
     bucketSelect.innerHTML = '';
     buckets.forEach(b => bucketSelect.add(new Option(b, b)));
@@ -651,6 +661,7 @@ function showTaskModal(projectId, taskId = null) {
         document.getElementById('task-id-input').value = taskId;
         const task = allTasks.rows.find(t => t[allTasks.headers.indexOf('TaskID')] === taskId);
         if(task) {
+            const { headers } = allTasks;
             document.getElementById('task-title').value = task[headers.indexOf('Task Name')] || '';
             document.getElementById('task-description').value = task[headers.indexOf('Description')] || '';
             document.getElementById('task-due-date').value = task[headers.indexOf('Due Date')] || '';
@@ -662,8 +673,7 @@ function showTaskModal(projectId, taskId = null) {
         }
     } else {
         document.getElementById('task-modal-title').textContent = 'New Task';
-        const newTaskName = document.getElementById('new-task-name')?.value;
-        if(newTaskName) document.getElementById('task-title').value = newTaskName;
+        if (bucketName) bucketSelect.value = bucketName;
         renderSubtasks([]); renderLinks([]);
     }
     document.getElementById('add-subtask-btn').onclick = () => {
@@ -686,7 +696,7 @@ function renderSubtasks(subtasks) {
     const container = document.getElementById('subtasks-container');
     container.innerHTML = `<input type="hidden" id="subtasks-data" value='${JSON.stringify(subtasks)}'>`;
     subtasks.forEach((sub, i) => {
-        container.innerHTML += `<div class="item-tag"><input type="checkbox" ${sub.completed ? 'checked' : ''} onchange="updateSubtaskStatus(${i}, this.checked)"> ${sub.name} <button onclick="removeSubtask(${i})">&times;</button></div>`;
+        container.innerHTML += `<div class="item-tag"><input type="checkbox" ${sub.completed ? 'checked' : ''} onchange="updateSubtaskStatus(${i}, this.checked)"> ${sub.name} <button type="button" onclick="removeSubtask(${i})">&times;</button></div>`;
     });
 }
 function updateSubtaskStatus(index, completed) {
@@ -703,7 +713,7 @@ function renderLinks(links) {
     const container = document.getElementById('links-container');
     container.innerHTML = `<input type="hidden" id="links-data" value='${JSON.stringify(links)}'>`;
     links.forEach((link, i) => {
-        container.innerHTML += `<div class="item-tag"><a href="${link}" target="_blank">${link}</a> <button onclick="removeLink(${i})">&times;</button></div>`;
+        container.innerHTML += `<div class="item-tag"><a href="${link}" target="_blank">${link}</a> <button type="button" onclick="removeLink(${i})">&times;</button></div>`;
     });
 }
 function removeLink(index) {
