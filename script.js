@@ -7,16 +7,16 @@ const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
 // --- STATE MANAGEMENT ---
 let allRequests = { headers: [], rows: [] };
 let allClients = { headers: [], rows: [] };
+let allProjects = { headers: [], rows: [] }; // To store project data
 let state = {
-    currentPage: 1,
-    rowsPerPage: 10,
+    // requests tab state
     sortColumn: 'Submission Date',
     sortDirection: 'desc',
     searchTerm: '',
     filters: { service: 'all', status: 'all' },
     visibleColumns: ['Submission Date', 'Full Name', 'Primary Service Category', 'Status'],
     currentView: 'list',
-    // New state for clients tab
+    // clients tab state
     clientSearchTerm: '',
     clientSortColumn: 'First Name',
     clientSortDirection: 'asc'
@@ -136,7 +136,8 @@ async function onSignInSuccess() {
 }
 
 async function loadInitialData() {
-    await Promise.all([loadRequests(), loadClients()]);
+    // Load all data concurrently for faster startup
+    await Promise.all([loadRequests(), loadClients(), loadProjects()]);
 }
 
 function handleAuthClick() {
@@ -185,12 +186,10 @@ function loadDataForActiveTab() {
 }
 function updateFilter(key, value) {
     state.filters[key] = value;
-    state.currentPage = 1;
     renderRequests();
 }
 function updateSearch(term) {
     state.searchTerm = term.toLowerCase();
-    state.currentPage = 1;
     renderRequests();
 }
 
@@ -231,13 +230,14 @@ async function loadRequests() {
         }
     } catch (err) {
         console.error("Error loading requests:", err);
-        document.getElementById('requests-container').innerHTML = `<p style="color:red;">Error loading requests: ${err.result.error.message}</p>`;
+        document.getElementById('requests-container').innerHTML = `<p style="color:red;">Error loading requests.</p>`;
     }
     archiveToggle.classList.add('collapsed');
     archiveContainer.classList.add('collapsed');
 }
 
 function renderRequests() {
+    // This function remains largely the same, no major changes needed.
     if (!allRequests.rows || allRequests.rows.length === 0) {
         document.getElementById('requests-container').innerHTML = '<p>No submissions found.</p>';
         document.getElementById('archived-requests-container').innerHTML = '';
@@ -392,15 +392,16 @@ async function handleStatusChange(event, rowIndex) {
         const submissionId = allRequests.rows[rowIndex][allRequests.headers.indexOf('Submission ID')];
         await updateSheetRow('Submissions', 'Submission ID', submissionId, dataToUpdate);
         allRequests.rows[rowIndex][allRequests.headers.indexOf('Status')] = newStatus;
-        renderRequests(); // This will re-enable the select
+        renderRequests();
     } catch(err) {
-        alert('Could not update status. See console for details.');
+        alert('Could not update status.');
         console.error("Status Update Error:", err);
         selectElement.disabled = false;
     }
 }
 
 function showRequestDetailsModal(rowData, headers) {
+    // This function remains largely the same
     const modalBody = document.getElementById('modal-body');
     const ignoredFields = ['Raw Payload', 'All Services JSON', 'Submission ID', 'Timestamp', 'Notes'];
     let contentHtml = '<ul>';
@@ -507,6 +508,24 @@ async function handleSaveNote(rowIndex) {
     }
 }
 
+// --- PROJECTS TAB FUNCTIONS (NEW) ---
+async function loadProjects() {
+    // This assumes you have a sheet named 'Projects'
+    // It should have columns like 'ProjectID', 'Client Email', 'Project Name', 'Status', 'Date', 'Value'
+    try {
+        const response = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: 'Projects' });
+        const values = response.result.values;
+        if (values && values.length > 1) {
+            allProjects = { headers: values[0], rows: values.slice(1) };
+        } else {
+            allProjects = { headers: [], rows: [] };
+        }
+    } catch (err) {
+        console.warn("Could not load 'Projects' sheet. Some client features may be limited.", err);
+        allProjects = { headers: [], rows: [] }; // Ensure it's not undefined
+    }
+}
+
 
 // --- CLIENTS TAB FUNCTIONS ---
 async function loadClients() {
@@ -551,7 +570,9 @@ function renderClients() {
     const table = document.createElement('table');
     table.className = 'data-table';
     let headerHtml = '<thead><tr>';
-    headers.forEach(headerText => {
+    // Display a subset of columns in the main table for clarity
+    const displayHeaders = ['First Name', 'Last Name', 'Email', 'Organization', 'Status'];
+    displayHeaders.forEach(headerText => {
         let classes = '';
         if (clientSortableColumns.includes(headerText)) {
             classes += 'sortable';
@@ -567,7 +588,7 @@ function renderClients() {
     processedRows.forEach(row => {
         const tr = document.createElement('tr');
         tr.onclick = () => showClientDetailsModal(row, headers);
-        headers.forEach(header => {
+        displayHeaders.forEach(header => {
             const cellIndex = headers.indexOf(header);
             const td = document.createElement('td');
             td.textContent = row[cellIndex] || '';
@@ -595,19 +616,35 @@ function handleClientSort(event) {
 }
 
 function showClientDetailsModal(rowData, headers) {
-    const modalBody = document.getElementById('client-modal-body');
     const editBtn = document.getElementById('client-modal-edit-btn');
     const saveBtn = document.getElementById('client-modal-save-btn');
     const statusSpan = document.getElementById('client-modal-status');
+    const clientEmail = rowData[headers.indexOf('Email')];
     statusSpan.textContent = '';
     
+    // Setup tab functionality
+    const tabButtons = clientDetailsModal.querySelectorAll('.client-tab-button');
+    const tabContents = clientDetailsModal.querySelectorAll('.client-tab-content');
+    tabButtons.forEach(button => {
+        button.onclick = () => {
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            tabContents.forEach(content => content.classList.remove('active'));
+            document.getElementById(`client-tab-${button.dataset.tab}`).classList.add('active');
+        };
+    });
+    // Reset to first tab
+    tabButtons.forEach(btn => btn.classList.remove('active'));
+    tabContents.forEach(content => content.classList.remove('active'));
+    tabButtons[0].classList.add('active');
+    tabContents[0].classList.add('active');
+
+
     const renderViewMode = () => {
-        let contentHtml = '<ul>';
-        headers.forEach((header, index) => {
-            contentHtml += `<li><strong>${header}:</strong> <span>${rowData[index] || ''}</span></li>`;
-        });
-        contentHtml += '</ul>';
-        modalBody.innerHTML = contentHtml;
+        populateClientDetailsTab(rowData, headers, false);
+        populateClientHistoryTab(clientEmail);
+        populateClientNotesTab(rowData, headers, false);
+        populateClientFinancialsTab(clientEmail);
 
         editBtn.style.display = 'inline-block';
         saveBtn.style.display = 'none';
@@ -615,14 +652,11 @@ function showClientDetailsModal(rowData, headers) {
     };
 
     const renderEditMode = () => {
-        let contentHtml = '<ul>';
-        headers.forEach((header, index) => {
-            const isReadOnly = header === 'ClientID' || header === 'Original Submission ID';
-            contentHtml += `<li><strong>${header}:</strong> <input type="text" id="client-edit-${header.replace(/\s+/g, '')}" value="${rowData[index] || ''}" ${isReadOnly ? 'readonly' : ''}></li>`;
-        });
-        contentHtml += '</ul>';
-        modalBody.innerHTML = contentHtml;
-        
+        populateClientDetailsTab(rowData, headers, true);
+        populateClientHistoryTab(clientEmail); // History is not editable
+        populateClientNotesTab(rowData, headers, true);
+        populateClientFinancialsTab(clientEmail); // Financials are not editable
+
         editBtn.style.display = 'none';
         saveBtn.style.display = 'inline-block';
         saveBtn.onclick = handleSaveClientUpdate;
@@ -632,32 +666,33 @@ function showClientDetailsModal(rowData, headers) {
         statusSpan.textContent = 'Saving...';
         const dataToUpdate = {};
         let updatedRowData = [...rowData];
+        const editableHeaders = ['First Name', 'Last Name', 'Email', 'Phone', 'Organization', 'Status', 'Social Media', 'Notes'];
 
-        headers.forEach((header, index) => {
-            const inputId = `client-edit-${header.replace(/\s+/g, '')}`;
-            const inputElement = document.getElementById(inputId);
-            if (inputElement && !inputElement.readOnly) {
+        editableHeaders.forEach(header => {
+             const inputId = `client-edit-${header.replace(/\s+/g, '')}`;
+             const inputElement = document.getElementById(inputId);
+             if (inputElement) {
                 dataToUpdate[header] = inputElement.value;
-                updatedRowData[index] = inputElement.value;
-            }
+                const headerIndex = headers.indexOf(header);
+                if(headerIndex > -1) updatedRowData[headerIndex] = inputElement.value;
+             }
         });
         
         try {
             const clientId = rowData[headers.indexOf('ClientID')];
             await updateSheetRow('Clients', 'ClientID', clientId, dataToUpdate);
             
-            // Update local data to avoid re-fetch
             const originalIndex = allClients.rows.findIndex(r => r[headers.indexOf('ClientID')] === clientId);
-            if (originalIndex > -1) {
-                allClients.rows[originalIndex] = updatedRowData;
-            }
-            rowData = updatedRowData; // update rowData for the modal's renderViewMode
+            if (originalIndex > -1) allClients.rows[originalIndex] = updatedRowData;
+            
+            rowData = updatedRowData; 
             
             statusSpan.textContent = 'Saved successfully!';
             renderClients();
             setTimeout(() => {
                 renderViewMode();
-            }, 1000);
+                 statusSpan.textContent = '';
+            }, 1500);
 
         } catch(err) {
             statusSpan.textContent = 'Error saving.';
@@ -668,6 +703,155 @@ function showClientDetailsModal(rowData, headers) {
     renderViewMode();
     clientDetailsModal.style.display = 'block';
 }
+
+function populateClientDetailsTab(rowData, headers, isEditMode) {
+    const container = document.getElementById('client-tab-details');
+    // Ensure standard fields exist for editing even if not in sheet
+    const displayHeaders = ['First Name', 'Last Name', 'Email', 'Phone', 'Organization', 'Status', 'Social Media'];
+    let contentHtml = '<ul>';
+
+    if (isEditMode) {
+        displayHeaders.forEach(header => {
+            const headerId = header.replace(/\s+/g, '');
+            const value = rowData[headers.indexOf(header)] || '';
+            contentHtml += `<li><strong>${header}:</strong> <input type="text" id="client-edit-${headerId}" value="${value}"></li>`;
+        });
+    } else {
+        displayHeaders.forEach(header => {
+            const value = rowData[headers.indexOf(header)] || 'N/A';
+            contentHtml += `<li><strong>${header}:</strong> <span>${value}</span></li>`;
+        });
+    }
+    contentHtml += '</ul>';
+    container.innerHTML = contentHtml;
+}
+
+function populateClientHistoryTab(clientEmail) {
+    const container = document.getElementById('client-tab-history');
+    let contentHtml = '<h3>Service Requests</h3>';
+    const reqEmailIndex = allRequests.headers.indexOf('Email');
+    const clientRequests = allRequests.rows.filter(row => row[reqEmailIndex] === clientEmail);
+    
+    if (clientRequests.length > 0) {
+        contentHtml += '<ul>';
+        clientRequests.forEach(req => {
+            const reqDate = req[allRequests.headers.indexOf('Submission Date')] || 'No Date';
+            const reqService = req[allRequests.headers.indexOf('Primary Service Category')] || 'No Service';
+            contentHtml += `<li><strong>${reqDate}:</strong> ${reqService}</li>`;
+        });
+        contentHtml += '</ul>';
+    } else {
+        contentHtml += '<p>No service requests found for this client.</p>';
+    }
+
+    contentHtml += '<h3>Projects</h3>';
+    if(allProjects.headers.length > 0) {
+        const projEmailIndex = allProjects.headers.indexOf('Client Email');
+        const clientProjects = allProjects.rows.filter(row => row[projEmailIndex] === clientEmail);
+        if (clientProjects.length > 0) {
+            contentHtml += '<ul>';
+            clientProjects.forEach(proj => {
+                const projDate = proj[allProjects.headers.indexOf('Date')] || 'No Date';
+                const projName = proj[allProjects.headers.indexOf('Project Name')] || 'No Name';
+                const projStatus = proj[allProjects.headers.indexOf('Status')] || 'No Status';
+                contentHtml += `<li><strong>${projDate}:</strong> ${projName} (${projStatus})</li>`;
+            });
+            contentHtml += '</ul>';
+        } else {
+            contentHtml += '<p>No projects found for this client.</p>';
+        }
+    } else {
+        contentHtml += '<p>Project data is not available.</p>';
+    }
+
+    container.innerHTML = contentHtml;
+}
+
+function populateClientNotesTab(rowData, headers, isEditMode) {
+    const container = document.getElementById('client-tab-notes');
+    let contentHtml = '<h3>General Notes</h3>';
+
+    if (isEditMode) {
+        const notes = rowData[headers.indexOf('Notes')] || '';
+        contentHtml += `<textarea id="client-edit-Notes">${notes}</textarea>`;
+    } else {
+        const notes = rowData[headers.indexOf('Notes')] || 'No notes for this client.';
+        contentHtml += `<p>${notes}</p>`;
+    }
+
+    contentHtml += '<h3>Contact Logs</h3>';
+    const logsJson = rowData[headers.indexOf('Contact Logs')] || '[]';
+    let logs = [];
+    try {
+        logs = JSON.parse(logsJson);
+    } catch(e) {
+        console.error("Could not parse contact logs", e);
+    }
+    
+    if (logs.length > 0) {
+        logs.forEach(log => {
+            contentHtml += `<div class="contact-log"><small>${new Date(log.date).toLocaleString()}</small><p>${log.note}</p></div>`;
+        });
+    } else {
+        contentHtml += '<p>No contact logs.</p>';
+    }
+
+    if (isEditMode) {
+        contentHtml += `
+            <h3>Add New Contact Log</h3>
+            <textarea id="new-contact-log-entry" placeholder="Log a call, meeting, or email..."></textarea>
+            <button id="add-contact-log-btn">Add Log</button>
+        `;
+    }
+
+    container.innerHTML = contentHtml;
+
+    if (isEditMode) {
+        document.getElementById('add-contact-log-btn').onclick = () => {
+            const newNote = document.getElementById('new-contact-log-entry').value;
+            if(!newNote) return;
+
+            const newLog = { date: new Date().toISOString(), note: newNote };
+            logs.unshift(newLog); // Add to the beginning
+            
+            // This doesn't save yet, just updates the view. The main save button will handle persistence.
+            const updatedLogsJson = JSON.stringify(logs);
+            rowData[headers.indexOf('Contact Logs')] = updatedLogsJson; // Update local data
+            
+            // Re-render the tab to show the new log
+            populateClientNotesTab(rowData, headers, true); 
+        };
+    }
+}
+
+function populateClientFinancialsTab(clientEmail) {
+    const container = document.getElementById('client-tab-financials');
+    let contentHtml = '<h3>Year-to-Date Income</h3>';
+
+    if (allProjects.headers.length > 0) {
+        const projEmailIndex = allProjects.headers.indexOf('Client Email');
+        const projValueIndex = allProjects.headers.indexOf('Value');
+        const projDateIndex = allProjects.headers.indexOf('Date');
+        const currentYear = new Date().getFullYear();
+        let ytdIncome = 0;
+
+        allProjects.rows.forEach(row => {
+            const rowYear = new Date(row[projDateIndex]).getFullYear();
+            if (row[projEmailIndex] === clientEmail && rowYear === currentYear) {
+                const value = parseFloat(row[projValueIndex]);
+                if (!isNaN(value)) {
+                    ytdIncome += value;
+                }
+            }
+        });
+        contentHtml += `<h2>$${ytdIncome.toFixed(2)}</h2>`;
+
+    } else {
+        contentHtml += '<p>Project data is not available to calculate income.</p>';
+    }
+    container.innerHTML = contentHtml;
+}
+
 
 async function handleAddClientSubmit(event) {
     event.preventDefault();
@@ -779,3 +963,4 @@ function populateColumnSelector() {
         container.appendChild(wrapper);
     });
 }
+
