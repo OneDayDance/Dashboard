@@ -35,23 +35,25 @@
         </div>
 
         <main id="tab-requests" class="tab-content">
-            <h2>New Service Requests</h2>
-            <div class="controls-container">
-                <div class="filter-controls">
-                    <input type="text" id="search-bar" placeholder="Search requests...">
-                    <select id="service-filter">
-                        <option value="all">All Services</option>
-                    </select>
-                    <select id="status-filter">
-                        <option value="all">All Statuses</option>
-                        <option value="new">New</option>
-                        <option value="archived">Archived</option>
-                    </select>
-                </div>
-                <div class="view-controls">
-                    <button id="list-view-btn" class="active">List View</button>
-                    <button id="card-view-btn">Card View</button>
-                    <button id="column-select-btn">Display Options</button>
+            <div class="main-header-controls">
+                <h2>New Service Requests</h2>
+                <div class="controls-container">
+                    <div class="filter-controls">
+                        <input type="text" id="search-bar" placeholder="Search requests...">
+                        <select id="service-filter">
+                            <option value="all">All Services</option>
+                        </select>
+                        <select id="status-filter">
+                            <option value="all">All Statuses</option>
+                            <option value="new">New</option>
+                            <option value="archived">Archived</option>
+                        </select>
+                    </div>
+                    <div class="view-controls">
+                        <button id="list-view-btn" class="active">List View</button>
+                        <button id="card-view-btn">Card View</button>
+                        <button id="column-select-btn">Display Options</button>
+                    </div>
                 </div>
             </div>
             <div id="requests-container"></div>
@@ -68,9 +70,23 @@
         <main id="tab-clients" class="tab-content" style="display: none;">
             <div class="client-layout-container">
                 <div class="client-list-container card">
-                    <h2>Current Clients</h2>
-                    <div class="controls-container">
-                         <input type="text" id="client-search-bar" placeholder="Search clients...">
+                    <div class="main-header-controls">
+                        <h2>Current Clients</h2>
+                        <div class="controls-container">
+                            <div class="filter-controls">
+                                <input type="text" id="client-search-bar" placeholder="Search clients...">
+                                <select id="client-status-filter">
+                                    <option value="all">All Statuses</option>
+                                    <option value="Active">Active</option>
+                                    <option value="Inactive">Inactive</option>
+                                </select>
+                            </div>
+                             <div class="view-controls">
+                                <button id="client-list-view-btn" class="active">List View</button>
+                                <button id="client-card-view-btn">Card View</button>
+                                <button id="client-column-select-btn">Display Options</button>
+                            </div>
+                        </div>
                     </div>
                     <div id="client-table-container"></div>
                 </div>
@@ -124,16 +140,14 @@
                 <button class="client-tab-button" data-tab="history">History</button>
                 <button class="client-tab-button" data-tab="notes">Notes & Logs</button>
                 <button class="client-tab-button" data-tab="financials">Financials</button>
+                <button class="client-tab-button" data-tab="actions">Actions</button>
             </div>
             <div id="client-modal-body">
-                <!-- Details Tab -->
                 <div class="client-tab-content active" id="client-tab-details"></div>
-                <!-- History Tab -->
                 <div class="client-tab-content" id="client-tab-history"></div>
-                <!-- Notes & Logs Tab -->
                 <div class="client-tab-content" id="client-tab-notes"></div>
-                <!-- Financials Tab -->
                 <div class="client-tab-content" id="client-tab-financials"></div>
+                <div class="client-tab-content" id="client-tab-actions"></div>
             </div>
             <div class="modal-footer">
                  <button id="client-modal-edit-btn">Edit</button>
@@ -142,14 +156,66 @@
             </div>
         </div>
     </div>
+    
+    <!-- Create Project Modal -->
+    <div id="create-project-modal" class="modal">
+        <div class="modal-content">
+             <span class="close-button">&times;</span>
+            <h2>Create New Project</h2>
+            <form id="create-project-form">
+                <div class="form-field">
+                    <label for="project-client-name">Client</label>
+                    <input type="text" id="project-client-name" readonly>
+                </div>
+                 <div class="form-field">
+                    <label for="project-source-request">Source Request (Optional)</label>
+                    <select id="project-source-request"></select>
+                </div>
+                <div class="form-field">
+                    <label for="project-name">Project Name</label>
+                    <input type="text" id="project-name" required>
+                </div>
+                <div class="form-field">
+                    <label for="project-status">Status</label>
+                    <select id="project-status">
+                        <option>Not Started</option>
+                        <option>In Progress</option>
+                        <option>Completed</option>
+                        <option>On Hold</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="project-value">Value ($)</label>
+                    <input type="number" id="project-value" placeholder="0.00">
+                </div>
+                 <div class="form-field">
+                    <label for="project-start-date">Start Date</label>
+                    <input type="date" id="project-start-date">
+                </div>
+                <div class="modal-footer">
+                    <button type="submit">Create Project</button>
+                    <span id="create-project-status"></span>
+                </div>
+            </form>
+        </div>
+    </div>
 
-    <!-- Column Selector Modal -->
+
+    <!-- Column Selector Modals -->
     <div id="column-modal" class="modal">
         <div class="modal-content">
             <span class="close-button">&times;</span>
-            <h2>Select Columns to Display</h2>
+            <h2>Select Request Columns</h2>
             <div id="column-checkboxes"></div>
             <button id="save-columns-btn">Apply</button>
+        </div>
+    </div>
+    <div id="client-column-modal" class="modal">
+         <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Select Client Columns</h2>
+            <div id="client-column-checkboxes"></div>
+            <button id="save-client-columns-btn">Apply</button>
         </div>
     </div>
 
