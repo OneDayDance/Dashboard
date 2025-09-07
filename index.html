@@ -225,6 +225,53 @@
         </div>
     </div>
 
+    <!-- Task Details Modal -->
+    <div id="task-details-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2 id="task-modal-title">New Task</h2>
+            <form id="task-details-form">
+                <input type="hidden" id="task-id-input">
+                <input type="hidden" id="task-project-id-input">
+                <div class="form-field">
+                    <label for="task-title">Title</label>
+                    <input type="text" id="task-title" required>
+                </div>
+                 <div class="form-field">
+                    <label for="task-description">Description</label>
+                    <textarea id="task-description"></textarea>
+                </div>
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label for="task-due-date">Due Date</label>
+                        <input type="date" id="task-due-date">
+                    </div>
+                    <div class="form-field">
+                        <label for="task-assignee">Assignee</label>
+                        <input type="text" id="task-assignee">
+                    </div>
+                    <div class="form-field">
+                        <label for="task-status">Status</label>
+                        <select id="task-status">
+                            <option>To Do</option>
+                            <option>In Progress</option>
+                            <option>Done</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="task-bucket">Bucket</label>
+                        <input type="text" id="task-bucket" placeholder="e.g., Pre-Production">
+                    </div>
+                </div>
+                 <div class="modal-footer">
+                    <button type="submit">Save Task</button>
+                    <span id="task-modal-status"></span>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
     <!-- Delete Confirmation Modal -->
     <div id="delete-client-modal" class="modal">
         <div class="modal-content">
