@@ -93,6 +93,19 @@ async function initializeGapiClient() {
     await gapi.client.load('https://sheets.googleapis.com/$discovery/rest?version=v4');
     gapiInited = true;
     checkLibsLoaded();
+
+    // Automatically sign in if a token exists from a previous session
+    if (gapi.client.getToken() !== null) {
+        onSignInSuccess();
+    }
+}
+
+async function onSignInSuccess() {
+    landingContainer.style.display = 'none';
+    appContainer.style.display = 'block';
+    setupTabs();
+    await loadInitialData();
+    loadDataForActiveTab();
 }
 
 async function loadInitialData() {
@@ -102,11 +115,7 @@ async function loadInitialData() {
 function handleAuthClick() {
     tokenClient.callback = async (tokenResponse) => {
         if (tokenResponse.error !== undefined) { throw (tokenResponse); }
-        landingContainer.style.display = 'none';
-        appContainer.style.display = 'block';
-        setupTabs();
-        await loadInitialData();
-        loadDataForActiveTab();
+        await onSignInSuccess();
     };
     if (gapi.client.getToken() === null) {
         tokenClient.requestAccessToken({ prompt: 'consent' });
@@ -607,3 +616,4 @@ async function handleAddClientSubmit(event) {
         statusDiv.textContent = `Error: ${err.result.error.message}`;
     }
 }
+
