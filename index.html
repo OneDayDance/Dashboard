@@ -75,11 +75,18 @@
             <span class="close-button">&times;</span>
             <h2 id="modal-title">Request Details</h2>
             <div id="modal-body"></div>
-            <div id="modal-notes-section">
-                <h3>Notes</h3>
-                <textarea id="modal-notes-textarea"></textarea>
-                <button id="modal-save-note-btn">Save Note</button>
-                <span id="modal-note-status"></span>
+            <div class="modal-actions">
+                <div id="modal-notes-section">
+                    <h3>Notes</h3>
+                    <textarea id="modal-notes-textarea"></textarea>
+                    <button id="modal-save-note-btn">Save Note</button>
+                    <span id="modal-note-status"></span>
+                </div>
+                <div id="modal-client-section">
+                    <h3>Client Actions</h3>
+                    <button id="modal-create-client-btn">Create Client from Request</button>
+                    <span id="modal-client-status"></span>
+                </div>
             </div>
         </div>
     </div>
@@ -93,8 +100,9 @@
         </div>
     </div>
 
+    <script src="script.js"></script>
     <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
-    <script src="script.js"></script>
 </body>
 </html>
+
