@@ -530,10 +530,26 @@ function showProjectDetails(projectId, isEditMode = false) {
         header.classList.toggle('collapsed');
         header.nextElementSibling.classList.toggle('collapsed');
     });
-    detailsColumn.querySelectorAll('.task-item, .task-card').forEach(el => {
+    detailsColumn.querySelectorAll('.task-item, .task-card, .task-bucket, .task-board-column').forEach(el => {
         el.setAttribute('draggable', true);
-        el.ondragstart = (e) => { e.dataTransfer.setData('text/plain', e.currentTarget.dataset.taskId); e.currentTarget.classList.add('dragging'); };
+        el.ondragstart = (e) => {
+            e.stopPropagation();
+            const type = el.matches('.task-bucket, .task-board-column') ? 'text/bucket' : 'text/plain';
+            const value = el.matches('.task-bucket, .task-board-column') ? el.dataset.bucket : el.dataset.taskId;
+            e.dataTransfer.setData(type, value);
+            e.currentTarget.classList.add('dragging');
+        };
         el.ondragend = (e) => e.currentTarget.classList.remove('dragging');
+        el.ondragover = handleDragOver;
+        el.ondragleave = (e) => {
+             e.currentTarget.classList.remove('drag-over');
+             const indicator = document.querySelector('.drop-indicator');
+             if (indicator) indicator.remove();
+        };
+        el.ondrop = handleDrop;
+    });
+
+    detailsColumn.querySelectorAll('.task-item, .task-card').forEach(el => {
         el.onclick = (e) => {
             if (e.currentTarget.classList.contains('dragging')) return;
             const taskId = e.currentTarget.dataset.taskId;
@@ -541,14 +557,7 @@ function showProjectDetails(projectId, isEditMode = false) {
             else showTaskModal(projectId, taskId);
         };
     });
-     detailsColumn.querySelectorAll('.task-bucket, .task-board-column').forEach(bucket => {
-        bucket.setAttribute('draggable', true);
-        bucket.ondragstart = (e) => { e.stopPropagation(); e.dataTransfer.setData('text/bucket', e.currentTarget.dataset.bucket); e.currentTarget.classList.add('dragging'); };
-        bucket.ondragend = (e) => e.currentTarget.classList.remove('dragging');
-        bucket.ondragover = handleDragOver;
-        bucket.ondragleave = (e) => e.currentTarget.classList.remove('drag-over');
-        bucket.ondrop = handleDrop;
-    });
+     
     detailsColumn.querySelectorAll('.add-task-to-bucket-btn').forEach(btn => btn.onclick = () => showTaskModal(projectId, null, btn.dataset.bucket));
     document.getElementById('task-view-toggle').onclick = () => {
         state.projectTaskView = state.projectTaskView === 'list' ? 'board' : 'list';
@@ -691,7 +700,7 @@ function handleDragOver(e) {
     const container = e.currentTarget;
     const draggingEl = document.querySelector('.dragging');
     if (!draggingEl) return;
-    if (e.dataTransfer.getData('text/bucket')) { // If dragging a bucket
+    if (draggingEl.matches('.task-bucket, .task-board-column')) { // If dragging a bucket
         container.classList.add('drag-over');
         return;
     }
@@ -707,7 +716,7 @@ function handleDragOver(e) {
     }
 }
 function getDragAfterElement(container, y) {
-    const draggableElements = [...container.querySelectorAll('[draggable="true"]:not(.dragging)')];
+    const draggableElements = [...container.querySelectorAll('[draggable="true"]:not(.dragging):not(.task-bucket):not(.task-board-column)')];
     return draggableElements.reduce((closest, child) => {
         const box = child.getBoundingClientRect();
         const offset = y - box.top - box.height / 2;
@@ -730,27 +739,32 @@ async function handleDrop(e) {
     const originalParent = draggedElement.parentNode;
     const originalNextSibling = draggedElement.nextSibling;
     
+    const draggedBucketName = e.dataTransfer.getData('text/bucket');
+    const taskId = e.dataTransfer.getData('text/plain');
+
     // --- Optimistic UI Update ---
-    if (e.dataTransfer.getData('text/bucket')) { // Dropping a bucket
-        e.currentTarget.parentNode.insertBefore(draggedElement, e.currentTarget);
-    } else if (e.dataTransfer.getData('text/plain')) { // Dropping a task
-        const afterElement = getDragAfterElement(e.currentTarget, e.clientY);
+    if (draggedBucketName) { // Dropping a bucket
+        const container = e.currentTarget.parentNode;
+        container.insertBefore(draggedElement, e.currentTarget);
+    } else if (taskId) { // Dropping a task
+        const container = e.currentTarget.closest('.task-bucket, .task-board-column');
+        const afterElement = getDragAfterElement(container, e.clientY);
         if (afterElement == null) {
-            e.currentTarget.appendChild(draggedElement);
+            container.appendChild(draggedElement);
         } else {
-            e.currentTarget.insertBefore(draggedElement, afterElement);
+            container.insertBefore(draggedElement, afterElement);
         }
     }
 
     // --- Save Data and Rollback on Failure ---
     try {
-        if (e.dataTransfer.getData('text/bucket')) {
+        if (draggedBucketName) {
             const newBucketsOrder = Array.from(draggedElement.parentNode.children).map(el => el.dataset.bucket);
             await updateSheetRow('Projects', 'ProjectID', state.selectedProjectId, { 'Task Buckets': JSON.stringify(newBucketsOrder) });
             await loadProjects();
-        } else if (e.dataTransfer.getData('text/plain')) {
-            const droppedOnBucketName = e.currentTarget.dataset.bucket;
-            const taskContainer = e.currentTarget.closest('.task-bucket, .task-board-column');
+        } else if (taskId) {
+            const droppedOnBucketName = e.currentTarget.closest('.task-bucket, .task-board-column').dataset.bucket;
+            const taskContainer = draggedElement.parentNode;
             const newTasksInBucket = Array.from(taskContainer.querySelectorAll('[data-task-id]'));
             const updates = newTasksInBucket.map((taskEl, index) => {
                 return updateSheetRow('Tasks', 'TaskID', taskEl.dataset.taskId, { 'Bucket': droppedOnBucketName, 'SortIndex': index });
@@ -773,8 +787,6 @@ function renderAdvancedDetails(data, headers) {
     </ul></div>`;
 }
 async function handleSaveProjectUpdate(projectId) {
-    const btn = document.getElementById('project-save-btn');
-    btn.textContent = 'Saving...'; btn.disabled = true;
     const dataToUpdate = {};
     ['Project Name', 'Status', 'Start Date', 'Value', 'Service Provider', 'Location'].forEach(h => {
         const input = document.getElementById(`project-edit-${h.replace(/\s+/g, '')}`);
@@ -784,7 +796,7 @@ async function handleSaveProjectUpdate(projectId) {
         await updateSheetRow('Projects', 'ProjectID', projectId, dataToUpdate);
         await loadProjects();
         renderProjectsTab();
-    } catch(err) { console.error('Project update error', err); alert('Could not save project updates.'); btn.textContent = 'Save'; btn.disabled = false; }
+    } catch(err) { console.error('Project update error', err); alert('Could not save project updates.'); }
 }
 async function handleArchiveProject(projectId) {
     try {
@@ -990,7 +1002,7 @@ async function loadClients() {
         const response = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: 'Clients' });
         const values = response.result.values;
         if (!values || values.length < 1) { allClients = { headers: [], rows: [] }; } 
-        else { allClients = { headers: values[0], rows: values.slice(1) }; }
+        else { allClients = { headers: values[0], rows: values.slice(1).filter(row => row.length > 0) }; } // Filter out empty rows
     } catch (err) { console.error("Error loading clients:", err); document.getElementById('client-table-container').innerHTML = `<p style="color:red;">Error loading clients.</p>`; }
 }
 function renderClients() {
@@ -1272,9 +1284,13 @@ function showDeleteClientModal(rowData, headers) {
     confirmBtn.onclick = async () => {
         const statusSpan = document.getElementById('delete-client-status');
         statusSpan.textContent = 'Deleting...'; confirmBtn.disabled = true;
+        const clientId = rowData[headers.indexOf('ClientID')];
         try {
-            await clearSheetRow('Clients', 'ClientID', rowData[headers.indexOf('ClientID')]);
-            await loadClients(); renderClients();
+            await clearSheetRow('Clients', 'ClientID', clientId);
+            // FIX: Remove client from local data to prevent null row
+            const clientIndex = allClients.rows.findIndex(r => r[allClients.headers.indexOf('ClientID')] === clientId);
+            if (clientIndex > -1) allClients.rows.splice(clientIndex, 1);
+            renderClients();
             statusSpan.textContent = 'Client deleted.';
             setTimeout(() => { deleteClientModal.style.display = 'none'; }, 1500);
         } catch (err) { statusSpan.textContent = 'Error deleting client.'; console.error('Delete client error:', err); confirmBtn.disabled = false; }
