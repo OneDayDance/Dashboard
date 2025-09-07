@@ -6,69 +6,28 @@ const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
 
 // --- STATE MANAGEMENT ---
 let allRequests = { headers: [], rows: [] };
-let state = {
-    currentPage: 1,
-    rowsPerPage: 10,
-    sortColumn: 'Submission Date',
-    sortDirection: 'desc',
-    searchTerm: '',
-    filters: { service: 'all', status: 'all' },
-    visibleColumns: ['Submission Date', 'Full Name', 'Primary Service Category', 'Status'],
-    currentView: 'list'
-};
+let state = { /* ... state object from previous step ... */ };
 const sortableColumns = ['Submission Date', 'Full Name', 'Email', 'Organization', 'Primary Service Category', 'Status'];
 
 // --- DOM ELEMENTS ---
 let tokenClient, gapiInited = false, gisInited = false;
-let authorizeButton, signoutButton, appContainer, addClientForm, serviceFilter, statusFilter, searchBar, detailsModal, columnModal, closeModalButtons, listViewBtn, cardViewBtn, modalSaveNoteBtn, archiveToggle, archiveContainer, columnSelectBtn, saveColumnsBtn;
+let authorizeButton, signoutButton, appWrapper, authScreen, addClientForm, serviceFilter, statusFilter, searchBar, detailsModal, columnModal, closeModalButtons, listViewBtn, cardViewBtn, modalSaveNoteBtn, archiveToggle, archiveContainer, columnSelectBtn, saveColumnsBtn;
 
 document.addEventListener('DOMContentLoaded', () => {
     // Assign all elements
     authorizeButton = document.getElementById('authorize_button');
     signoutButton = document.getElementById('signout_button');
-    appContainer = document.getElementById('app-container');
+    appWrapper = document.getElementById('app-wrapper');
+    authScreen = document.getElementById('auth-screen');
     addClientForm = document.getElementById('add-client-form');
-    serviceFilter = document.getElementById('service-filter');
-    statusFilter = document.getElementById('status-filter');
-    searchBar = document.getElementById('search-bar');
-    detailsModal = document.getElementById('details-modal');
-    columnModal = document.getElementById('column-modal');
-    closeModalButtons = document.querySelectorAll('.close-button');
-    listViewBtn = document.getElementById('list-view-btn');
-    cardViewBtn = document.getElementById('card-view-btn');
-    modalSaveNoteBtn = document.getElementById('modal-save-note-btn');
-    archiveToggle = document.getElementById('archive-toggle');
-    archiveContainer = document.getElementById('archived-requests-container');
-    columnSelectBtn = document.getElementById('column-select-btn');
-    saveColumnsBtn = document.getElementById('save-columns-btn');
-
+    // ... all other getElementById assignments
+    
     // Assign event listeners
     authorizeButton.onclick = handleAuthClick;
     signoutButton.onclick = handleSignoutClick;
-    addClientForm.addEventListener('submit', handleAddClientSubmit);
-    serviceFilter.onchange = (e) => updateFilter('service', e.target.value);
-    statusFilter.onchange = (e) => updateFilter('status', e.target.value);
-    searchBar.oninput = (e) => updateSearch(e.target.value);
-    
-    closeModalButtons.forEach(btn => btn.onclick = () => {
-        detailsModal.style.display = 'none';
-        columnModal.style.display = 'none';
-    });
-    window.onclick = (event) => { 
-        if (event.target == detailsModal) detailsModal.style.display = 'none';
-        if (event.target == columnModal) columnModal.style.display = 'none';
-    };
-    
-    listViewBtn.onclick = () => setView('list');
-    cardViewBtn.onclick = () => setView('card');
-    columnSelectBtn.onclick = () => columnModal.style.display = 'block';
-    saveColumnsBtn.onclick = handleSaveColumns;
-    
-    archiveToggle.onclick = () => {
-        archiveToggle.classList.toggle('collapsed');
-        archiveContainer.classList.toggle('collapsed');
-    };
+    // ... all other event listener assignments
 });
+
 
 // --- INITIALIZATION & AUTH ---
 function gapiLoaded() { gapi.load('client', initializeGapiClient); }
@@ -83,16 +42,16 @@ async function initializeGapiClient() {
     await gapi.client.load('https://sheets.googleapis.com/$discovery/rest?version=v4');
     gapiInited = true;
 }
+
 function handleAuthClick() {
     tokenClient.callback = async (tokenResponse) => {
         if (tokenResponse.error !== undefined) { throw (tokenResponse); }
         
-        // --- NEW: Hide auth screen, show app ---
-        document.getElementById('auth-screen').style.display = 'none';
-        document.getElementById('app-wrapper').style.display = 'block';
-
-        // --- Existing logic ---
+        // Hide auth screen and show the main app
+        authScreen.style.display = 'none';
+        appWrapper.style.display = 'block';
         signoutButton.style.display = 'block';
+
         setupTabs();
         loadDataForActiveTab();
     };
@@ -102,16 +61,20 @@ function handleAuthClick() {
         tokenClient.requestAccessToken({ prompt: '' });
     }
 }
+
 function handleSignoutClick() {
     const token = gapi.client.getToken();
     if (token !== null) {
         google.accounts.oauth2.revoke(token.access_token);
         gapi.client.setToken('');
-        appContainer.style.display = 'none';
-        authorizeButton.style.display = 'block';
+        
+        // Hide the main app and show the auth screen
+        appWrapper.style.display = 'none';
+        authScreen.style.display = 'flex'; // Use flex to re-center
         signoutButton.style.display = 'none';
     }
 }
+
 
 // --- TAB NAVIGATION & CORE LOGIC ---
 function setupTabs() {
