@@ -72,17 +72,26 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // --- INITIALIZATION & AUTH ---
+function checkLibsLoaded() {
+    if (gapiInited && gisInited) {
+        authorizeButton.disabled = false;
+        authorizeButton.textContent = 'Authorize';
+    }
+}
+
 function gapiLoaded() { gapi.load('client', initializeGapiClient); }
 function gisLoaded() {
     tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID, scope: SCOPES, callback: '',
     });
     gisInited = true;
+    checkLibsLoaded();
 }
 async function initializeGapiClient() {
     await gapi.client.init({});
     await gapi.client.load('https://sheets.googleapis.com/$discovery/rest?version=v4');
     gapiInited = true;
+    checkLibsLoaded();
 }
 function handleAuthClick() {
     tokenClient.callback = async (tokenResponse) => {
