@@ -83,7 +83,6 @@ header {
     position: relative;
 }
 
-/* The 'main' tag for tabs now has consistent padding */
 main {
     padding: 20px;
 }
@@ -111,19 +110,11 @@ button:hover, #modal-save-note-btn:hover, #save-columns-btn:hover {
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
 
-button:disabled {
-    background-color: #ccc !important;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-}
-
-
-#authorize_button, .view-controls button.active, #modal-save-note-btn, #save-columns-btn, #modal-create-client-btn {
+#authorize_button, .view-controls button.active, #modal-save-note-btn, #save-columns-btn, #client-modal-save-btn {
     background-color: #FF9D76; /* Orange */
 }
 
-#signout_button {
+#signout_button, #client-modal-edit-btn {
     background-color: #6c757d; /* Gray for less emphasis */
 }
 
@@ -166,13 +157,13 @@ button:disabled {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
-    /* Removed padding to prevent double-padding from the main element */
 }
-.filter-controls {
+.filter-controls, .controls-container input {
     display: flex;
     gap: 10px;
+    width: 100%;
 }
-.filter-controls input, .filter-controls select {
+.filter-controls input, .filter-controls select, #client-search-bar {
     padding: 8px;
     border-radius: 4px;
     border: 1px solid #ccc;
@@ -223,19 +214,26 @@ button:disabled {
     cursor: pointer;
 }
 
-/* --- Themed Badges & Status --- */
-.badge {
-    padding: 3px 8px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: bold;
-    color: white;
+/* --- Clients Tab Layout --- */
+.client-layout-container {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    align-items: start;
 }
-.request-card select {
-    width: 100%;
-    margin-top: 10px;
-    padding: 5px;
+
+#add-client-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
+
+#add-client-form input {
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+
 
 /* --- Themed Modals --- */
 .modal {
@@ -262,65 +260,40 @@ button:disabled {
     box-shadow: 0 5px 15px rgba(0,0,0,0.3);
 }
 
-.modal-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
+.modal-footer {
+    text-align: right;
     margin-top: 20px;
     border-top: 1px solid #eee;
     padding-top: 15px;
 }
 
-#modal-client-section, #modal-notes-section {
-    display: flex;
-    flex-direction: column;
-}
-
-#modal-client-section h3, #modal-notes-section h3 {
-    margin-top: 0;
-}
-
-#modal-notes-textarea {
-    width: 95%;
-    min-height: 80px;
-    margin-bottom: 10px;
-    padding: 5px;
-}
-#modal-client-status, #modal-note-status {
-    margin-top: 10px;
-    font-size: 14px;
-}
-
-
 /* --- Other styles --- */
 .close-button { color: #aaa; position: absolute; top: 10px; right: 20px; font-size: 28px; font-weight: bold; }
 .close-button:hover, .close-button:focus { color: black; text-decoration: none; cursor: pointer; }
-#modal-body ul { list-style-type: none; padding: 0; }
-#modal-body li { padding: 8px 0; border-bottom: 1px solid #eee; }
-#modal-body li strong { display: inline-block; width: 150px; color: #555; }
+#modal-body ul, #client-modal-body ul { list-style-type: none; padding: 0; }
+#modal-body li, #client-modal-body li { padding: 8px 0; border-bottom: 1px solid #eee; display: flex;}
+#modal-body li strong, #client-modal-body li strong { display: inline-block; width: 180px; color: #555; flex-shrink: 0;}
+
+#client-modal-body input {
+    width: 100%;
+    padding: 4px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+
+.modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
+#modal-notes-textarea { width: 95%; min-height: 80px; margin-top: 10px; padding: 5px; }
 #column-checkboxes { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin: 20px 0; }
 #column-checkboxes label { display: flex; align-items: center; gap: 8px; }
-.collapsible-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-    padding: 10px 0; /* Adjusted padding */
-    border-top: 1px solid #ccc;
-    margin-top: 40px;
-}
+.collapsible-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 10px 0; border-top: 1px solid #ccc; margin-top: 40px; }
 .collapsible-header h2 { margin: 0; }
 .toggle-arrow { font-size: 18px; transition: transform 0.3s ease; }
 .collapsible-content { max-height: 2000px; overflow: hidden; transition: max-height 0.5s ease-in-out; }
 .collapsible-content.collapsed { max-height: 0; }
 .collapsible-header.collapsed .toggle-arrow { transform: rotate(-90deg); }
-.card-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
-    margin-top: 20px; /* Added margin for spacing */
-}
+.card-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
 .request-card { border: 1px solid #ddd; border-radius: 8px; padding: 15px; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; transition: all 0.2s ease-in-out; }
 .request-card:hover { border-color: #FF9D76; box-shadow: 0 4px 8px rgba(0,0,0,0.1); transform: translateY(-3px); }
 .request-card h3 { margin-top: 0; }
 .request-card p { margin: 5px 0; color: #555; font-size: 14px; }
+
