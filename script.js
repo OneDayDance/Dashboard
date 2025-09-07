@@ -108,8 +108,16 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('create-project-form').addEventListener('submit', handleCreateProjectSubmit);
     document.getElementById('task-details-form').addEventListener('submit', handleSaveTask);
     document.getElementById('project-list-collapse-btn').onclick = () => {
-        document.getElementById('project-layout-container').classList.toggle('collapsed');
-        document.querySelector('.project-list-column').classList.toggle('collapsed');
+        const layout = document.getElementById('project-layout-container');
+        const column = document.querySelector('.project-list-column');
+        const title = document.getElementById('project-list-title');
+        layout.classList.toggle('collapsed');
+        column.classList.toggle('collapsed');
+        if(column.classList.contains('collapsed')) {
+            title.innerHTML = title.textContent.split('').map(char => `<span>${char}</span>`).join('');
+        } else {
+            title.innerHTML = 'Projects';
+        }
     };
 });
 
@@ -480,10 +488,31 @@ function showProjectDetails(projectId, isEditMode = false) {
         header.classList.toggle('collapsed');
         header.nextElementSibling.classList.toggle('collapsed');
     });
-    detailsColumn.querySelectorAll('.task-item, .task-card').forEach(el => el.onclick = (e) => {
-        const taskId = e.currentTarget.dataset.taskId;
-        if(e.target.type === 'checkbox') { handleTaskStatusChange(taskId, e.target.checked); } 
-        else { showTaskModal(projectId, taskId); }
+    detailsColumn.querySelectorAll('.task-item, .task-card').forEach(el => {
+        el.setAttribute('draggable', true);
+        el.ondragstart = (e) => {
+            e.dataTransfer.setData('text/plain', e.currentTarget.dataset.taskId);
+            e.currentTarget.classList.add('dragging');
+        };
+        el.ondragend = (e) => e.currentTarget.classList.remove('dragging');
+        el.onclick = (e) => {
+            if (e.currentTarget.classList.contains('dragging')) return;
+            const taskId = e.currentTarget.dataset.taskId;
+            if(e.target.type === 'checkbox') handleTaskStatusChange(taskId, e.target.checked);
+            else showTaskModal(projectId, taskId);
+        };
+    });
+     detailsColumn.querySelectorAll('.task-bucket, .task-board-column').forEach(bucket => {
+        bucket.setAttribute('draggable', true);
+        bucket.ondragstart = (e) => {
+            e.stopPropagation();
+            e.dataTransfer.setData('text/bucket', e.currentTarget.dataset.bucket);
+            e.currentTarget.classList.add('dragging');
+        };
+        bucket.ondragend = (e) => e.currentTarget.classList.remove('dragging');
+        bucket.ondragover = (e) => { e.preventDefault(); e.currentTarget.classList.add('drag-over'); };
+        bucket.ondragleave = (e) => e.currentTarget.classList.remove('drag-over');
+        bucket.ondrop = handleDrop;
     });
     detailsColumn.querySelectorAll('.add-task-to-bucket-btn').forEach(btn => btn.onclick = () => showTaskModal(projectId, null, btn.dataset.bucket));
     document.getElementById('task-view-toggle').onclick = () => {
@@ -495,9 +524,7 @@ function showProjectDetails(projectId, isEditMode = false) {
         if (bucketName && bucketName.trim() !== '') {
             const bucketsIndex = allProjects.headers.indexOf('Task Buckets');
             let currentBuckets = [];
-            if (bucketsIndex > -1 && project[bucketsIndex]) {
-                try { currentBuckets = JSON.parse(project[bucketsIndex]); } catch (e) {}
-            }
+            if (bucketsIndex > -1 && project[bucketsIndex]) try { currentBuckets = JSON.parse(project[bucketsIndex]); } catch (e) {}
             if (!currentBuckets.includes(bucketName.trim())) {
                 currentBuckets.push(bucketName.trim());
                 try {
@@ -557,19 +584,12 @@ function renderTasksSection(projectId) {
 }
 function renderTasksAsList(projectId) {
     let html = `<div id="project-task-list">`;
-    const { headers, rows } = allTasks, [idIdx, nameIdx, statusIdx, bucketIdx] = ['TaskID', 'Task Name', 'Status', 'Bucket'].map(h => headers.indexOf(h));
-    const projectTasks = rows.filter(t => t[headers.indexOf('ProjectID')] === projectId);
-    const project = allProjects.rows.find(p => p[allProjects.headers.indexOf('ProjectID')] === projectId);
-    let buckets = ['General'];
-    if (project) {
-        const bucketsJSON = project[allProjects.headers.indexOf('Task Buckets')];
-        if (bucketsJSON) try { buckets = JSON.parse(bucketsJSON); } catch(e){}
-    }
+    const projectTasks = getProjectTasksSorted(projectId);
+    const buckets = getProjectBuckets(projectId);
     buckets.forEach(bucket => {
-        html += `<div class="task-bucket"><h5>${bucket}</h5>`;
-        projectTasks.filter(t => (t[bucketIdx] || 'General') === bucket).forEach(task => {
-            const isCompleted = task[statusIdx] === 'Done';
-            html += `<div class="task-item ${isCompleted ? 'completed' : ''}" data-task-id="${task[idIdx]}"><input type="checkbox" ${isCompleted ? 'checked' : ''}><label>${task[nameIdx]}</label></div>`;
+        html += `<div class="task-bucket" data-bucket="${bucket}"><h5>${bucket}</h5>`;
+        projectTasks.filter(t => (t.row[allTasks.headers.indexOf('Bucket')] || 'General') === bucket).forEach(task => {
+            html += renderTaskItem(task.row, task.subtasks);
         });
         html += `<button class="add-task-to-bucket-btn" data-bucket="${bucket}">+ Add Task</button></div>`;
     });
@@ -577,22 +597,102 @@ function renderTasksAsList(projectId) {
 }
 function renderTasksAsBoard(projectId) {
     let html = `<div id="project-task-board" class="task-board">`;
-    const { headers, rows } = allTasks, [idIdx, nameIdx, statusIdx, bucketIdx] = ['TaskID', 'Task Name', 'Status', 'Bucket'].map(h => headers.indexOf(h));
-    const projectTasks = rows.filter(t => t[headers.indexOf('ProjectID')] === projectId);
-    const project = allProjects.rows.find(p => p[allProjects.headers.indexOf('ProjectID')] === projectId);
-    let buckets = ['General'];
-    if (project) {
-        const bucketsJSON = project[allProjects.headers.indexOf('Task Buckets')];
-        if (bucketsJSON) try { buckets = JSON.parse(bucketsJSON); } catch(e){}
-    }
+    const projectTasks = getProjectTasksSorted(projectId);
+    const buckets = getProjectBuckets(projectId);
     buckets.forEach(bucket => {
-        html += `<div class="task-board-column"><h5>${bucket}</h5>`;
-        projectTasks.filter(t => (t[bucketIdx] || 'General') === bucket).forEach(task => {
-            html += `<div class="task-card" data-task-id="${task[idIdx]}"><p>${task[nameIdx]}</p></div>`;
+        html += `<div class="task-board-column" data-bucket="${bucket}"><h5>${bucket}</h5>`;
+        projectTasks.filter(t => (t.row[allTasks.headers.indexOf('Bucket')] || 'General') === bucket).forEach(task => {
+            html += renderTaskCard(task.row, task.subtasks);
         });
         html += `<button class="add-task-to-bucket-btn" data-bucket="${bucket}">+ Add Task</button></div>`;
     });
     return html + `</div>`;
+}
+function renderTaskItem(taskRow, subtasks) {
+    const [idIdx, nameIdx, statusIdx] = ['TaskID', 'Task Name', 'Status'].map(h => allTasks.headers.indexOf(h));
+    const isCompleted = taskRow[statusIdx] === 'Done';
+    let subtasksHtml = '';
+    if (subtasks.length > 0) {
+        subtasksHtml += '<ul class="subtask-list">';
+        subtasks.forEach(sub => subtasksHtml += `<li class="subtask-item"><input type="checkbox" ${sub.completed ? 'checked' : ''} disabled> ${sub.name}</li>`);
+        subtasksHtml += '</ul>';
+        const completedCount = subtasks.filter(s => s.completed).length;
+        const progress = subtasks.length > 0 ? (completedCount / subtasks.length) * 100 : 0;
+        subtasksHtml += `<div class="task-progress" title="${completedCount}/${subtasks.length} complete"><div class="task-progress-bar" style="width:${progress}%"></div></div>`;
+    }
+    return `<div class="task-item" data-task-id="${taskRow[idIdx]}">
+                <div class="task-main ${isCompleted ? 'completed' : ''}">
+                    <input type="checkbox" ${isCompleted ? 'checked' : ''}>
+                    <label>${taskRow[nameIdx]}</label>
+                </div>
+                ${subtasksHtml}
+            </div>`;
+}
+function renderTaskCard(taskRow, subtasks) {
+     const [idIdx, nameIdx] = ['TaskID', 'Task Name'].map(h => allTasks.headers.indexOf(h));
+     let subtaskSummary = '';
+     if (subtasks.length > 0) {
+        const completedCount = subtasks.filter(s => s.completed).length;
+        subtaskSummary = `<p class="subtask-summary">✓ ${completedCount}/${subtasks.length}</p>`;
+     }
+    return `<div class="task-card" data-task-id="${taskRow[idIdx]}"><p>${taskRow[nameIdx]}</p>${subtaskSummary}</div>`;
+}
+function getProjectTasksSorted(projectId) {
+    const { headers, rows } = allTasks, [idIdx, sortIdx, subtaskIdx] = ['ProjectID', 'SortIndex', 'Subtasks'].map(h => headers.indexOf(h));
+    return rows.filter(t => t[idIdx] === projectId)
+               .sort((a,b) => (a[sortIdx] || 0) - (b[sortIdx] || 0))
+               .map(row => ({ row, subtasks: JSON.parse(row[subtaskIdx] || '[]') }));
+}
+function getProjectBuckets(projectId) {
+    const project = allProjects.rows.find(p => p[allProjects.headers.indexOf('ProjectID')] === projectId);
+    if (project) {
+        const bucketsJSON = project[allProjects.headers.indexOf('Task Buckets')];
+        if (bucketsJSON) try { return JSON.parse(bucketsJSON); } catch(e){}
+    }
+    return ['General'];
+}
+async function handleDrop(e) {
+    e.preventDefault(); e.stopPropagation();
+    e.currentTarget.classList.remove('drag-over');
+    const bucket = e.currentTarget.dataset.bucket;
+    const taskId = e.dataTransfer.getData('text/plain');
+    const bucketName = e.dataTransfer.getData('text/bucket');
+
+    if (bucketName) { // A bucket was dropped
+        const droppedOnBucket = e.currentTarget.dataset.bucket;
+        const buckets = getProjectBuckets(state.selectedProjectId);
+        const fromIndex = buckets.indexOf(bucketName);
+        const toIndex = buckets.indexOf(droppedOnBucket);
+        if (fromIndex !== -1 && toIndex !== -1) {
+            buckets.splice(toIndex, 0, buckets.splice(fromIndex, 1)[0]);
+            await updateSheetRow('Projects', 'ProjectID', state.selectedProjectId, { 'Task Buckets': JSON.stringify(buckets) });
+            await loadProjects();
+            showProjectDetails(state.selectedProjectId);
+        }
+    } else if (taskId) { // A task was dropped
+        const tasksInBucket = getProjectTasksSorted(state.selectedProjectId).filter(t => (t.row[allTasks.headers.indexOf('Bucket')] || 'General') === bucket);
+        const droppedTaskIndex = tasksInBucket.findIndex(t => t.row[allTasks.headers.indexOf('TaskID')] === taskId);
+        const targetElement = e.target.closest('.task-item, .task-card');
+        let newIndex = tasksInBucket.length;
+        if (targetElement) {
+            const targetTaskId = targetElement.dataset.taskId;
+            newIndex = tasksInBucket.findIndex(t => t.row[allTasks.headers.indexOf('TaskID')] === targetTaskId);
+        }
+        
+        const updates = [];
+        const taskToUpdate = allTasks.rows.find(t => t[allTasks.headers.indexOf('TaskID')] === taskId);
+        updates.push(updateSheetRow('Tasks', 'TaskID', taskId, { 'Bucket': bucket, 'SortIndex': newIndex }));
+        
+        tasksInBucket.forEach((task, i) => {
+            if (i >= newIndex) {
+                 updates.push(updateSheetRow('Tasks', 'TaskID', task.row[allTasks.headers.indexOf('TaskID')], { 'SortIndex': i + 1 }));
+            }
+        });
+        
+        await Promise.all(updates);
+        await loadTasks();
+        showProjectDetails(state.selectedProjectId);
+    }
 }
 function renderAdvancedDetails(data, headers) {
     const reqId = data[headers.indexOf('Source Request ID')];
@@ -647,11 +747,7 @@ function showTaskModal(projectId, taskId = null, bucketName = null) {
     document.getElementById('task-project-id-input').value = projectId;
     document.getElementById('task-modal-status').textContent = '';
     const project = allProjects.rows.find(p => p[allProjects.headers.indexOf('ProjectID')] === projectId);
-    let buckets = ['General'];
-    if (project) {
-        const bucketsJSON = project[allProjects.headers.indexOf('Task Buckets')];
-        if (bucketsJSON) try { buckets = JSON.parse(bucketsJSON); } catch(e){}
-    }
+    let buckets = getProjectBuckets(projectId);
     const bucketSelect = document.getElementById('task-bucket');
     bucketSelect.innerHTML = '';
     buckets.forEach(b => bucketSelect.add(new Option(b, b)));
@@ -693,10 +789,10 @@ function showTaskModal(projectId, taskId = null, bucketName = null) {
     taskDetailsModal.style.display = 'block';
 }
 function renderSubtasks(subtasks) {
-    const container = document.getElementById('subtasks-container');
+    const container = document.getElementById('subtasks-container-modal');
     container.innerHTML = `<input type="hidden" id="subtasks-data" value='${JSON.stringify(subtasks)}'>`;
     subtasks.forEach((sub, i) => {
-        container.innerHTML += `<div class="item-tag"><input type="checkbox" ${sub.completed ? 'checked' : ''} onchange="updateSubtaskStatus(${i}, this.checked)"> ${sub.name} <button type="button" onclick="removeSubtask(${i})">&times;</button></div>`;
+        container.innerHTML += `<div class="subtask-item"><input type="checkbox" ${sub.completed ? 'checked' : ''} onchange="updateSubtaskStatus(${i}, this.checked)"> ${sub.name} <button type="button" onclick="removeSubtask(${i})">&times;</button></div>`;
     });
 }
 function updateSubtaskStatus(index, completed) {
@@ -739,7 +835,12 @@ async function handleSaveTask(event) {
     };
     try {
         if (taskId) await updateSheetRow('Tasks', 'TaskID', taskId, taskData);
-        else { taskData.TaskID = `T-${Date.now()}`; await writeData('Tasks', taskData); }
+        else { 
+            taskData.TaskID = `T-${Date.now()}`; 
+            const tasksInBucket = getProjectTasksSorted(taskData.ProjectID).filter(t => (t.row[allTasks.headers.indexOf('Bucket')] || 'General') === taskData.Bucket);
+            taskData.SortIndex = tasksInBucket.length;
+            await writeData('Tasks', taskData); 
+        }
         await loadTasks();
         showProjectDetails(taskData.ProjectID);
         statusSpan.textContent = 'Saved!';
