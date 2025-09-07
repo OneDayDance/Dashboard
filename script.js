@@ -6,6 +6,7 @@ const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
 
 // --- STATE MANAGEMENT ---
 let allRequests = { headers: [], rows: [] };
+let allClients = { headers: [], rows: [] };
 let state = {
     currentPage: 1,
     rowsPerPage: 10,
@@ -93,12 +94,18 @@ async function initializeGapiClient() {
     gapiInited = true;
     checkLibsLoaded();
 }
+
+async function loadInitialData() {
+    await Promise.all([loadRequests(), loadClients()]);
+}
+
 function handleAuthClick() {
     tokenClient.callback = async (tokenResponse) => {
         if (tokenResponse.error !== undefined) { throw (tokenResponse); }
         landingContainer.style.display = 'none';
         appContainer.style.display = 'block';
         setupTabs();
+        await loadInitialData();
         loadDataForActiveTab();
     };
     if (gapi.client.getToken() === null) {
@@ -139,10 +146,10 @@ function loadDataForActiveTab() {
     const activeTab = document.querySelector('.tab-button.active').dataset.tab;
     switch (activeTab) {
         case 'requests':
-            loadRequests();
+            renderRequests();
             break;
         case 'clients':
-            loadClients();
+            renderClients();
             break;
     }
 }
@@ -174,8 +181,6 @@ function handleSaveColumns() {
 
 // --- REQUESTS TAB FUNCTIONS ---
 async function loadRequests() {
-    const container = document.getElementById('requests-container');
-    container.innerHTML = '<p>Loading new service requests...</p>';
     try {
         const response = await gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID, range: 'Submissions',
@@ -189,12 +194,11 @@ async function loadRequests() {
             allRequests = { headers: [], rows: [] };
         }
     } catch (err) {
-        container.innerHTML = `<p style="color:red;">Error loading requests: ${err.result.error.message}</p>`;
-        return;
+        console.error("Error loading requests:", err);
+        document.getElementById('requests-container').innerHTML = `<p style="color:red;">Error loading requests: ${err.result.error.message}</p>`;
     }
     archiveToggle.classList.add('collapsed');
     archiveContainer.classList.add('collapsed');
-    setView('list');
 }
 
 function renderRequests() {
@@ -373,6 +377,7 @@ function showRequestDetailsModal(rowData, headers) {
     contentHtml += '</ul>';
     modalBody.innerHTML = contentHtml;
     
+    // Notes section
     const notesTextarea = document.getElementById('modal-notes-textarea');
     const noteStatus = document.getElementById('modal-note-status');
     const originalIndex = allRequests.rows.indexOf(rowData);
@@ -380,7 +385,64 @@ function showRequestDetailsModal(rowData, headers) {
     const notesIndex = headers.indexOf('Notes');
     notesTextarea.value = rowData[notesIndex] || '';
     modalSaveNoteBtn.onclick = () => handleSaveNote(originalIndex);
+
+    // Client section
+    const createClientBtn = document.getElementById('modal-create-client-btn');
+    const clientStatus = document.getElementById('modal-client-status');
+    const submissionEmailIndex = headers.indexOf('Email');
+    const submissionEmail = rowData[submissionEmailIndex];
+    
+    if (!submissionEmail) {
+        createClientBtn.disabled = true;
+        clientStatus.textContent = "No email in submission.";
+    } else {
+        const clientEmailIndex = allClients.headers.indexOf('Email');
+        const clientExists = allClients.rows.some(clientRow => clientRow[clientEmailIndex] === submissionEmail);
+
+        if(clientExists) {
+            createClientBtn.disabled = true;
+            clientStatus.textContent = "Client with this email already exists.";
+        } else {
+            createClientBtn.disabled = false;
+            clientStatus.textContent = "";
+            createClientBtn.onclick = () => handleCreateClient(rowData, headers);
+        }
+    }
+    
     detailsModal.style.display = 'block';
+}
+
+async function handleCreateClient(submissionRow, submissionHeaders) {
+    const createClientBtn = document.getElementById('modal-create-client-btn');
+    const clientStatus = document.getElementById('modal-client-status');
+    createClientBtn.disabled = true;
+    clientStatus.textContent = 'Creating client...';
+
+    const fullName = submissionRow[submissionHeaders.indexOf('Full Name')] || '';
+    const nameParts = fullName.split(' ');
+    const firstName = nameParts[0];
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+
+    const clientData = {
+        'First Name': firstName,
+        'Last Name': lastName,
+        'Email': submissionRow[submissionHeaders.indexOf('Email')] || '',
+        'Phone': submissionRow[submissionHeaders.indexOf('Phone Number')] || '',
+        'Organization': submissionRow[submissionHeaders.indexOf('Organization')] || '',
+        'Status': 'Active',
+        'ClientID': `C-${Date.now()}`,
+        'Source': 'Submission',
+        'Original Submission ID': submissionRow[submissionHeaders.indexOf('Submission ID')] || ''
+    };
+
+    try {
+        await writeData('Clients', clientData);
+        clientStatus.textContent = 'Client created successfully!';
+        await loadClients(); // Refresh client data
+    } catch (err) {
+        clientStatus.textContent = `Error: ${err.result.error.message}`;
+        createClientBtn.disabled = false;
+    }
 }
 
 function handleSort(event) {
@@ -411,93 +473,72 @@ async function handleSaveNote(rowIndex) {
 }
 
 // --- UTILITY & GENERIC DATA FUNCTIONS ---
-
-/**
- * NEW: A robust, centralized function for updating any row.
- * It reads headers from the sheet to guarantee writing to the correct column.
- */
 async function updateRowData(sheetName, localRowIndex, dataToUpdate) {
+    // This function remains the same
     const { headers, rows } = allRequests;
     const rowData = rows[localRowIndex];
     const idColumnName = 'Submission ID';
     const idIndex = headers.indexOf(idColumnName);
-    
     if (idIndex === -1) throw new Error(`'${idColumnName}' column not found.`);
-    
     const uniqueId = rowData[idIndex];
-    
-    // Fetch fresh sheet data to find the absolute row index
     const sheetResponse = await gapi.client.sheets.spreadsheets.values.get({
-        spreadsheetId: SPREADSHEET_ID,
-        range: sheetName,
+        spreadsheetId: SPREADSHEET_ID, range: sheetName,
     });
-    
     const sheetValues = sheetResponse.result.values;
     const sheetHeaders = sheetValues[0];
     const visualRowIndex = sheetValues.findIndex(sheetRow => sheetRow && sheetRow[idIndex] === uniqueId);
-
-    if (visualRowIndex === -1) throw new Error("Could not find row in sheet. It may have been modified by someone else.");
-
+    if (visualRowIndex === -1) throw new Error("Could not find row in sheet.");
     const originalRow = sheetValues[visualRowIndex];
-    const updatedRow = [...originalRow]; // Create a copy
-
-    // For each piece of data to update, find its column and update the value
+    const updatedRow = [...originalRow];
     for (const columnName in dataToUpdate) {
         const columnIndex = sheetHeaders.indexOf(columnName);
         if (columnIndex > -1) {
             updatedRow[columnIndex] = dataToUpdate[columnName];
-        } else {
-            console.warn(`Column "${columnName}" not found in sheet, could not update.`);
         }
     }
-
     const targetRowNumber = visualRowIndex + 1;
     const targetRange = `${sheetName}!A${targetRowNumber}`;
-
     return gapi.client.sheets.spreadsheets.values.update({
-        spreadsheetId: SPREADSHEET_ID,
-        range: targetRange,
-        valueInputOption: 'RAW',
-        resource: {
-            values: [updatedRow]
-        }
+        spreadsheetId: SPREADSHEET_ID, range: targetRange, valueInputOption: 'RAW',
+        resource: { values: [updatedRow] }
     });
 }
 
-// ... All other utility and data functions (loadClients, writeData, etc.) remain here ...
 async function loadClients() {
-    const clientListDiv = document.getElementById('client-list');
-    clientListDiv.innerHTML = '<p>Loading clients...</p>';
     try {
         const response = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: 'Clients' });
         const values = response.result.values;
         if (!values || values.length < 1) {
-            clientListDiv.innerHTML = '<p>No client data found.</p>';
-            return;
+            allClients = { headers: [], rows: [] };
+        } else {
+            allClients = { headers: values[0], rows: values.slice(1) };
         }
-        const headers = values[0];
-        const dataRows = values.slice(1);
-        const firstNameIndex = headers.indexOf('First Name');
-        const emailIndex = headers.indexOf('Email');
-        if (firstNameIndex === -1 || emailIndex === -1) {
-             clientListDiv.innerHTML = `<p style="color:red;">Error: Required column not found.</p>`;
-             return;
-        }
-        clientListDiv.innerHTML = '';
-        if (dataRows.length === 0) {
-            clientListDiv.innerHTML = '<p>No clients found.</p>';
-            return;
-        }
-        const ul = document.createElement('ul');
-        dataRows.forEach(row => {
-            const li = document.createElement('li');
-            li.textContent = `${row[firstNameIndex] || 'N/A'} - (${row[emailIndex] || 'N/A'})`;
-            ul.appendChild(li);
-        });
-        clientListDiv.appendChild(ul);
     } catch (err) {
-        clientListDiv.innerHTML = `<p style="color:red;">Error: ${err.result.error.message}`;
+        console.error("Error loading clients:", err);
     }
+}
+
+function renderClients() {
+    const clientListDiv = document.getElementById('client-list');
+    clientListDiv.innerHTML = '';
+    if (!allClients.rows || allClients.rows.length === 0) {
+        clientListDiv.innerHTML = '<p>No clients found.</p>';
+        return;
+    }
+    const { headers, rows } = allClients;
+    const firstNameIndex = headers.indexOf('First Name');
+    const emailIndex = headers.indexOf('Email');
+    if (firstNameIndex === -1 || emailIndex === -1) {
+         clientListDiv.innerHTML = `<p style="color:red;">Error: Required client columns not found.</p>`;
+         return;
+    }
+    const ul = document.createElement('ul');
+    rows.forEach(row => {
+        const li = document.createElement('li');
+        li.textContent = `${row[firstNameIndex] || 'N/A'} - (${row[emailIndex] || 'N/A'})`;
+        ul.appendChild(li);
+    });
+    clientListDiv.appendChild(ul);
 }
 async function writeData(sheetName, dataObject) {
     const headerResponse = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!1:1` });
@@ -561,6 +602,7 @@ async function handleAddClientSubmit(event) {
         statusDiv.textContent = 'Client added successfully!';
         addClientForm.reset();
         await loadClients();
+        renderClients();
     } catch (err) {
         statusDiv.textContent = `Error: ${err.result.error.message}`;
     }
