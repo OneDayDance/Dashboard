@@ -22,7 +22,9 @@ let state = {
     clientSortDirection: 'asc',
     clientCurrentView: 'list',
     visibleClientColumns: ['First Name', 'Last Name', 'Email', 'Organization', 'Status'],
-    clientFilters: { status: 'all' }
+    clientFilters: { status: 'all' },
+    // projects tab state
+    selectedProjectId: null
 };
 const sortableColumns = ['Submission Date', 'Full Name', 'Email', 'Organization', 'Primary Service Category', 'Status'];
 const clientSortableColumns = ['First Name', 'Last Name', 'Email', 'Organization', 'Status'];
@@ -30,7 +32,7 @@ const clientSortableColumns = ['First Name', 'Last Name', 'Email', 'Organization
 
 // --- DOM ELEMENTS ---
 let tokenClient, gapiInited = false, gisInited = false;
-let authorizeButton, signoutButton, appContainer, addClientForm, serviceFilter, statusFilter, searchBar, detailsModal, columnModal, closeModalButtons, listViewBtn, cardViewBtn, modalSaveNoteBtn, archiveToggle, archiveContainer, columnSelectBtn, saveColumnsBtn, landingContainer, clientSearchBar, clientTableContainer, clientDetailsModal, clientStatusFilter, clientListViewBtn, clientCardViewBtn, clientColumnSelectBtn, clientColumnModal, createProjectModal;
+let authorizeButton, signoutButton, appContainer, addClientForm, serviceFilter, statusFilter, searchBar, detailsModal, columnModal, closeModalButtons, listViewBtn, cardViewBtn, modalSaveNoteBtn, archiveToggle, archiveContainer, columnSelectBtn, saveColumnsBtn, landingContainer, clientSearchBar, clientTableContainer, clientDetailsModal, clientStatusFilter, clientListViewBtn, clientCardViewBtn, clientColumnSelectBtn, clientColumnModal, createProjectModal, deleteClientModal;
 let silentAuthAttempted = false;
 
 
@@ -47,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     columnModal = document.getElementById('column-modal');
     clientDetailsModal = document.getElementById('client-details-modal');
     createProjectModal = document.getElementById('create-project-modal');
+    deleteClientModal = document.getElementById('delete-client-modal');
     clientColumnModal = document.getElementById('client-column-modal');
     closeModalButtons = document.querySelectorAll('.close-button');
     listViewBtn = document.getElementById('list-view-btn');
@@ -79,14 +82,13 @@ document.addEventListener('DOMContentLoaded', () => {
         columnModal.style.display = 'none';
         clientDetailsModal.style.display = 'none';
         createProjectModal.style.display = 'none';
+        deleteClientModal.style.display = 'none';
         clientColumnModal.style.display = 'none';
     });
     window.onclick = (event) => { 
-        if (event.target == detailsModal) detailsModal.style.display = 'none';
-        if (event.target == columnModal) columnModal.style.display = 'none';
-        if (event.target == clientDetailsModal) clientDetailsModal.style.display = 'none';
-        if (event.target == createProjectModal) createProjectModal.style.display = 'none';
-        if (event.target == clientColumnModal) clientColumnModal.style.display = 'none';
+        if (event.target.classList.contains('modal')) {
+            event.target.style.display = 'none';
+        }
     };
     
     listViewBtn.onclick = () => setView('list');
@@ -102,6 +104,10 @@ document.addEventListener('DOMContentLoaded', () => {
     archiveToggle.onclick = () => {
         archiveToggle.classList.toggle('collapsed');
         archiveContainer.classList.toggle('collapsed');
+    };
+    document.getElementById('archived-projects-toggle').onclick = (e) => {
+        e.currentTarget.classList.toggle('collapsed');
+        document.getElementById('archived-projects-list').classList.toggle('collapsed');
     };
     document.getElementById('create-project-form').addEventListener('submit', handleCreateProjectSubmit);
 });
@@ -201,6 +207,9 @@ function loadDataForActiveTab() {
         case 'clients':
             renderClients();
             break;
+        case 'projects':
+            renderProjectsTab();
+            break;
     }
 }
 function updateFilter(key, value) {
@@ -238,7 +247,7 @@ function showColumnModal(type) {
         populateColumnSelector(allRequests.headers, state.visibleColumns, 'column-checkboxes');
         columnModal.style.display = 'block';
     } else {
-        populateColumnSelector(allClients.headers, state.visibleClientColumns, 'client-column-checkboxes');
+        populateColumnSelector(allClients.headers.filter(h => h), state.visibleClientColumns, 'client-column-checkboxes');
         clientColumnModal.style.display = 'block';
     }
 }
@@ -563,6 +572,96 @@ async function loadProjects() {
     }
 }
 
+function renderProjectsTab() {
+    const activeList = document.getElementById('active-projects-list');
+    const archivedList = document.getElementById('archived-projects-list');
+    const detailsColumn = document.getElementById('project-details-column');
+    activeList.innerHTML = '';
+    archivedList.innerHTML = '';
+    detailsColumn.innerHTML = '<p>Select a project to view its details.</p>';
+
+    const archivedStatuses = ['Completed', 'Cancelled', 'Archived'];
+    const statusIndex = allProjects.headers.indexOf('Status');
+    const nameIndex = allProjects.headers.indexOf('Project Name');
+    const clientEmailIndex = allProjects.headers.indexOf('Client Email');
+    const projectIdIndex = allProjects.headers.indexOf('ProjectID');
+    
+    if (statusIndex === -1 || nameIndex === -1 || clientEmailIndex === -1 || projectIdIndex === -1) {
+        activeList.innerHTML = '<p>Project sheet is missing required columns (Status, Project Name, Client Email, ProjectID).</p>';
+        return;
+    }
+    
+    allProjects.rows.forEach(proj => {
+        const isArchived = archivedStatuses.includes(proj[statusIndex]);
+        const targetList = isArchived ? archivedList : activeList;
+        
+        const client = allClients.rows.find(c => c[allClients.headers.indexOf('Email')] === proj[clientEmailIndex]);
+        const clientName = client ? `${client[allClients.headers.indexOf('First Name')]} ${client[allClients.headers.indexOf('Last Name')]}` : 'Unknown Client';
+        
+        const item = document.createElement('div');
+        item.className = 'project-list-item';
+        item.dataset.projectId = proj[projectIdIndex];
+        item.innerHTML = `<h4>${proj[nameIndex]}</h4><p>${clientName}</p>`;
+        item.onclick = () => {
+            document.querySelectorAll('.project-list-item').forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+            state.selectedProjectId = item.dataset.projectId;
+            showProjectDetails(item.dataset.projectId);
+        };
+        targetList.appendChild(item);
+    });
+}
+
+function showProjectDetails(projectId) {
+    const detailsColumn = document.getElementById('project-details-column');
+    const project = allProjects.rows.find(p => p[allProjects.headers.indexOf('ProjectID')] === projectId);
+    if (!project) {
+        detailsColumn.innerHTML = '<p>Could not find project details.</p>';
+        return;
+    }
+    
+    const typeIndex = allProjects.headers.indexOf('Project Type');
+    const projectType = typeIndex > -1 ? project[typeIndex] : 'General';
+    
+    let detailsHtml = `<h3>${project[allProjects.headers.indexOf('Project Name')]}</h3>`;
+    
+    // This is where modular views would go
+    switch(projectType) {
+        case 'Film': detailsHtml += renderFilmProjectDetails(project, allProjects.headers); break;
+        case 'Photography': detailsHtml += renderPhotographyProjectDetails(project, allProjects.headers); break;
+        case 'Design': detailsHtml += renderDesignProjectDetails(project, allProjects.headers); break;
+        default: detailsHtml += renderGenericProjectDetails(project, allProjects.headers);
+    }
+    detailsColumn.innerHTML = detailsHtml;
+}
+
+// Modular Project Detail Renderers
+function renderGenericProjectDetails(data, headers) {
+    let html = '<div class="project-details-section"><h4>Details</h4><ul>';
+    headers.forEach((h, i) => {
+        if(data[i]) html += `<li><strong>${h}:</strong> ${data[i]}</li>`;
+    });
+    return html + '</ul></div>';
+}
+function renderFilmProjectDetails(data, headers) {
+    let html = renderGenericProjectDetails(data, headers); // Start with generic details
+    // Add film-specific sections
+    html += `<div class="project-details-section"><h4>Pre-Production</h4><p>Shot list status, storyboard link, etc.</p></div>`;
+    html += `<div class="project-details-section"><h4>Production</h4><p>Call sheets, crew lists, etc.</p></div>`;
+    return html;
+}
+function renderPhotographyProjectDetails(data, headers) {
+    let html = renderGenericProjectDetails(data, headers);
+    html += `<div class="project-details-section"><h4>Planning</h4><p>Moodboard link, location, gear list, etc.</p></div>`;
+    return html;
+}
+function renderDesignProjectDetails(data, headers) {
+    let html = renderGenericProjectDetails(data, headers);
+    html += `<div class="project-details-section"><h4>Assets</h4><p>Brief link, revision count, final files, etc.</p></div>`;
+    return html;
+}
+
+
 async function handleCreateProjectSubmit(event) {
     event.preventDefault();
     const statusSpan = document.getElementById('create-project-status');
@@ -579,25 +678,26 @@ async function handleCreateProjectSubmit(event) {
         'Value': document.getElementById('project-value').value,
         'Start Date': document.getElementById('project-start-date').value,
         'ProjectID': `P-${Date.now()}`,
-        'Source Request ID': sourceRequestId
+        'Source Request ID': sourceRequestId,
+        'Project Type': document.getElementById('project-type').value
     };
 
     try {
         await writeData('Projects', projectData);
 
-        // If a source request was used, archive it
         if (sourceRequestId) {
             await updateSheetRow('Submissions', 'Submission ID', sourceRequestId, { 'Status': 'Archived' });
-            await loadRequests(); // Refresh request data
-            renderRequests();
+            await loadRequests();
+            if (document.querySelector('.tab-button[data-tab="requests"]').classList.contains('active')) {
+                renderRequests();
+            }
         }
 
-        await loadProjects(); // Refresh project data
+        await loadProjects();
         statusSpan.textContent = 'Project created!';
         
         setTimeout(() => {
             createProjectModal.style.display = 'none';
-            // Switch to projects tab
             document.querySelector('.tab-button[data-tab="projects"]').click();
         }, 1500);
 
@@ -722,7 +822,6 @@ function renderClientsAsCards() {
 
         let cardContent = '';
         const nameIndex = headers.indexOf('First Name');
-        const emailIndex = headers.indexOf('Email');
         
         cardContent += `<h3>${row[nameIndex] || 'No Name'}</h3>`;
         state.visibleClientColumns.forEach(headerText => {
@@ -792,10 +891,10 @@ function showClientDetailsModal(rowData, headers) {
 
         editBtn.style.display = 'none';
         saveBtn.style.display = 'inline-block';
-        saveBtn.onclick = () => handleSaveClientUpdate(data);
+        saveBtn.onclick = () => handleSaveClientUpdate(data, headers);
     };
 
-    const handleSaveClientUpdate = async (currentRowData) => {
+    const handleSaveClientUpdate = async (currentRowData, currentHeaders) => {
         statusSpan.textContent = 'Saving...';
         const dataToUpdate = {};
         
@@ -805,14 +904,16 @@ function showClientDetailsModal(rowData, headers) {
             const inputElement = document.getElementById(inputId);
             if (inputElement) {
                 const newValue = inputElement.value;
-                 if (currentRowData[headers.indexOf(header)] !== newValue) {
+                const headerIndex = currentHeaders.indexOf(header);
+                const oldValue = headerIndex > -1 ? (currentRowData[headerIndex] || '') : '';
+                 if (oldValue !== newValue) {
                      dataToUpdate[header] = newValue;
                  }
             }
         });
         
         try {
-            const clientId = currentRowData[headers.indexOf('ClientID')];
+            const clientId = currentRowData[currentHeaders.indexOf('ClientID')];
             if (Object.keys(dataToUpdate).length > 0) {
                  await updateSheetRow('Clients', 'ClientID', clientId, dataToUpdate);
             }
@@ -823,7 +924,7 @@ function showClientDetailsModal(rowData, headers) {
             statusSpan.textContent = 'Saved successfully!';
             renderClients();
             setTimeout(() => {
-                renderViewMode(updatedClientRow || currentRowData); // Use the fresh data to re-render
+                renderViewMode(updatedClientRow || currentRowData);
                 statusSpan.textContent = '';
             }, 1500);
 
@@ -983,16 +1084,23 @@ function populateClientFinancialsTab(clientEmail) {
 
 function populateClientActionsTab(rowData, headers) {
     const container = document.getElementById('client-tab-actions');
-    let contentHtml = '<h3>Actions</h3>';
+    container.innerHTML = '<h3>Actions</h3>';
+    
     const createProjectBtn = document.createElement('button');
     createProjectBtn.textContent = 'Create New Project';
     createProjectBtn.onclick = () => showCreateProjectModal(rowData, headers);
-    container.innerHTML = ''; // Clear previous content
     container.appendChild(createProjectBtn);
+    
+    const deleteClientBtn = document.createElement('button');
+    deleteClientBtn.textContent = 'Delete Client';
+    deleteClientBtn.style.backgroundColor = '#dc3545'; // A distinct danger color
+    deleteClientBtn.style.marginTop = '10px';
+    deleteClientBtn.onclick = () => showDeleteClientModal(rowData, headers);
+    container.appendChild(deleteClientBtn);
 }
 
 function showCreateProjectModal(clientRow, clientHeaders) {
-    clientDetailsModal.style.display = 'none'; // Hide the client modal
+    clientDetailsModal.style.display = 'none';
     createProjectModal.style.display = 'block';
 
     const clientEmail = clientRow[clientHeaders.indexOf('Email')];
@@ -1034,8 +1142,40 @@ function showCreateProjectModal(clientRow, clientHeaders) {
             document.getElementById('project-value').value = quoteIndex > -1 ? (selectedRequest[quoteIndex] || '') : '';
         }
     };
-    // Trigger change event to clear fields if "start from scratch" is default
     sourceRequestSelect.dispatchEvent(new Event('change')); 
+}
+
+function showDeleteClientModal(rowData, headers) {
+    clientDetailsModal.style.display = 'none';
+    deleteClientModal.style.display = 'block';
+
+    const confirmInput = document.getElementById('delete-confirm-input');
+    const confirmBtn = document.getElementById('delete-confirm-btn');
+    confirmInput.value = '';
+    confirmBtn.disabled = true;
+
+    confirmInput.oninput = () => {
+        confirmBtn.disabled = confirmInput.value !== 'Delete';
+    };
+
+    confirmBtn.onclick = async () => {
+        const statusSpan = document.getElementById('delete-client-status');
+        statusSpan.textContent = 'Deleting...';
+        confirmBtn.disabled = true;
+        
+        try {
+            const clientId = rowData[headers.indexOf('ClientID')];
+            await clearSheetRow('Clients', 'ClientID', clientId);
+            await loadClients();
+            renderClients();
+            statusSpan.textContent = 'Client deleted.';
+            setTimeout(() => { deleteClientModal.style.display = 'none'; }, 1500);
+        } catch (err) {
+            statusSpan.textContent = 'Error deleting client.';
+            console.error('Delete client error:', err);
+            confirmBtn.disabled = false;
+        }
+    };
 }
 
 async function handleAddClientSubmit(event) {
@@ -1125,6 +1265,28 @@ async function updateSheetRow(sheetName, idColumnName, idValue, dataToUpdate) {
         resource: { values: [updatedRow] }
     });
 }
+
+async function clearSheetRow(sheetName, idColumnName, idValue) {
+    const fullSheetResponse = await gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID, range: sheetName,
+    });
+    const sheetValues = fullSheetResponse.result.values || [];
+    const sheetHeaders = sheetValues[0] || [];
+    const idIndex = sheetHeaders.indexOf(idColumnName);
+    if (idIndex === -1) throw new Error(`Unique ID column '${idColumnName}' not found.`);
+
+    const visualRowIndex = sheetValues.findIndex(row => row && row[idIndex] === idValue);
+    if (visualRowIndex === -1) throw new Error(`Could not find row to delete.`);
+
+    const targetRowNumber = visualRowIndex + 1;
+    const targetRange = `${sheetName}!A${targetRowNumber}:${columnToLetter(sheetHeaders.length)}${targetRowNumber}`;
+
+    return gapi.client.sheets.spreadsheets.values.clear({
+        spreadsheetId: SPREADSHEET_ID,
+        range: targetRange,
+    });
+}
+
 
 async function writeData(sheetName, dataObject) {
     const headerResponse = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!1:1` });
