@@ -111,14 +111,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('project-list-collapse-btn').onclick = () => {
         const layout = document.getElementById('project-layout-container');
         const column = document.querySelector('.project-list-column');
-        const title = document.getElementById('project-list-title');
         layout.classList.toggle('collapsed');
         column.classList.toggle('collapsed');
-        if(column.classList.contains('collapsed')) {
-            title.innerHTML = "P\r\no\r\nj\r\ne\r\nc\r\nt\r\ns";
-        } else {
-            title.innerHTML = 'Projects';
-        }
     };
 });
 
@@ -525,7 +519,7 @@ function showProjectDetails(projectId, isEditMode = false) {
     document.getElementById('project-delete-action').onclick = () => showDeleteProjectModal(projectId);
 
     if (isEditMode) document.getElementById('project-save-btn').onclick = () => handleSaveProjectUpdate(projectId);
-
+// ... existing code ... */
     detailsColumn.querySelectorAll('.collapsible-header').forEach(header => header.onclick = () => {
         header.classList.toggle('collapsed');
         header.nextElementSibling.classList.toggle('collapsed');
@@ -558,13 +552,25 @@ function showProjectDetails(projectId, isEditMode = false) {
 
     detailsColumn.querySelectorAll('.task-item, .task-card').forEach(el => {
         el.onclick = (e) => {
-            if (e.target.matches('input[type="checkbox"]')) return; // Allow checkbox clicks
+            // If the click was on a subtask item or its checkbox, do nothing here.
+            // The dedicated change listener for the checkbox will handle the logic.
+            if (e.target.closest('.subtask-item')) {
+                return;
+            }
+            
             if (e.currentTarget.classList.contains('dragging')) return;
             const taskId = e.currentTarget.dataset.taskId;
-            showTaskModal(projectId, taskId);
+
+            // If it's the main task checkbox
+            if (e.target.matches('.task-main input[type="checkbox"]')) {
+                 handleTaskStatusChange(taskId, e.target.checked);
+            } else { // Otherwise, open the modal
+                 showTaskModal(projectId, taskId);
+            }
         };
     });
 
+    // Dedicated listener for subtasks to handle logic
     detailsColumn.querySelectorAll('.subtask-item input[type="checkbox"]').forEach(cb => {
         cb.addEventListener('change', handleSubtaskStatusChange);
     });
@@ -708,7 +714,7 @@ function getProjectBuckets(projectId) {
     }
     return ['General'];
 }
-
+// ... existing code ... */
 // --- DRAG AND DROP LOGIC ---
 function getDragAfterElementVertical(container, y, selector) {
     const draggableElements = [...container.querySelectorAll(`${selector}:not(.dragging)`)];
@@ -741,34 +747,36 @@ function handleDragOver(e) {
     const draggingEl = document.querySelector('.dragging');
     if (!draggingEl) return;
 
-    // --- Prevent redundant placeholder ---
-    const afterElement = e.target.closest('[draggable="true"]');
-    if (afterElement) {
-        if (afterElement === draggingEl.nextElementSibling || afterElement.previousElementSibling === draggingEl) {
-             document.querySelectorAll('.task-placeholder, .bucket-placeholder').forEach(p => p.remove());
-             return;
-        }
-    }
-
     let placeholder = document.querySelector('.task-placeholder, .bucket-placeholder');
-    if (!placeholder) {
-        placeholder = document.createElement('div');
-    }
     
-    if (draggingEl.matches('.task-bucket')) { // LIST VIEW BUCKET
-        const container = document.getElementById('project-task-list');
-        const afterBucket = getDragAfterElementVertical(container, e.clientY, '.task-bucket');
-        placeholder.className = 'bucket-placeholder';
-        placeholder.style.height = `${draggingEl.offsetHeight}px`;
-        if (afterBucket) {
-            container.insertBefore(placeholder, afterBucket);
-        } else {
-            container.appendChild(placeholder);
+    const removePlaceholder = () => {
+        if(placeholder) {
+            placeholder.remove();
+            placeholder = null;
         }
-    } else if (draggingEl.matches('.task-board-column')) { // BOARD VIEW BUCKET
-        const container = document.getElementById('project-task-board');
-        const afterBucket = getDragAfterBucketHorizontal(container, e.clientX);
-        placeholder.className = 'bucket-placeholder';
+    };
+
+    if (draggingEl.matches('.task-bucket, .task-board-column')) { // BUCKET
+        const isListView = draggingEl.matches('.task-bucket');
+        const container = isListView ? document.getElementById('project-task-list') : document.getElementById('project-task-board');
+        const afterBucket = isListView ? getDragAfterElementVertical(container, e.clientY, '.task-bucket') : getDragAfterBucketHorizontal(container, e.clientX);
+
+        // Redundancy check
+        if (draggingEl.nextElementSibling === afterBucket) {
+            removePlaceholder();
+            return;
+        }
+        if (afterBucket && afterBucket.previousElementSibling === draggingEl) {
+             removePlaceholder();
+            return;
+        }
+
+        if (!placeholder) {
+            placeholder = document.createElement('div');
+            placeholder.className = 'bucket-placeholder';
+        }
+        if(isListView) placeholder.style.height = `${draggingEl.offsetHeight}px`;
+        
         if (afterBucket) {
             container.insertBefore(placeholder, afterBucket);
         } else {
@@ -779,7 +787,23 @@ function handleDragOver(e) {
         if (!container) return;
 
         const afterTask = getDragAfterElementVertical(container, e.clientY, '.task-item, .task-card');
-        placeholder.className = 'task-placeholder';
+
+        // Redundancy check
+        const isSameContainer = draggingEl.parentNode === container;
+        if (isSameContainer && draggingEl.nextElementSibling === afterTask) {
+            removePlaceholder();
+            return;
+        }
+        // Check if dragging to the end of a list where it already is
+        if (isSameContainer && afterTask === null && !draggingEl.nextElementSibling.matches('[data-task-id]')) {
+             removePlaceholder();
+             return;
+        }
+
+        if (!placeholder) {
+            placeholder = document.createElement('div');
+            placeholder.className = 'task-placeholder';
+        }
         placeholder.style.height = `${draggingEl.offsetHeight}px`;
 
         if (afterTask) {
@@ -1039,7 +1063,7 @@ async function handleSaveTask(event) {
         'Assignee': document.getElementById('task-assignee').value,
         'Status': document.getElementById('task-status').value,
         'Bucket': document.getElementById('task-bucket').value || 'General',
-        'Subtasks': document.getElementById('subtasks-data').value,
+// ... existing code ... */
         'Links': document.getElementById('links-data').value
     };
     try {
@@ -1501,4 +1525,5 @@ function populateColumnSelector(headers, visibleColumns, containerId) {
         container.innerHTML += `<div><label><input type="checkbox" value="${header}" ${isChecked ? 'checked' : ''}>${header}</label></div>`;
     });
 }
+
 
