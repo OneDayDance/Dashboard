@@ -34,7 +34,7 @@ const clientSortableColumns = ['First Name', 'Last Name', 'Email', 'Organization
 
 // --- DOM ELEMENTS ---
 let tokenClient, gapiInited = false, gisInited = false;
-let authorizeButton, signoutButton, appContainer, addClientForm, serviceFilter, statusFilter, searchBar, detailsModal, columnModal, closeModalButtons, listViewBtn, cardViewBtn, modalSaveNoteBtn, archiveToggle, archiveContainer, columnSelectBtn, saveColumnsBtn, landingContainer, clientSearchBar, clientTableContainer, clientDetailsModal, clientStatusFilter, clientListViewBtn, clientCardViewBtn, clientColumnSelectBtn, clientColumnModal, createProjectModal, deleteClientModal, taskDetailsModal;
+let authorizeButton, signoutButton, appContainer, addClientForm, serviceFilter, statusFilter, searchBar, detailsModal, columnModal, closeModalButtons, listViewBtn, cardViewBtn, modalSaveNoteBtn, archiveToggle, archiveContainer, columnSelectBtn, saveColumnsBtn, landingContainer, clientSearchBar, clientTableContainer, clientDetailsModal, clientStatusFilter, clientListViewBtn, clientCardViewBtn, clientColumnSelectBtn, clientColumnModal, createProjectModal, deleteClientModal, taskDetailsModal, deleteProjectModal;
 let silentAuthAttempted = false;
 
 
@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
     createProjectModal = document.getElementById('create-project-modal');
     taskDetailsModal = document.getElementById('task-details-modal');
     deleteClientModal = document.getElementById('delete-client-modal');
+    deleteProjectModal = document.getElementById('delete-project-modal');
     clientColumnModal = document.getElementById('client-column-modal');
     closeModalButtons = document.querySelectorAll('.close-button');
     listViewBtn = document.getElementById('list-view-btn');
@@ -376,23 +377,40 @@ function showRequestDetailsModal(rowData, headers) {
     noteStatus.textContent = ''; notesTextarea.value = rowData[headers.indexOf('Notes')] || '';
     modalSaveNoteBtn.onclick = () => handleSaveNote(originalIndex);
     const createClientBtn = document.getElementById('modal-create-client-btn');
-    const clientStatus = document.getElementById('modal-client-status');
+    const createProjectBtn = document.getElementById('modal-create-project-btn');
+    const actionStatus = document.getElementById('modal-request-actions-status');
     const submissionEmail = rowData[headers.indexOf('Email')];
-    if (!submissionEmail) { createClientBtn.disabled = true; clientStatus.textContent = "No email in submission."; } 
-    else {
+    if (!submissionEmail) {
+        createClientBtn.disabled = true;
+        createProjectBtn.disabled = true;
+        actionStatus.textContent = "No email in submission.";
+    } else {
         const clientExists = allClients.rows.some(r => r[allClients.headers.indexOf('Email')] === submissionEmail);
-        if(clientExists) { createClientBtn.disabled = true; clientStatus.textContent = "Client with this email already exists."; } 
-        else {
-            createClientBtn.disabled = false; clientStatus.textContent = "";
+        createClientBtn.disabled = clientExists;
+        createProjectBtn.disabled = !clientExists;
+        if (clientExists) {
+            actionStatus.textContent = "Client already exists.";
+            createClientBtn.onclick = null;
+        } else {
+            actionStatus.textContent = "";
             createClientBtn.onclick = () => handleCreateClient(rowData, headers);
+        }
+        if(!clientExists) {
+             actionStatus.textContent = "Create client before making project.";
+             createProjectBtn.onclick = null;
+        } else {
+            createProjectBtn.onclick = () => {
+                const client = allClients.rows.find(c => c[allClients.headers.indexOf('Email')] === submissionEmail);
+                detailsModal.style.display = 'none';
+                showCreateProjectModal(client, allClients.headers, rowData[headers.indexOf('Submission ID')]);
+            };
         }
     }
     detailsModal.style.display = 'block';
 }
 async function handleCreateClient(submissionRow, submissionHeaders) {
-    const createClientBtn = document.getElementById('modal-create-client-btn');
-    const clientStatus = document.getElementById('modal-client-status');
-    createClientBtn.disabled = true; clientStatus.textContent = 'Creating client...';
+    const actionStatus = document.getElementById('modal-request-actions-status');
+    actionStatus.textContent = 'Creating client...';
     const fullName = submissionRow[submissionHeaders.indexOf('Full Name')] || '';
     const nameParts = fullName.split(' ');
     const clientData = {
@@ -403,9 +421,10 @@ async function handleCreateClient(submissionRow, submissionHeaders) {
     };
     try {
         await writeData('Clients', clientData);
-        clientStatus.textContent = 'Client created successfully!';
+        actionStatus.textContent = 'Client created successfully!';
         await loadClients(); renderClients();
-    } catch (err) { clientStatus.textContent = `Error: ${err.result.error.message}`; createClientBtn.disabled = false; }
+        setTimeout(() => detailsModal.style.display = 'none', 1500);
+    } catch (err) { actionStatus.textContent = `Error: ${err.result.error.message}`; }
 }
 function handleSort(event) {
     const newSortColumn = event.target.dataset.sort;
@@ -476,14 +495,37 @@ function showProjectDetails(projectId, isEditMode = false) {
     const project = allProjects.rows.find(p => p[allProjects.headers.indexOf('ProjectID')] === projectId);
     if (!project) { detailsColumn.innerHTML = '<p>Could not find project details.</p>'; return; }
     const { headers } = allProjects;
-    let detailsHtml = `<h3>${isEditMode ? `<input type="text" id="project-edit-ProjectName" value="${project[headers.indexOf('Project Name')]}">` : project[headers.indexOf('Project Name')]}</h3>`;
+    let detailsHtml = `
+        <div class="project-details-header">
+            <h3>${isEditMode ? `<input type="text" id="project-edit-ProjectName" value="${project[headers.indexOf('Project Name')]}">` : project[headers.indexOf('Project Name')]}</h3>
+            <div class="project-actions-dropdown">
+                <button id="project-actions-btn">Actions</button>
+                <div id="project-actions-content" class="project-actions-dropdown-content">
+                    <a href="#" id="project-edit-action">Edit Project</a>
+                    <a href="#" id="project-archive-action">Archive Project</a>
+                    <a href="#" id="project-delete-action" class="delete">Delete Project</a>
+                </div>
+            </div>
+        </div>`;
     detailsHtml += renderGenericProjectDetails(project, headers, isEditMode);
-    detailsHtml += `<div class="modal-footer"><button id="project-edit-btn">Edit</button><button id="project-save-btn" style="display:none;">Save</button></div>`;
+    if (isEditMode) detailsHtml += `<div class="modal-footer"><button id="project-save-btn">Save</button></div>`;
     detailsColumn.innerHTML = detailsHtml;
-    document.getElementById('project-edit-btn').style.display = isEditMode ? 'none' : 'inline-block';
-    document.getElementById('project-save-btn').style.display = isEditMode ? 'inline-block' : 'none';
-    document.getElementById('project-edit-btn').onclick = () => showProjectDetails(projectId, true);
-    document.getElementById('project-save-btn').onclick = () => handleSaveProjectUpdate(projectId);
+
+    document.getElementById('project-actions-btn').onclick = () => {
+        document.getElementById('project-actions-content').style.display = 'block';
+    };
+    window.addEventListener('click', (event) => {
+        if (!event.target.matches('#project-actions-btn')) {
+            document.getElementById('project-actions-content').style.display = 'none';
+        }
+    }, { once: true });
+    
+    document.getElementById('project-edit-action').onclick = () => showProjectDetails(projectId, true);
+    document.getElementById('project-archive-action').onclick = () => handleArchiveProject(projectId);
+    document.getElementById('project-delete-action').onclick = () => showDeleteProjectModal(projectId);
+
+    if (isEditMode) document.getElementById('project-save-btn').onclick = () => handleSaveProjectUpdate(projectId);
+
     detailsColumn.querySelectorAll('.collapsible-header').forEach(header => header.onclick = () => {
         header.classList.toggle('collapsed');
         header.nextElementSibling.classList.toggle('collapsed');
@@ -503,7 +545,7 @@ function showProjectDetails(projectId, isEditMode = false) {
         bucket.setAttribute('draggable', true);
         bucket.ondragstart = (e) => { e.stopPropagation(); e.dataTransfer.setData('text/bucket', e.currentTarget.dataset.bucket); e.currentTarget.classList.add('dragging'); };
         bucket.ondragend = (e) => e.currentTarget.classList.remove('dragging');
-        bucket.ondragover = (e) => { e.preventDefault(); e.currentTarget.classList.add('drag-over'); };
+        bucket.ondragover = handleDragOver;
         bucket.ondragleave = (e) => e.currentTarget.classList.remove('drag-over');
         bucket.ondrop = handleDrop;
     });
@@ -644,35 +686,72 @@ function getProjectBuckets(projectId) {
     }
     return ['General'];
 }
+function handleDragOver(e) {
+    e.preventDefault();
+    const container = e.currentTarget;
+    const draggingEl = document.querySelector('.dragging');
+    if (!draggingEl) return;
+    if (e.dataTransfer.getData('text/bucket')) { // If dragging a bucket
+        container.classList.add('drag-over');
+        return;
+    }
+    const afterElement = getDragAfterElement(container, e.clientY);
+    const indicator = document.querySelector('.drop-indicator');
+    if (indicator) indicator.remove();
+    const newIndicator = document.createElement('div');
+    newIndicator.className = 'drop-indicator';
+    if (afterElement == null) {
+        container.appendChild(newIndicator);
+    } else {
+        container.insertBefore(newIndicator, afterElement);
+    }
+}
+function getDragAfterElement(container, y) {
+    const draggableElements = [...container.querySelectorAll('[draggable="true"]:not(.dragging)')];
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+        } else {
+            return closest;
+        }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
 async function handleDrop(e) {
     e.preventDefault(); e.stopPropagation();
     e.currentTarget.classList.remove('drag-over');
-    const droppedOnBucketName = e.currentTarget.dataset.bucket;
-    const taskId = e.dataTransfer.getData('text/plain');
-    const draggedBucketName = e.dataTransfer.getData('text/bucket');
-
-    // --- Optimistic UI Update ---
+    const indicator = document.querySelector('.drop-indicator');
+    if(indicator) indicator.remove();
+    
     const draggedElement = document.querySelector('.dragging');
     if (!draggedElement) return;
+
     const originalParent = draggedElement.parentNode;
     const originalNextSibling = draggedElement.nextSibling;
-
-    if (draggedBucketName) { // A BUCKET was dropped
-        const parent = e.currentTarget.parentNode;
-        parent.insertBefore(draggedElement, e.currentTarget);
-    } else if (taskId) { // A TASK was dropped
-        const targetElement = e.target.closest('.task-item, .task-card, .task-board-column, .task-bucket');
-        targetElement.parentNode.insertBefore(draggedElement, targetElement.nextSibling);
+    
+    // --- Optimistic UI Update ---
+    if (e.dataTransfer.getData('text/bucket')) { // Dropping a bucket
+        e.currentTarget.parentNode.insertBefore(draggedElement, e.currentTarget);
+    } else if (e.dataTransfer.getData('text/plain')) { // Dropping a task
+        const afterElement = getDragAfterElement(e.currentTarget, e.clientY);
+        if (afterElement == null) {
+            e.currentTarget.appendChild(draggedElement);
+        } else {
+            e.currentTarget.insertBefore(draggedElement, afterElement);
+        }
     }
 
     // --- Save Data and Rollback on Failure ---
     try {
-        if (draggedBucketName) { // Save new BUCKET order
-            const buckets = Array.from(e.currentTarget.parentNode.children).map(el => el.dataset.bucket);
-            await updateSheetRow('Projects', 'ProjectID', state.selectedProjectId, { 'Task Buckets': JSON.stringify(buckets) });
+        if (e.dataTransfer.getData('text/bucket')) {
+            const newBucketsOrder = Array.from(draggedElement.parentNode.children).map(el => el.dataset.bucket);
+            await updateSheetRow('Projects', 'ProjectID', state.selectedProjectId, { 'Task Buckets': JSON.stringify(newBucketsOrder) });
             await loadProjects();
-        } else if (taskId) { // Save new TASK order/bucket
-            const newTasksInBucket = Array.from(e.currentTarget.closest('.task-bucket, .task-board-column').querySelectorAll('[data-task-id]'));
+        } else if (e.dataTransfer.getData('text/plain')) {
+            const droppedOnBucketName = e.currentTarget.dataset.bucket;
+            const taskContainer = e.currentTarget.closest('.task-bucket, .task-board-column');
+            const newTasksInBucket = Array.from(taskContainer.querySelectorAll('[data-task-id]'));
             const updates = newTasksInBucket.map((taskEl, index) => {
                 return updateSheetRow('Tasks', 'TaskID', taskEl.dataset.taskId, { 'Bucket': droppedOnBucketName, 'SortIndex': index });
             });
@@ -682,8 +761,7 @@ async function handleDrop(e) {
     } catch (err) {
         alert("Error saving new order. Reverting changes.");
         console.error("Drag/drop save error:", err);
-        // Rollback UI on failure
-        originalParent.insertBefore(draggedElement, originalNextSibling);
+        originalParent.insertBefore(draggedElement, originalNextSibling); // Rollback UI
     }
 }
 function renderAdvancedDetails(data, headers) {
@@ -707,6 +785,41 @@ async function handleSaveProjectUpdate(projectId) {
         await loadProjects();
         renderProjectsTab();
     } catch(err) { console.error('Project update error', err); alert('Could not save project updates.'); btn.textContent = 'Save'; btn.disabled = false; }
+}
+async function handleArchiveProject(projectId) {
+    try {
+        await updateSheetRow('Projects', 'ProjectID', projectId, { 'Status': 'Archived' });
+        await loadProjects();
+        renderProjectsTab();
+    } catch(err) { console.error('Archive project error', err); alert('Could not archive project.'); }
+}
+function showDeleteProjectModal(projectId) {
+    deleteProjectModal.style.display = 'block';
+    const confirmInput = document.getElementById('delete-project-confirm-input');
+    const confirmBtn = document.getElementById('delete-project-confirm-btn');
+    confirmInput.value = ''; confirmBtn.disabled = true;
+    confirmInput.oninput = () => confirmBtn.disabled = confirmInput.value !== 'Delete';
+    confirmBtn.onclick = () => handleDeleteProject(projectId);
+}
+async function handleDeleteProject(projectId) {
+    const statusSpan = document.getElementById('delete-project-status');
+    statusSpan.textContent = 'Deleting...';
+    document.getElementById('delete-project-confirm-btn').disabled = true;
+    try {
+        const tasksToDelete = allTasks.rows.filter(t => t[allTasks.headers.indexOf('ProjectID')] === projectId);
+        const taskDeletionPromises = tasksToDelete.map(t => clearSheetRow('Tasks', 'TaskID', t[allTasks.headers.indexOf('TaskID')]));
+        await Promise.all(taskDeletionPromises);
+        await clearSheetRow('Projects', 'ProjectID', projectId);
+        await loadProjects();
+        await loadTasks();
+        state.selectedProjectId = null;
+        renderProjectsTab();
+        statusSpan.textContent = 'Project deleted.';
+        setTimeout(() => deleteProjectModal.style.display = 'none', 1500);
+    } catch(err) {
+        statusSpan.textContent = 'Error deleting project.';
+        console.error('Delete project error', err);
+    }
 }
 async function handleCreateProjectSubmit(event) {
     event.preventDefault();
@@ -784,8 +897,29 @@ function renderSubtasks(subtasks) {
     const container = document.getElementById('subtasks-container-modal');
     container.innerHTML = `<input type="hidden" id="subtasks-data" value='${JSON.stringify(subtasks)}'>`;
     subtasks.forEach((sub, i) => {
-        container.innerHTML += `<div class="subtask-item"><input type="checkbox" ${sub.completed ? 'checked' : ''} onchange="updateSubtaskStatus(${i}, this.checked)"> ${sub.name} <button type="button" onclick="removeSubtask(${i})">&times;</button></div>`;
+        const item = document.createElement('div');
+        item.className = 'subtask-item';
+        item.setAttribute('draggable', true);
+        item.dataset.index = i;
+        item.innerHTML = `<input type="checkbox" ${sub.completed ? 'checked' : ''}> <label>${sub.name}</label> <button type="button">&times;</button>`;
+        item.querySelector('input').onchange = (e) => updateSubtaskStatus(i, e.target.checked);
+        item.querySelector('button').onclick = () => removeSubtask(i);
+        item.ondragstart = (e) => e.dataTransfer.setData('text/subtask-index', i);
+        container.appendChild(item);
     });
+    container.ondragover = (e) => e.preventDefault();
+    container.ondrop = (e) => {
+        e.preventDefault();
+        const fromIndex = parseInt(e.dataTransfer.getData('text/subtask-index'));
+        const target = e.target.closest('.subtask-item');
+        if (target) {
+            const toIndex = parseInt(target.dataset.index);
+            const subtasks = JSON.parse(document.getElementById('subtasks-data').value);
+            const [moved] = subtasks.splice(fromIndex, 1);
+            subtasks.splice(toIndex, 0, moved);
+            renderSubtasks(subtasks);
+        }
+    };
 }
 function updateSubtaskStatus(index, completed) {
     const subtasks = JSON.parse(document.getElementById('subtasks-data').value);
@@ -1101,8 +1235,7 @@ function populateClientActionsTab(rowData, headers) {
     deleteClientBtn.onclick = () => showDeleteClientModal(rowData, headers);
     container.appendChild(deleteClientBtn);
 }
-function showCreateProjectModal(clientRow, clientHeaders) {
-    clientDetailsModal.style.display = 'none';
+function showCreateProjectModal(clientRow, clientHeaders, sourceRequestId = null) {
     createProjectModal.style.display = 'block';
     const clientEmail = clientRow[clientHeaders.indexOf('Email')];
     const clientName = `${clientRow[clientHeaders.indexOf('First Name')]} ${clientRow[clientHeaders.indexOf('Last Name')]}`;
@@ -1117,6 +1250,7 @@ function showCreateProjectModal(clientRow, clientHeaders) {
         const id = req[allRequests.headers.indexOf('Submission ID')];
         sourceRequestSelect.add(new Option(`${date} - ${service}`, id));
     });
+    if (sourceRequestId) sourceRequestSelect.value = sourceRequestId;
     sourceRequestSelect.onchange = (e) => {
         const selectedRequestId = e.target.value;
         if (!selectedRequestId) { document.getElementById('project-name').value = ''; document.getElementById('project-value').value = ''; return; }
