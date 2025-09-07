@@ -141,10 +141,11 @@
                     <button id="modal-save-note-btn">Save Note</button>
                     <span id="modal-note-status"></span>
                 </div>
-                <div id="modal-client-section">
-                    <h3>Client Actions</h3>
-                    <button id="modal-create-client-btn">Create Client from Request</button>
-                    <span id="modal-client-status"></span>
+                <div id="modal-request-actions-section">
+                    <h3>Actions</h3>
+                    <button id="modal-create-client-btn">Create Client</button>
+                    <button id="modal-create-project-btn">Create Project</button>
+                    <span id="modal-request-actions-status"></span>
                 </div>
             </div>
         </div>
@@ -292,7 +293,7 @@
     </div>
 
 
-    <!-- Delete Confirmation Modal -->
+    <!-- Delete Confirmation Modals -->
     <div id="delete-client-modal" class="modal">
         <div class="modal-content">
             <span class="close-button">&times;</span>
@@ -305,6 +306,21 @@
             <div class="modal-footer">
                 <button id="delete-confirm-btn" disabled>Delete Client</button>
                 <span id="delete-client-status"></span>
+            </div>
+        </div>
+    </div>
+     <div id="delete-project-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Confirm Project Deletion</h2>
+            <div class="warning-box">
+                <p><strong>Warning:</strong> This action is permanent and cannot be undone. This project and all of its associated tasks will be permanently deleted.</p>
+            </div>
+            <p>To proceed, please type "Delete" in the box below.</p>
+            <input type="text" id="delete-project-confirm-input" placeholder="Type Delete to confirm">
+            <div class="modal-footer">
+                <button id="delete-project-confirm-btn" disabled>Delete Project</button>
+                <span id="delete-project-status"></span>
             </div>
         </div>
     </div>
