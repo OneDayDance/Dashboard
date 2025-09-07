@@ -7,7 +7,7 @@ const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
 // --- STATE MANAGEMENT ---
 let allRequests = { headers: [], rows: [] };
 let allClients = { headers: [], rows: [] };
-let allProjects = { headers: [], rows: [] }; // To store project data
+let allProjects = { headers: [], rows: [] };
 let state = {
     // requests tab state
     sortColumn: 'Submission Date',
@@ -19,7 +19,10 @@ let state = {
     // clients tab state
     clientSearchTerm: '',
     clientSortColumn: 'First Name',
-    clientSortDirection: 'asc'
+    clientSortDirection: 'asc',
+    clientCurrentView: 'list',
+    visibleClientColumns: ['First Name', 'Last Name', 'Email', 'Organization', 'Status'],
+    clientFilters: { status: 'all' }
 };
 const sortableColumns = ['Submission Date', 'Full Name', 'Email', 'Organization', 'Primary Service Category', 'Status'];
 const clientSortableColumns = ['First Name', 'Last Name', 'Email', 'Organization', 'Status'];
@@ -27,7 +30,7 @@ const clientSortableColumns = ['First Name', 'Last Name', 'Email', 'Organization
 
 // --- DOM ELEMENTS ---
 let tokenClient, gapiInited = false, gisInited = false;
-let authorizeButton, signoutButton, appContainer, addClientForm, serviceFilter, statusFilter, searchBar, detailsModal, columnModal, closeModalButtons, listViewBtn, cardViewBtn, modalSaveNoteBtn, archiveToggle, archiveContainer, columnSelectBtn, saveColumnsBtn, landingContainer, clientSearchBar, clientTableContainer, clientDetailsModal;
+let authorizeButton, signoutButton, appContainer, addClientForm, serviceFilter, statusFilter, searchBar, detailsModal, columnModal, closeModalButtons, listViewBtn, cardViewBtn, modalSaveNoteBtn, archiveToggle, archiveContainer, columnSelectBtn, saveColumnsBtn, landingContainer, clientSearchBar, clientTableContainer, clientDetailsModal, clientStatusFilter, clientListViewBtn, clientCardViewBtn, clientColumnSelectBtn, clientColumnModal, createProjectModal;
 let silentAuthAttempted = false;
 
 
@@ -43,6 +46,8 @@ document.addEventListener('DOMContentLoaded', () => {
     detailsModal = document.getElementById('details-modal');
     columnModal = document.getElementById('column-modal');
     clientDetailsModal = document.getElementById('client-details-modal');
+    createProjectModal = document.getElementById('create-project-modal');
+    clientColumnModal = document.getElementById('client-column-modal');
     closeModalButtons = document.querySelectorAll('.close-button');
     listViewBtn = document.getElementById('list-view-btn');
     cardViewBtn = document.getElementById('card-view-btn');
@@ -54,6 +59,10 @@ document.addEventListener('DOMContentLoaded', () => {
     landingContainer = document.getElementById('landing-container');
     clientSearchBar = document.getElementById('client-search-bar');
     clientTableContainer = document.getElementById('client-table-container');
+    clientStatusFilter = document.getElementById('client-status-filter');
+    clientListViewBtn = document.getElementById('client-list-view-btn');
+    clientCardViewBtn = document.getElementById('client-card-view-btn');
+    clientColumnSelectBtn = document.getElementById('client-column-select-btn');
 
     // Assign event listeners
     authorizeButton.onclick = handleAuthClick;
@@ -63,27 +72,38 @@ document.addEventListener('DOMContentLoaded', () => {
     statusFilter.onchange = (e) => updateFilter('status', e.target.value);
     searchBar.oninput = (e) => updateSearch(e.target.value);
     clientSearchBar.oninput = (e) => updateClientSearch(e.target.value);
+    clientStatusFilter.onchange = (e) => updateClientFilter('status', e.target.value);
     
     closeModalButtons.forEach(btn => btn.onclick = () => {
         detailsModal.style.display = 'none';
         columnModal.style.display = 'none';
         clientDetailsModal.style.display = 'none';
+        createProjectModal.style.display = 'none';
+        clientColumnModal.style.display = 'none';
     });
     window.onclick = (event) => { 
         if (event.target == detailsModal) detailsModal.style.display = 'none';
         if (event.target == columnModal) columnModal.style.display = 'none';
         if (event.target == clientDetailsModal) clientDetailsModal.style.display = 'none';
+        if (event.target == createProjectModal) createProjectModal.style.display = 'none';
+        if (event.target == clientColumnModal) clientColumnModal.style.display = 'none';
     };
     
     listViewBtn.onclick = () => setView('list');
     cardViewBtn.onclick = () => setView('card');
-    columnSelectBtn.onclick = () => columnModal.style.display = 'block';
-    saveColumnsBtn.onclick = handleSaveColumns;
+    columnSelectBtn.onclick = () => showColumnModal('requests');
+    saveColumnsBtn.onclick = () => handleSaveColumns('requests');
+
+    clientListViewBtn.onclick = () => setClientView('list');
+    clientCardViewBtn.onclick = () => setClientView('card');
+    clientColumnSelectBtn.onclick = () => showColumnModal('clients');
+    document.getElementById('save-client-columns-btn').onclick = () => handleSaveColumns('clients');
     
     archiveToggle.onclick = () => {
         archiveToggle.classList.toggle('collapsed');
         archiveContainer.classList.toggle('collapsed');
     };
+    document.getElementById('create-project-form').addEventListener('submit', handleCreateProjectSubmit);
 });
 
 // --- INITIALIZATION & AUTH ---
@@ -136,7 +156,6 @@ async function onSignInSuccess() {
 }
 
 async function loadInitialData() {
-    // Load all data concurrently for faster startup
     await Promise.all([loadRequests(), loadClients(), loadProjects()]);
 }
 
@@ -192,6 +211,10 @@ function updateSearch(term) {
     state.searchTerm = term.toLowerCase();
     renderRequests();
 }
+function updateClientFilter(key, value) {
+    state.clientFilters[key] = value;
+    renderClients();
+}
 
 function updateClientSearch(term) {
     state.clientSearchTerm = term.toLowerCase();
@@ -204,14 +227,33 @@ function setView(view) {
     cardViewBtn.classList.toggle('active', view === 'card');
     renderRequests();
 }
-function handleSaveColumns() {
-    const selectedColumns = [];
-    document.querySelectorAll('#column-checkboxes input[type="checkbox"]:checked').forEach(checkbox => {
-        selectedColumns.push(checkbox.value);
-    });
-    state.visibleColumns = selectedColumns;
-    columnModal.style.display = 'none';
-    renderRequests();
+function setClientView(view) {
+    state.clientCurrentView = view;
+    clientListViewBtn.classList.toggle('active', view === 'list');
+    clientCardViewBtn.classList.toggle('active', view === 'card');
+    renderClients();
+}
+function showColumnModal(type) {
+    if (type === 'requests') {
+        populateColumnSelector(allRequests.headers, state.visibleColumns, 'column-checkboxes');
+        columnModal.style.display = 'block';
+    } else {
+        populateColumnSelector(allClients.headers, state.visibleClientColumns, 'client-column-checkboxes');
+        clientColumnModal.style.display = 'block';
+    }
+}
+function handleSaveColumns(type) {
+    if (type === 'requests') {
+        const selected = Array.from(document.querySelectorAll('#column-checkboxes input:checked')).map(cb => cb.value);
+        state.visibleColumns = selected;
+        columnModal.style.display = 'none';
+        renderRequests();
+    } else {
+        const selected = Array.from(document.querySelectorAll('#client-column-checkboxes input:checked')).map(cb => cb.value);
+        state.visibleClientColumns = selected;
+        clientColumnModal.style.display = 'none';
+        renderClients();
+    }
 }
 
 // --- REQUESTS TAB FUNCTIONS ---
@@ -224,7 +266,6 @@ async function loadRequests() {
         if (values && values.length > 1) {
             allRequests = { headers: values[0], rows: values.slice(1) };
             populateServiceFilter();
-            populateColumnSelector();
         } else {
             allRequests = { headers: [], rows: [] };
         }
@@ -506,7 +547,7 @@ async function handleSaveNote(rowIndex) {
     }
 }
 
-// --- PROJECTS TAB FUNCTIONS (NEW) ---
+// --- PROJECTS TAB FUNCTIONS ---
 async function loadProjects() {
     try {
         const response = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: 'Projects' });
@@ -517,8 +558,52 @@ async function loadProjects() {
             allProjects = { headers: [], rows: [] };
         }
     } catch (err) {
-        console.warn("Could not load 'Projects' sheet. Some client features may be limited.", err);
+        console.warn("Could not load 'Projects' sheet.", err);
         allProjects = { headers: [], rows: [] };
+    }
+}
+
+async function handleCreateProjectSubmit(event) {
+    event.preventDefault();
+    const statusSpan = document.getElementById('create-project-status');
+    statusSpan.textContent = 'Creating project...';
+
+    const sourceRequestSelect = document.getElementById('project-source-request');
+    const sourceRequestId = sourceRequestSelect.value;
+    const clientEmail = sourceRequestSelect.dataset.clientEmail;
+
+    const projectData = {
+        'Project Name': document.getElementById('project-name').value,
+        'Client Email': clientEmail,
+        'Status': document.getElementById('project-status').value,
+        'Value': document.getElementById('project-value').value,
+        'Start Date': document.getElementById('project-start-date').value,
+        'ProjectID': `P-${Date.now()}`,
+        'Source Request ID': sourceRequestId
+    };
+
+    try {
+        await writeData('Projects', projectData);
+
+        // If a source request was used, archive it
+        if (sourceRequestId) {
+            await updateSheetRow('Submissions', 'Submission ID', sourceRequestId, { 'Status': 'Archived' });
+            await loadRequests(); // Refresh request data
+            renderRequests();
+        }
+
+        await loadProjects(); // Refresh project data
+        statusSpan.textContent = 'Project created!';
+        
+        setTimeout(() => {
+            createProjectModal.style.display = 'none';
+            // Switch to projects tab
+            document.querySelector('.tab-button[data-tab="projects"]').click();
+        }, 1500);
+
+    } catch (err) {
+        statusSpan.textContent = 'Error creating project.';
+        console.error('Project creation error', err);
     }
 }
 
@@ -540,17 +625,24 @@ async function loadClients() {
 }
 
 function renderClients() {
-    clientTableContainer.innerHTML = '';
-    if (!allClients.rows || allClients.rows.length === 0) {
-        clientTableContainer.innerHTML = '<p>No clients found.</p>';
-        return;
-    }
+    const renderFn = state.clientCurrentView === 'list' ? renderClientsAsList : renderClientsAsCards;
+    renderFn();
+}
 
+function getProcessedClients() {
+    if (!allClients.rows || allClients.rows.length === 0) return [];
+    
     let { headers, rows } = allClients;
-    let processedRows = rows;
+    let processedRows = [...rows];
     
     if (state.clientSearchTerm) {
         processedRows = processedRows.filter(row => row.some(cell => String(cell).toLowerCase().includes(state.clientSearchTerm)));
+    }
+    if (state.clientFilters.status !== 'all') {
+        const statusIndex = headers.indexOf('Status');
+        if (statusIndex > -1) {
+            processedRows = processedRows.filter(row => row[statusIndex] === state.clientFilters.status);
+        }
     }
     
     const sortIndex = headers.indexOf(state.clientSortColumn);
@@ -562,12 +654,23 @@ function renderClients() {
             return 0;
         });
     }
+    return processedRows;
+}
 
+function renderClientsAsList() {
+    clientTableContainer.innerHTML = '';
+    const processedRows = getProcessedClients();
+
+    if (processedRows.length === 0) {
+        clientTableContainer.innerHTML = '<p>No clients found.</p>';
+        return;
+    }
+    
+    const { headers } = allClients;
     const table = document.createElement('table');
     table.className = 'data-table';
     let headerHtml = '<thead><tr>';
-    const displayHeaders = ['First Name', 'Last Name', 'Email', 'Organization', 'Status'];
-    displayHeaders.forEach(headerText => {
+    state.visibleClientColumns.forEach(headerText => {
         let classes = '';
         if (clientSortableColumns.includes(headerText)) {
             classes += 'sortable';
@@ -583,10 +686,10 @@ function renderClients() {
     processedRows.forEach(row => {
         const tr = document.createElement('tr');
         tr.onclick = () => showClientDetailsModal(row, headers);
-        displayHeaders.forEach(header => {
+        state.visibleClientColumns.forEach(header => {
             const cellIndex = headers.indexOf(header);
             const td = document.createElement('td');
-            td.textContent = row[cellIndex] || '';
+            td.textContent = cellIndex > -1 ? (row[cellIndex] || '') : '';
             tr.appendChild(td);
         });
         tbody.appendChild(tr);
@@ -598,6 +701,42 @@ function renderClients() {
         th.onclick = handleClientSort;
     });
 }
+
+function renderClientsAsCards() {
+    clientTableContainer.innerHTML = '';
+    const processedRows = getProcessedClients();
+
+    if (processedRows.length === 0) {
+        clientTableContainer.innerHTML = '<p>No clients found.</p>';
+        return;
+    }
+
+    const { headers } = allClients;
+    const cardContainer = document.createElement('div');
+    cardContainer.className = 'card-container';
+
+    processedRows.forEach(row => {
+        const card = document.createElement('div');
+        card.className = 'client-card';
+        card.onclick = () => showClientDetailsModal(row, headers);
+
+        let cardContent = '';
+        const nameIndex = headers.indexOf('First Name');
+        const emailIndex = headers.indexOf('Email');
+        
+        cardContent += `<h3>${row[nameIndex] || 'No Name'}</h3>`;
+        state.visibleClientColumns.forEach(headerText => {
+            if (headerText !== 'First Name') {
+                const cellIndex = headers.indexOf(headerText);
+                cardContent += `<p><strong>${headerText}:</strong> ${cellIndex > -1 ? (row[cellIndex] || 'N/A') : 'N/A'}</p>`;
+            }
+        });
+        card.innerHTML = cardContent;
+        cardContainer.appendChild(card);
+    });
+    clientTableContainer.appendChild(cardContainer);
+}
+
 
 function handleClientSort(event) {
     const newSortColumn = event.target.dataset.sortClient;
@@ -632,68 +771,60 @@ function showClientDetailsModal(rowData, headers) {
     tabButtons[0].classList.add('active');
     tabContents[0].classList.add('active');
 
-
-    const renderViewMode = () => {
-        populateClientDetailsTab(rowData, headers, false);
+    const renderViewMode = (data) => {
+        populateClientDetailsTab(data, headers, false);
         populateClientHistoryTab(clientEmail);
-        populateClientNotesTab(rowData, headers, false);
+        populateClientNotesTab(data, headers, false);
         populateClientFinancialsTab(clientEmail);
+        populateClientActionsTab(data, headers);
 
         editBtn.style.display = 'inline-block';
         saveBtn.style.display = 'none';
-        editBtn.onclick = renderEditMode;
+        editBtn.onclick = () => renderEditMode(data);
     };
 
-    const renderEditMode = () => {
-        populateClientDetailsTab(rowData, headers, true);
+    const renderEditMode = (data) => {
+        populateClientDetailsTab(data, headers, true);
         populateClientHistoryTab(clientEmail);
-        populateClientNotesTab(rowData, headers, true);
+        populateClientNotesTab(data, headers, true);
         populateClientFinancialsTab(clientEmail);
+        populateClientActionsTab(data, headers);
 
         editBtn.style.display = 'none';
         saveBtn.style.display = 'inline-block';
-        saveBtn.onclick = handleSaveClientUpdate;
+        saveBtn.onclick = () => handleSaveClientUpdate(data);
     };
 
-    const handleSaveClientUpdate = async () => {
+    const handleSaveClientUpdate = async (currentRowData) => {
         statusSpan.textContent = 'Saving...';
         const dataToUpdate = {};
-        let updatedRowData = [...rowData];
         
-        // Dynamically get all headers that should be editable
-        const readOnlyHeaders = ['ClientID', 'Original Submission ID', 'Source'];
-        const editableHeaders = allClients.headers.filter(h => !readOnlyHeaders.includes(h));
-        
-        // Define which fields are expected on the details tab for potential creation
         const detailFields = ['First Name', 'Last Name', 'Email', 'Phone', 'Organization', 'Status', 'Social Media'];
-
-        // Collect data from Details and Notes tabs
         [...detailFields, 'Notes', 'Contact Logs'].forEach(header => {
             const inputId = `client-edit-${header.replace(/\s+/g, '')}`;
             const inputElement = document.getElementById(inputId);
-            const headerIndex = headers.indexOf(header);
-            
             if (inputElement) {
-                const newValue = (header === 'Contact Logs') ? JSON.stringify(JSON.parse(inputElement.value)) : inputElement.value;
-                dataToUpdate[header] = newValue;
-                if(headerIndex > -1) updatedRowData[headerIndex] = newValue;
+                const newValue = inputElement.value;
+                 if (currentRowData[headers.indexOf(header)] !== newValue) {
+                     dataToUpdate[header] = newValue;
+                 }
             }
         });
         
         try {
-            const clientId = rowData[headers.indexOf('ClientID')];
-            await updateSheetRow('Clients', 'ClientID', clientId, dataToUpdate);
+            const clientId = currentRowData[headers.indexOf('ClientID')];
+            if (Object.keys(dataToUpdate).length > 0) {
+                 await updateSheetRow('Clients', 'ClientID', clientId, dataToUpdate);
+            }
             
-            await loadClients(); // Re-fetch to get the latest data structure
+            await loadClients(); 
             const updatedClientRow = allClients.rows.find(r => r[allClients.headers.indexOf('ClientID')] === clientId);
 
-            rowData = updatedClientRow || updatedRowData;
-            
             statusSpan.textContent = 'Saved successfully!';
             renderClients();
             setTimeout(() => {
-                renderViewMode();
-                 statusSpan.textContent = '';
+                renderViewMode(updatedClientRow || currentRowData); // Use the fresh data to re-render
+                statusSpan.textContent = '';
             }, 1500);
 
         } catch(err) {
@@ -702,7 +833,7 @@ function showClientDetailsModal(rowData, headers) {
         }
     };
 
-    renderViewMode();
+    renderViewMode(rowData);
     clientDetailsModal.style.display = 'block';
 }
 
@@ -740,7 +871,8 @@ function populateClientHistoryTab(clientEmail) {
         clientRequests.forEach(req => {
             const reqDate = req[allRequests.headers.indexOf('Submission Date')] || 'No Date';
             const reqService = req[allRequests.headers.indexOf('Primary Service Category')] || 'No Service';
-            contentHtml += `<li><strong>${reqDate}:</strong> ${reqService}</li>`;
+            const reqStatus = req[allRequests.headers.indexOf('Status')] || '';
+            contentHtml += `<li><strong>${reqDate}:</strong> ${reqService} <em>(${reqStatus})</em></li>`;
         });
         contentHtml += '</ul>';
     } else {
@@ -754,10 +886,10 @@ function populateClientHistoryTab(clientEmail) {
         if (clientProjects.length > 0) {
             contentHtml += '<ul>';
             clientProjects.forEach(proj => {
-                const projDate = proj[allProjects.headers.indexOf('Date')] || 'No Date';
+                const projDate = proj[allProjects.headers.indexOf('Start Date')] || 'No Date';
                 const projName = proj[allProjects.headers.indexOf('Project Name')] || 'No Name';
                 const projStatus = proj[allProjects.headers.indexOf('Status')] || 'No Status';
-                contentHtml += `<li><strong>${projDate}:</strong> ${projName} (${projStatus})</li>`;
+                contentHtml += `<li><strong>${projDate}:</strong> ${projName} <em>(${projStatus})</em></li>`;
             });
             contentHtml += '</ul>';
         } else {
@@ -789,9 +921,7 @@ function populateClientNotesTab(rowData, headers, isEditMode) {
     let logs = [];
     try {
         logs = JSON.parse(logsJson);
-    } catch(e) {
-        console.error("Could not parse contact logs", e);
-    }
+    } catch(e) { console.error("Could not parse contact logs", e); }
     
     if (logs.length > 0) {
         logs.forEach(log => {
@@ -802,12 +932,11 @@ function populateClientNotesTab(rowData, headers, isEditMode) {
     }
 
     if (isEditMode) {
-        // Hidden input to store the JSON string of logs, to be saved later
         contentHtml += `<input type="hidden" id="client-edit-ContactLogs" value='${JSON.stringify(logs)}'>`;
         contentHtml += `
             <h3>Add New Contact Log</h3>
             <textarea id="new-contact-log-entry" placeholder="Log a call, meeting, or email..."></textarea>
-            <button id="add-contact-log-btn" class="modal-button">Add Log</button>
+            <button id="add-contact-log-btn">Add Log</button>
         `;
     }
 
@@ -817,13 +946,9 @@ function populateClientNotesTab(rowData, headers, isEditMode) {
         document.getElementById('add-contact-log-btn').onclick = () => {
             const newNote = document.getElementById('new-contact-log-entry').value;
             if(!newNote) return;
-
             const newLog = { date: new Date().toISOString(), note: newNote };
             logs.unshift(newLog);
-            
             document.getElementById('client-edit-ContactLogs').value = JSON.stringify(logs);
-            
-            // Re-render the tab to show the new log immediately
             populateClientNotesTab(rowData, headers, true); 
         };
     }
@@ -836,7 +961,7 @@ function populateClientFinancialsTab(clientEmail) {
     if (allProjects.headers.length > 0) {
         const projEmailIndex = allProjects.headers.indexOf('Client Email');
         const projValueIndex = allProjects.headers.indexOf('Value');
-        const projDateIndex = allProjects.headers.indexOf('Date');
+        const projDateIndex = allProjects.headers.indexOf('Start Date');
         const currentYear = new Date().getFullYear();
         let ytdIncome = 0;
 
@@ -845,9 +970,7 @@ function populateClientFinancialsTab(clientEmail) {
             const rowYear = new Date(row[projDateIndex]).getFullYear();
             if (row[projEmailIndex] === clientEmail && rowYear === currentYear) {
                 const value = parseFloat(row[projValueIndex]);
-                if (!isNaN(value)) {
-                    ytdIncome += value;
-                }
+                if (!isNaN(value)) ytdIncome += value;
             }
         });
         contentHtml += `<h2>$${ytdIncome.toFixed(2)}</h2>`;
@@ -858,6 +981,62 @@ function populateClientFinancialsTab(clientEmail) {
     container.innerHTML = contentHtml;
 }
 
+function populateClientActionsTab(rowData, headers) {
+    const container = document.getElementById('client-tab-actions');
+    let contentHtml = '<h3>Actions</h3>';
+    const createProjectBtn = document.createElement('button');
+    createProjectBtn.textContent = 'Create New Project';
+    createProjectBtn.onclick = () => showCreateProjectModal(rowData, headers);
+    container.innerHTML = ''; // Clear previous content
+    container.appendChild(createProjectBtn);
+}
+
+function showCreateProjectModal(clientRow, clientHeaders) {
+    clientDetailsModal.style.display = 'none'; // Hide the client modal
+    createProjectModal.style.display = 'block';
+
+    const clientEmail = clientRow[clientHeaders.indexOf('Email')];
+    const clientName = `${clientRow[clientHeaders.indexOf('First Name')]} ${clientRow[clientHeaders.indexOf('Last Name')]}`;
+
+    document.getElementById('project-client-name').value = clientName;
+    const sourceRequestSelect = document.getElementById('project-source-request');
+    sourceRequestSelect.innerHTML = '<option value="">Start from scratch</option>';
+    sourceRequestSelect.dataset.clientEmail = clientEmail;
+
+    const statusIndex = allRequests.headers.indexOf('Status');
+    const emailIndex = allRequests.headers.indexOf('Email');
+    const serviceIndex = allRequests.headers.indexOf('Primary Service Category');
+    const dateIndex = allRequests.headers.indexOf('Submission Date');
+    const idIndex = allRequests.headers.indexOf('Submission ID');
+
+    const activeClientRequests = allRequests.rows.filter(r => r[emailIndex] === clientEmail && r[statusIndex] !== 'Archived');
+    
+    activeClientRequests.forEach(req => {
+        const date = req[dateIndex] || 'No Date';
+        const service = req[serviceIndex] || 'No Service';
+        const id = req[idIndex];
+        const option = new Option(`${date} - ${service}`, id);
+        sourceRequestSelect.add(option);
+    });
+
+    sourceRequestSelect.onchange = (e) => {
+        const selectedRequestId = e.target.value;
+        if (!selectedRequestId) {
+            document.getElementById('project-name').value = '';
+            document.getElementById('project-value').value = '';
+            return;
+        }
+
+        const selectedRequest = allRequests.rows.find(r => r[idIndex] === selectedRequestId);
+        if (selectedRequest) {
+            const quoteIndex = allRequests.headers.indexOf('Quote Total');
+            document.getElementById('project-name').value = selectedRequest[serviceIndex] || '';
+            document.getElementById('project-value').value = quoteIndex > -1 ? (selectedRequest[quoteIndex] || '') : '';
+        }
+    };
+    // Trigger change event to clear fields if "start from scratch" is default
+    sourceRequestSelect.dispatchEvent(new Event('change')); 
+}
 
 async function handleAddClientSubmit(event) {
     event.preventDefault();
@@ -895,11 +1074,10 @@ function columnToLetter(column) {
 
 async function updateSheetRow(sheetName, idColumnName, idValue, dataToUpdate) {
     let sheetResponse = await gapi.client.sheets.spreadsheets.values.get({
-        spreadsheetId: SPREADSHEET_ID, range: sheetName,
+        spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!1:1`,
     });
     
-    let sheetValues = sheetResponse.result.values || [[]];
-    let sheetHeaders = sheetValues[0] || [];
+    let sheetHeaders = (sheetResponse.result.values ? sheetResponse.result.values[0] : []) || [];
 
     const newHeaders = Object.keys(dataToUpdate).filter(h => !sheetHeaders.includes(h));
     if (newHeaders.length > 0) {
@@ -912,14 +1090,13 @@ async function updateSheetRow(sheetName, idColumnName, idValue, dataToUpdate) {
             valueInputOption: 'RAW',
             resource: { values: [newHeaders] }
         });
-
-        // Re-fetch after adding new headers
-        sheetResponse = await gapi.client.sheets.spreadsheets.values.get({
-            spreadsheetId: SPREADSHEET_ID, range: sheetName,
-        });
-        sheetValues = sheetResponse.result.values || [[]];
-        sheetHeaders = sheetValues[0] || [];
+        sheetHeaders = sheetHeaders.concat(newHeaders);
     }
+
+    const fullSheetResponse = await gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID, range: sheetName,
+    });
+    const sheetValues = fullSheetResponse.result.values || [];
     
     const idIndex = sheetHeaders.indexOf(idColumnName);
     if (idIndex === -1) throw new Error(`Unique ID column '${idColumnName}' not found.`);
@@ -952,13 +1129,19 @@ async function updateSheetRow(sheetName, idColumnName, idValue, dataToUpdate) {
 async function writeData(sheetName, dataObject) {
     const headerResponse = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!1:1` });
     let headers = headerResponse.result.values ? headerResponse.result.values[0] : [];
-    if (headers.length === 0) {
-        headers = Object.keys(dataObject);
+    
+    const newHeaders = Object.keys(dataObject).filter(h => !headers.includes(h));
+    if (newHeaders.length > 0) {
+        const firstEmptyColumn = columnToLetter(headers.length + 1);
         await gapi.client.sheets.spreadsheets.values.update({
-            spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!A1`,
-            valueInputOption: 'RAW', resource: { values: [headers] },
+            spreadsheetId: SPREADSHEET_ID,
+            range: `${sheetName}!${firstEmptyColumn}1`,
+            valueInputOption: 'RAW',
+            resource: { values: [newHeaders] }
         });
+        headers = headers.concat(newHeaders);
     }
+
     const newRow = headers.map(header => dataObject[header] || '');
     return gapi.client.sheets.spreadsheets.values.append({
         spreadsheetId: SPREADSHEET_ID, range: sheetName,
@@ -981,12 +1164,12 @@ function populateServiceFilter() {
     });
 }
 
-function populateColumnSelector() {
-    const container = document.getElementById('column-checkboxes');
+function populateColumnSelector(headers, visibleColumns, containerId) {
+    const container = document.getElementById(containerId);
     container.innerHTML = '';
-    allRequests.headers.forEach(header => {
+    headers.forEach(header => {
         if (!header) return;
-        const isChecked = state.visibleColumns.includes(header);
+        const isChecked = visibleColumns.includes(header);
         const wrapper = document.createElement('div');
         wrapper.innerHTML = `
             <label>
