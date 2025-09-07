@@ -111,7 +111,15 @@ button:hover, #modal-save-note-btn:hover, #save-columns-btn:hover {
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
 
-#authorize_button, .view-controls button.active, #modal-save-note-btn, #save-columns-btn {
+button:disabled {
+    background-color: #ccc !important;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+
+#authorize_button, .view-controls button.active, #modal-save-note-btn, #save-columns-btn, #modal-create-client-btn {
     background-color: #FF9D76; /* Orange */
 }
 
@@ -254,14 +262,42 @@ button:hover, #modal-save-note-btn:hover, #save-columns-btn:hover {
     box-shadow: 0 5px 15px rgba(0,0,0,0.3);
 }
 
+.modal-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 20px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+
+#modal-client-section, #modal-notes-section {
+    display: flex;
+    flex-direction: column;
+}
+
+#modal-client-section h3, #modal-notes-section h3 {
+    margin-top: 0;
+}
+
+#modal-notes-textarea {
+    width: 95%;
+    min-height: 80px;
+    margin-bottom: 10px;
+    padding: 5px;
+}
+#modal-client-status, #modal-note-status {
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+
 /* --- Other styles --- */
 .close-button { color: #aaa; position: absolute; top: 10px; right: 20px; font-size: 28px; font-weight: bold; }
 .close-button:hover, .close-button:focus { color: black; text-decoration: none; cursor: pointer; }
 #modal-body ul { list-style-type: none; padding: 0; }
 #modal-body li { padding: 8px 0; border-bottom: 1px solid #eee; }
 #modal-body li strong { display: inline-block; width: 150px; color: #555; }
-#modal-notes-section { margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
-#modal-notes-textarea { width: 98%; min-height: 80px; margin-top: 10px; padding: 5px; }
 #column-checkboxes { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin: 20px 0; }
 #column-checkboxes label { display: flex; align-items: center; gap: 8px; }
 .collapsible-header {
