@@ -1,4 +1,3 @@
-
 // --- CONFIGURATION ---
 const CLIENT_ID = "555797317893-ce2nrrf49e5dol0c6lurln0c3it76c2r.apps.googleusercontent.com";
 const SPREADSHEET_ID = "1G3kVQdR0yd1j362oZKYRXMby1Ve6PVcY8CrsQnuxVfY";
@@ -1280,28 +1279,16 @@ function showClientDetailsModal(rowData, headers) {
             saveBtn.style.display = 'none'; // Cancel edit mode if switching tabs
         }
     });
-    tabButtons[0].click();
+
     const renderViewMode = (data) => {
         populateClientDetailsTab(data, headers, false);
         populateClientHistoryTab(data[headers.indexOf('Email')]);
         populateClientNotesTab(data, headers, false);
         populateClientFinancialsTab(data[headers.indexOf('Email')]);
         populateClientActionsTab(data, headers);
-
-        const activeTab = clientDetailsModal.querySelector('.client-tab-button.active');
-        const currentTabIsEditable = activeTab.dataset.editable === 'true';
-        const isActionsTab = activeTab.dataset.tab === 'actions';
-
-        if (isActionsTab) {
-            footer.style.display = 'none';
-        } else {
-            footer.style.display = 'block';
-            editBtn.style.display = currentTabIsEditable ? 'inline-block' : 'none';
-            saveBtn.style.display = 'none';
-        }
-        
         editBtn.onclick = () => renderEditMode(data);
     };
+
     const renderEditMode = (data) => {
         populateClientDetailsTab(data, headers, true);
         populateClientNotesTab(data, headers, true);
@@ -1309,6 +1296,7 @@ function showClientDetailsModal(rowData, headers) {
         saveBtn.style.display = 'inline-block';
         saveBtn.onclick = () => handleSaveClientUpdate(data, headers);
     };
+
     const handleSaveClientUpdate = async (currentRowData, currentHeaders) => {
         statusSpan.textContent = 'Saving...';
         const dataToUpdate = {};
@@ -1328,10 +1316,19 @@ function showClientDetailsModal(rowData, headers) {
             const updatedRow = allClients.rows.find(r => r[allClients.headers.indexOf('ClientID')] === clientId);
             statusSpan.textContent = 'Saved successfully!';
             renderClients();
-            setTimeout(() => { renderViewMode(updatedRow || currentRowData); statusSpan.textContent = ''; }, 1500);
+            setTimeout(() => { 
+                renderViewMode(updatedRow || currentRowData);
+                // After saving, restore the view to the details tab, which has a footer
+                footer.style.display = 'block';
+                editBtn.style.display = 'inline-block';
+                saveBtn.style.display = 'none';
+                statusSpan.textContent = ''; 
+            }, 1500);
         } catch(err) { statusSpan.textContent = 'Error saving.'; console.error('Client update error:', err); }
     };
+    
     renderViewMode(rowData);
+    tabButtons[0].click(); // Activate the first tab and trigger the onclick handler to set initial state
     clientDetailsModal.style.display = 'block';
 }
 function populateClientDetailsTab(rowData, headers, isEditMode) {
@@ -1851,6 +1848,3 @@ function populateColumnSelector(headers, visibleColumns, containerId) {
         container.innerHTML += `<div><label><input type="checkbox" value="${header}" ${isChecked ? 'checked' : ''}>${header}</label></div>`;
     });
 }
-
-
-
