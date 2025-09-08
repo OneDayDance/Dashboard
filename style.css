@@ -110,7 +110,7 @@ button[disabled] {
     box-shadow: none;
 }
 
-#authorize_button, .view-controls button.active, #modal-save-note-btn, #save-columns-btn, #client-modal-save-btn, #save-client-columns-btn, #signout_button, #client-modal-edit-btn, #project-actions-btn {
+#authorize_button, .view-controls button.active, #modal-save-note-btn, #save-columns-btn, #client-modal-save-btn, #save-client-columns-btn, #signout_button, #client-modal-edit-btn, #project-actions-btn, #gdrive-link-save-btn {
     background-color: #FF9D76; /* Orange */
 }
 #request-view-toggle-btn {
@@ -251,10 +251,27 @@ button[disabled] {
 .project-actions-dropdown-content a { color: black; padding: 12px 16px; text-decoration: none; display: block; }
 .project-actions-dropdown-content a:hover { background-color: #f1f1f1; }
 .project-actions-dropdown-content a.delete { color: #dc3545; }
-.project-details-section { margin-bottom: 20px; }
+.project-details-section { 
+    margin-bottom: 20px; 
+    background: #f9f9f9;
+    border: 1px solid #eee;
+    padding: 15px;
+    border-radius: 8px;
+}
 .project-details-section-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 10px; }
 .project-details-section-header h4 { border: none; margin: 0; padding: 0;}
 .project-details-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+.project-details-grid .project-details-section { margin-bottom: 0; }
+.project-details-grid ul { list-style: none; padding: 0; margin: 0; }
+.project-details-grid li { font-size: 14px; }
+.project-details-grid li:not(:last-child) { margin-bottom: 8px; }
+.project-details-grid li strong {
+    font-weight: bold;
+    color: #555;
+    width: auto;
+    display: inline-block;
+    margin-right: 5px;
+}
 
 /* Interactive Info Cards */
 .interactive-card {
@@ -266,6 +283,7 @@ button[disabled] {
     overflow: hidden;
     transition: all 0.3s ease;
     cursor: pointer;
+    text-align: center;
 }
 .interactive-card:hover {
     transform: translateY(-3px);
@@ -275,6 +293,10 @@ button[disabled] {
 .interactive-card .card-main-content,
 .interactive-card .card-hover-content {
     transition: opacity 0.3s ease, transform 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
 }
 .interactive-card .card-main-content h4 { margin: 0; font-size: 14px; color: #555; }
 .interactive-card .card-main-content p { margin: 5px 0 0; font-size: 16px; font-weight: bold; }
@@ -284,9 +306,6 @@ button[disabled] {
     padding: 15px;
     opacity: 0;
     transform: translateY(10px);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
 }
 .interactive-card:hover .card-main-content {
     opacity: 0;
@@ -298,33 +317,25 @@ button[disabled] {
 }
 .interactive-card .card-hover-content p {
     margin: 2px 0;
-    font-size: 12px;
+    font-size: 16px;
     color: #333;
     font-weight: bold;
 }
 .interactive-card .card-hover-content span {
     font-weight: normal;
     color: #666;
+    font-size: 12px;
 }
 
 .folder-link-container {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    justify-content: center;
 }
 .folder-link-container .card-main-content {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+    gap: 8px;
 }
-.folder-link-container svg { width: 24px; height: 24px; fill: #5f6368; flex-shrink: 0; }
-.folder-link-container .card-main-content h4 { margin: 0; font-size: 16px; }
-.folder-link-container a {
-    text-decoration: none;
-    color: #FF9D76;
-    font-weight: bold;
-    font-size: 14px;
-}
+.folder-link-container svg { width: 32px; height: 32px; fill: #5f6368; }
+.folder-link-container .card-main-content h4 { font-size: 16px; margin-top: 5px; }
+
 
 .task-bucket { cursor: grab; transition: all 0.2s ease-in-out; border: 2px solid transparent; }
 .task-bucket:hover { border-color: #76F1FF; }
@@ -405,7 +416,7 @@ button[disabled] {
 #modal-body li, .client-tab-content li { padding: 8px 0; border-bottom: 1px solid #eee; display: flex; align-items: center; }
 .client-tab-content a { color: #FF9D76; text-decoration: none; font-weight: bold; cursor: pointer; }
 #modal-body li strong, .client-tab-content li strong { display: inline-block; width: 180px; color: #555; flex-shrink: 0;}
-.client-tab-content input, .client-tab-content textarea, .client-tab-content select, #delete-confirm-input, .form-field input, .form-field textarea, .form-field select {
+.client-tab-content input, .client-tab-content textarea, .client-tab-content select, #delete-confirm-input, .form-field input, .form-field textarea, .form-field select, #gdrive-link-input {
     width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; box-sizing: border-box;
 }
 #delete-confirm-input { margin-top: 10px; }
