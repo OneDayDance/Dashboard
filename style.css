@@ -188,60 +188,44 @@ button[disabled] {
 #add-client-form { display: flex; flex-direction: column; gap: 10px; }
 #add-client-form input { padding: 8px; border-radius: 4px; border: 1px solid #ccc; }
 
-/* --- Projects Tab Layout --- */
-.project-layout-container { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: start; transition: grid-template-columns 0.3s ease, gap 0.3s ease; }
-.project-layout-container.collapsed {
-    grid-template-columns: auto 1fr;
-    gap: 15px;
+/* --- Projects Tab Layout & Sidebar Animation --- */
+.project-layout-container {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 20px;
+    align-items: start;
+    /* Use a smoother easing function for the transition */
+    transition: grid-template-columns 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Sticky Sidebar */
+.project-layout-container.collapsed {
+    /* Shrink the first column to the size of the button + padding */
+    grid-template-columns: 60px 1fr;
+}
+
+/* Sidebar Column */
 .project-list-column {
-    transition: all 0.3s ease;
     position: sticky;
     top: 20px;
     align-self: start;
-    height: calc(100vh - 180px); /* Adjust based on header/padding */
+    height: calc(100vh - 180px);
     display: flex;
     flex-direction: column;
-}
-
-/* Styles for elements inside the sidebar for smooth transition */
-#project-list-title,
-.project-search-container,
-.project-list,
-.project-list-column .collapsible-header,
-.project-list-column > h3 {
-    transition: opacity 0.2s ease, visibility 0.2s ease, max-height 0.3s ease, margin 0.3s ease, padding 0.3s ease;
+    /* Add overflow hidden to clip the content as it slides out */
     overflow: hidden;
+    /* Transition the background and padding for a clean collapse */
+    transition: padding 0.4s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.4s ease, border 0.4s ease, box-shadow 0.4s ease;
 }
 
-/* Collapsed State */
 .project-layout-container.collapsed .project-list-column {
-    background: transparent;
-    border: none;
-    box-shadow: none;
+    /* Remove card styles when collapsed to leave just the button */
     padding: 0;
-    height: auto; /* Make the container shrink-to-fit */
-    align-items: center; /* Center horizontally */
-    justify-content: center; /* Center vertically */
+    background-color: transparent;
+    border-color: transparent;
+    box-shadow: none;
 }
 
-/* Hide all content when collapsed */
-.project-layout-container.collapsed .project-list-column #project-list-title,
-.project-layout-container.collapsed .project-list-column .project-search-container,
-.project-layout-container.collapsed .project-list-column .project-list,
-.project-layout-container.collapsed .project-list-column .collapsible-header,
-.project-layout-container.collapsed .project-list-column > h3 {
-   opacity: 0;
-   max-height: 0;
-   margin: 0;
-   padding: 0;
-   border: 0;
-   pointer-events: none;
-   visibility: hidden;
-}
-
+/* Sidebar Header */
 .project-list-header {
     display: flex;
     justify-content: space-between;
@@ -249,16 +233,54 @@ button[disabled] {
     margin-bottom: 10px;
     flex-shrink: 0;
     width: 100%;
-    transition: margin-bottom 0.3s ease-out;
+    transition: padding 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Center the header (and thus the button) when collapsed */
 .project-layout-container.collapsed .project-list-header {
+    /* Adjust padding to position the button cleanly on the left */
+    padding: 10px;
     margin-bottom: 0;
-    justify-content: center;
+    justify-content: flex-start; /* Align button to the left */
 }
 
-#project-list-title { margin: 0; }
+/* Sidebar Title */
+#project-list-title {
+    margin: 0;
+    white-space: nowrap;
+    /* Add transition for opacity and transform */
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    transform: translateX(0);
+}
+
+.project-layout-container.collapsed #project-list-title {
+    /* Fade and slide out the title */
+    opacity: 0;
+    transform: translateX(-20px);
+    pointer-events: none;
+}
+
+/* Generic Sidebar Content (Search, Lists) */
+.project-search-container,
+.project-list,
+.project-list-column .collapsible-header,
+.project-list-column > h3 {
+    /* Add transition for opacity and a slide effect */
+    transition: opacity 0.2s ease, transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateX(0);
+    opacity: 1;
+    min-width: 260px; /* 300px width - 20px padding * 2 */
+}
+
+.project-layout-container.collapsed .project-search-container,
+.project-layout-container.collapsed .project-list,
+.project-layout-container.collapsed .project-list-column .collapsible-header,
+.project-layout-container.collapsed .project-list-column > h3 {
+    /* Fade and slide out the content to the left */
+    opacity: 0;
+    transform: translateX(-100%);
+    pointer-events: none;
+}
+
 .project-search-container { padding-bottom: 15px; flex-shrink: 0; }
 #project-search-bar { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; box-sizing: border-box; }
 .project-list {
@@ -273,13 +295,31 @@ button[disabled] {
 .project-list-item.active { background-color: #d4f4ff; font-weight: bold; }
 .project-list-item h4 { margin: 0 0 5px 0; }
 .project-list-item p { margin: 0; font-size: 12px; color: #555; }
+
+/* Collapse Button */
 #project-list-collapse-btn {
-    font-size: 20px; padding: 0; background: #eee; color: #333; border-radius: 50%; width: 40px; height: 40px; line-height: 40px; text-align: center; transition: transform 0.3s ease; flex-shrink: 0;
+    font-size: 20px;
+    padding: 0;
+    background: #eee;
+    color: #333;
+    border-radius: 8px; /* Slightly less rounded */
+    width: 40px;
+    height: 40px;
+    line-height: 40px;
+    text-align: center;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
 }
+
+#project-list-collapse-btn:hover {
+    background-color: #ddd;
+}
+
 .project-layout-container.collapsed #project-list-collapse-btn {
+    /* Rotate the icon inside the button for a nice touch */
     transform: rotate(180deg);
 }
 
@@ -542,4 +582,3 @@ button[disabled] {
 .form-field { margin-bottom: 15px; }
 .form-field label { display: block; margin-bottom: 5px; font-weight: bold; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-
