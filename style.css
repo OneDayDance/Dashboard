@@ -202,19 +202,58 @@ button[disabled] {
     display: flex;
     flex-direction: column;
 }
+
+/* Styles for elements inside the sidebar for smooth transition */
+.project-list-column > *:not(.project-list-header),
+#project-list-title {
+    transition: opacity 0.2s ease-out, max-height 0.4s ease-out, padding 0.4s ease-out, margin 0.4s ease-out, border 0.4s ease-out;
+    overflow: hidden;
+}
+
+/* Collapsed State */
 .project-list-column.collapsed {
     background: transparent;
     border: none;
     box-shadow: none;
-    padding: 10px 0;
+    padding: 0;
     align-items: center;
+    justify-content: flex-start;
 }
 
-.project-list-column.collapsed > *:not(#project-list-collapse-btn) {
-   display: none;
+/* Hide everything except the button's parent */
+.project-list-column.collapsed > *:not(.project-list-header) {
+   opacity: 0;
+   max-height: 0;
+   padding-top: 0;
+   padding-bottom: 0;
+   margin-top: 0;
+   margin-bottom: 0;
+   border-width: 0;
+   pointer-events: none;
 }
 
-.project-list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-shrink: 0; }
+/* Inside the parent, hide the title */
+.project-list-column.collapsed #project-list-title {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.project-list-header { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    margin-bottom: 10px; 
+    flex-shrink: 0; 
+    transition: margin-bottom 0.3s ease-out;
+}
+
+/* Center the header (and thus the button) when collapsed */
+.project-list-column.collapsed .project-list-header {
+    margin-bottom: 0;
+    width: 100%;
+    justify-content: center;
+}
+
 #project-list-title { margin: 0; }
 .project-search-container { padding-bottom: 15px; flex-shrink: 0; }
 #project-search-bar { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; box-sizing: border-box; }
@@ -239,12 +278,6 @@ button[disabled] {
 .project-list-column.collapsed #project-list-collapse-btn {
     transform: rotate(180deg);
 }
-
-/* Collapsed Sidebar Redesign */
-.project-list-column.collapsed .project-list-item {
-   display: none;
-}
-
 
 /* Project Details View */
 #project-details-column h3 { margin-top: 0; }
@@ -505,5 +538,4 @@ button[disabled] {
 .form-field { margin-bottom: 15px; }
 .form-field label { display: block; margin-bottom: 5px; font-weight: bold; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-
 
