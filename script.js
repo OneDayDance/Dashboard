@@ -1,3 +1,4 @@
+
 // --- CONFIGURATION ---
 const CLIENT_ID = "555797317893-ce2nrrf49e5dol0c6lurln0c3it76c2r.apps.googleusercontent.com";
 const SPREADSHEET_ID = "1G3kVQdR0yd1j362oZKYRXMby1Ve6PVcY8CrsQnuxVfY";
@@ -37,11 +38,6 @@ const clientSortableColumns = ['First Name', 'Last Name', 'Email', 'Organization
 let tokenClient, gapiInited = false, gisInited = false;
 let authorizeButton, signoutButton, appContainer, addClientForm, serviceFilter, statusFilter, searchBar, detailsModal, columnModal, closeModalButtons, requestViewToggleBtn, modalSaveNoteBtn, archiveToggle, archiveContainer, columnSelectBtn, saveColumnsBtn, landingContainer, clientSearchBar, clientTableContainer, clientDetailsModal, clientStatusFilter, clientListViewBtn, clientCardViewBtn, clientColumnSelectBtn, clientColumnModal, createProjectModal, deleteClientModal, taskDetailsModal, deleteProjectModal, projectSearchBar, gdriveLinkModal;
 let silentAuthAttempted = false;
-
-// --- ANALYTICS STATE ---
-let analyticsInitialized = false;
-const chartInstances = {};
-let datePicker;
 
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -194,13 +190,6 @@ function loadDataForActiveTab() {
         case 'requests': renderRequests(); break;
         case 'clients': renderClients(); break;
         case 'projects': renderProjectsTab(); break;
-        case 'analytics':
-            if (!analyticsInitialized) {
-                initializeAnalytics();
-                analyticsInitialized = true;
-            }
-            renderAnalytics();
-            break;
     }
 }
 function updateFilter(key, value) { state.filters[key] = value; renderRequests(); }
@@ -238,145 +227,6 @@ function handleSaveColumns(type) {
         renderClients();
     }
 }
-
-// --- ANALYTICS TAB FUNCTIONS ---
-function initializeAnalytics() {
-    datePicker = flatpickr("#date-range-picker", {
-        mode: "range",
-        dateFormat: "Y-m-d",
-        defaultDate: [new Date(new Date().setDate(new Date().getDate() - 30)), new Date()],
-        onChange: function(selectedDates) {
-           if (selectedDates.length === 2) {
-               renderAnalytics(selectedDates[0], selectedDates[1]);
-           }
-        }
-    });
-
-    const commonChartOptions = {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: { legend: { position: 'bottom', labels: { color: '#333' } } },
-        scales: {
-            x: { grid: { display: false }, ticks: { color: '#555' } },
-            y: { border: { display: false }, grid: { color: '#ddd' }, ticks: { color: '#555' }, beginAtZero: true }
-        }
-    };
-
-    chartInstances.serviceRequest = new Chart(document.getElementById('serviceRequestChart'), {
-        type: 'bar',
-        data: { labels: [], datasets: [{ label: 'Request Count', data: [], backgroundColor: '#FF9D76' }] },
-        options: { ...commonChartOptions, indexAxis: 'y' }
-    });
-
-    chartInstances.projectStatus = new Chart(document.getElementById('projectStatusChart'), {
-        type: 'doughnut',
-        data: { labels: [], datasets: [{ data: [], backgroundColor: ['#4CAF50', '#2196F3', '#FF9800', '#9E9E9E'] }] },
-        options: { ...commonChartOptions, scales: {} }
-    });
-
-    chartInstances.clientStatus = new Chart(document.getElementById('clientStatusChart'), {
-        type: 'pie',
-        data: { labels: [], datasets: [{ data: [], backgroundColor: ['#38BDF8', '#F87171'] }] },
-        options: { ...commonChartOptions, scales: {} }
-    });
-
-    chartInstances.monthlyRevenue = new Chart(document.getElementById('monthlyRevenueChart'), {
-        type: 'line',
-        data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            datasets: [{ label: `Revenue ${new Date().getFullYear()}`, data: [], backgroundColor: 'rgba(193, 118, 255, 0.2)', borderColor: 'rgba(193, 118, 255, 1)', tension: 0.1, fill: true }]
-        },
-        options: commonChartOptions
-    });
-}
-
-function renderAnalytics(startDate, endDate) {
-    if (!startDate || !endDate) {
-        const dates = datePicker.selectedDates;
-        if (dates.length < 2) return;
-        startDate = dates[0];
-        endDate = dates[1];
-    }
-    
-    // --- DATA PROCESSING ---
-    const dateParser = (dateStr) => dateStr ? new Date(dateStr.split(' ')[0]) : new Date(0);
-    
-    const reqDateIndex = allRequests.headers.indexOf('Submission Date');
-    const filteredRequests = allRequests.rows.filter(r => {
-        const date = dateParser(r[reqDateIndex]);
-        return date >= startDate && date <= endDate;
-    });
-
-    const clientDateIndex = allClients.headers.indexOf('Date Added'); // Assuming 'Date Added' column
-    const filteredClients = allClients.rows.filter(r => {
-        const date = clientDateIndex > -1 ? dateParser(r[clientDateIndex]) : new Date(0);
-        return date >= startDate && date <= endDate;
-    });
-    
-    const projDateIndex = allProjects.headers.indexOf('Start Date');
-    const projStatusIndex = allProjects.headers.indexOf('Status');
-    const projValueIndex = allProjects.headers.indexOf('Value');
-    const filteredProjects = allProjects.rows.filter(r => {
-        const date = dateParser(r[projDateIndex]);
-        return date >= startDate && date <= endDate;
-    });
-
-    // --- UPDATE METRICS ---
-    const revenueInPeriod = filteredProjects
-        .filter(p => p[projStatusIndex] === 'Completed' && parseFloat(p[projValueIndex]))
-        .reduce((sum, p) => sum + parseFloat(p[projValueIndex]), 0);
-        
-    document.getElementById('metric-revenue').querySelector('p').textContent = `$${revenueInPeriod.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-    document.getElementById('metric-new-clients').querySelector('p').textContent = filteredClients.length;
-    document.getElementById('metric-projects-completed').querySelector('p').textContent = filteredProjects.filter(p => p[projStatusIndex] === 'Completed').length;
-    document.getElementById('metric-new-requests').querySelector('p').textContent = filteredRequests.length;
-
-    // --- UPDATE CHARTS ---
-    // Service Request Chart
-    const serviceIndex = allRequests.headers.indexOf('Primary Service Category');
-    const serviceCounts = filteredRequests.reduce((acc, r) => {
-        const service = r[serviceIndex] || 'Unknown';
-        acc[service] = (acc[service] || 0) + 1;
-        return acc;
-    }, {});
-    chartInstances.serviceRequest.data.labels = Object.keys(serviceCounts);
-    chartInstances.serviceRequest.data.datasets[0].data = Object.values(serviceCounts);
-    chartInstances.serviceRequest.update();
-
-    // Project Status Chart (All-time)
-    const projectStatusCounts = allProjects.rows.reduce((acc, p) => {
-        const status = p[projStatusIndex] || 'Unknown';
-        acc[status] = (acc[status] || 0) + 1;
-        return acc;
-    }, {});
-    chartInstances.projectStatus.data.labels = Object.keys(projectStatusCounts);
-    chartInstances.projectStatus.data.datasets[0].data = Object.values(projectStatusCounts);
-    chartInstances.projectStatus.update();
-
-    // Client Status Chart (All-time)
-    const clientStatusIndex = allClients.headers.indexOf('Status');
-    const clientStatusCounts = allClients.rows.reduce((acc, c) => {
-        const status = c[clientStatusIndex] || 'Unknown';
-        acc[status] = (acc[status] || 0) + 1;
-        return acc;
-    }, {});
-    chartInstances.clientStatus.data.labels = Object.keys(clientStatusCounts);
-    chartInstances.clientStatus.data.datasets[0].data = Object.values(clientStatusCounts);
-    chartInstances.clientStatus.update();
-    
-    // Monthly Revenue Chart (YTD)
-    const monthlyRevenue = new Array(12).fill(0);
-    const currentYear = new Date().getFullYear();
-    allProjects.rows.forEach(p => {
-        const projDate = dateParser(p[projDateIndex]);
-        if (p[projStatusIndex] === 'Completed' && projDate.getFullYear() === currentYear && parseFloat(p[projValueIndex])) {
-            monthlyRevenue[projDate.getMonth()] += parseFloat(p[projValueIndex]);
-        }
-    });
-    chartInstances.monthlyRevenue.data.datasets[0].data = monthlyRevenue;
-    chartInstances.monthlyRevenue.update();
-}
-
 
 // --- REQUESTS TAB FUNCTIONS ---
 async function loadRequests() {
@@ -565,8 +415,7 @@ async function handleCreateClient(submissionRow, submissionHeaders) {
         'First Name': nameParts[0], 'Last Name': nameParts.length > 1 ? nameParts.slice(1).join(' ') : '',
         'Email': submissionRow[submissionHeaders.indexOf('Email')] || '', 'Phone': submissionRow[submissionHeaders.indexOf('Phone')] || '',
         'Organization': submissionRow[submissionHeaders.indexOf('Organization')] || '', 'Status': 'Active', 'ClientID': `C-${Date.now()}`,
-        'Source': 'Submission', 'Original Submission ID': submissionRow[submissionHeaders.indexOf('Submission ID')] || '',
-        'Date Added': new Date().toISOString().split('T')[0]
+        'Source': 'Submission', 'Original Submission ID': submissionRow[submissionHeaders.indexOf('Submission ID')] || ''
     };
     try {
         await writeData('Clients', clientData);
@@ -945,7 +794,7 @@ function getDragAfterElementVertical(container, y, selector) {
     }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 function getDragAfterBucketHorizontal(container, x) {
-    const draggableElements = [...container.querySelectorAll('.task-board-column:not(.dragging)`)];
+    const draggableElements = [...container.querySelectorAll('.task-board-column:not(.dragging)')];
     return draggableElements.reduce((closest, child) => {
         const box = child.getBoundingClientRect();
         const offset = x - box.left - box.width / 2;
@@ -1608,8 +1457,7 @@ async function handleAddClientSubmit(event) {
     statusDiv.textContent = 'Adding client...';
     const clientData = {
         'First Name': document.getElementById('client-first-name').value, 'Last Name': document.getElementById('client-last-name').value,
-        'Email': document.getElementById('client-email').value, 'Status': 'Active', 'ClientID': `C-${Date.now()}`,
-        'Date Added': new Date().toISOString().split('T')[0]
+        'Email': document.getElementById('client-email').value, 'Status': 'Active', 'ClientID': `C-${Date.now()}`
     };
     try {
         await writeData('Clients', clientData);
