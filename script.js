@@ -1259,6 +1259,7 @@ function showClientDetailsModal(rowData, headers) {
     const editBtn = document.getElementById('client-modal-edit-btn');
     const saveBtn = document.getElementById('client-modal-save-btn');
     const statusSpan = document.getElementById('client-modal-status');
+    const footer = clientDetailsModal.querySelector('.modal-footer');
     statusSpan.textContent = '';
     
     const tabButtons = clientDetailsModal.querySelectorAll('.client-tab-button');
@@ -1267,9 +1268,17 @@ function showClientDetailsModal(rowData, headers) {
         e.currentTarget.classList.add('active');
         clientDetailsModal.querySelectorAll('.client-tab-content').forEach(c => c.classList.remove('active'));
         document.getElementById(`client-tab-${e.currentTarget.dataset.tab}`).classList.add('active');
+        
         const isEditable = e.currentTarget.dataset.editable === 'true';
-        editBtn.style.display = isEditable ? 'inline-block' : 'none';
-        saveBtn.style.display = 'none';
+        const isActionsTab = e.currentTarget.dataset.tab === 'actions';
+
+        if (isActionsTab) {
+            footer.style.display = 'none';
+        } else {
+            footer.style.display = 'block';
+            editBtn.style.display = isEditable ? 'inline-block' : 'none';
+            saveBtn.style.display = 'none'; // Cancel edit mode if switching tabs
+        }
     });
     tabButtons[0].click();
     const renderViewMode = (data) => {
@@ -1832,4 +1841,5 @@ function populateColumnSelector(headers, visibleColumns, containerId) {
         container.innerHTML += `<div><label><input type="checkbox" value="${header}" ${isChecked ? 'checked' : ''}>${header}</label></div>`;
     });
 }
+
 
