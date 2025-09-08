@@ -190,7 +190,7 @@ button[disabled] {
 
 /* --- Projects Tab Layout --- */
 .project-layout-container { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: start; transition: grid-template-columns 0.3s ease; }
-.project-layout-container.collapsed { grid-template-columns: 60px 1fr; }
+.project-layout-container.collapsed { grid-template-columns: 80px 1fr; }
 
 /* Sticky Sidebar */
 .project-list-column {
@@ -206,7 +206,7 @@ button[disabled] {
 /* Styles for elements inside the sidebar for smooth transition */
 .project-list-column > *:not(.project-list-header),
 #project-list-title {
-    transition: opacity 0.2s ease-out, max-height 0.4s ease-out, padding 0.4s ease-out, margin 0.4s ease-out, border 0.4s ease-out;
+    transition: opacity 0.2s ease-out, max-height 0.4s ease-out, padding 0.4s ease-out, margin 0.4s ease-out, border 0.4s ease-out, visibility 0.2s;
     overflow: hidden;
 }
 
@@ -216,8 +216,9 @@ button[disabled] {
     border: none;
     box-shadow: none;
     padding: 0;
-    align-items: center;
-    justify-content: flex-start;
+    height: auto; /* Make the container shrink-to-fit */
+    align-items: center; /* Center horizontally */
+    justify-content: center; /* Center vertically */
 }
 
 /* Hide everything except the button's parent */
@@ -230,12 +231,17 @@ button[disabled] {
    margin-bottom: 0;
    border-width: 0;
    pointer-events: none;
+   visibility: hidden; /* Ensure it's not accessible */
 }
 
 /* Inside the parent, hide the title */
 .project-list-column.collapsed #project-list-title {
     opacity: 0;
+    max-height: 0;
+    margin: 0;
+    padding: 0;
     pointer-events: none;
+    visibility: hidden;
 }
 
 .project-list-header { 
@@ -244,13 +250,13 @@ button[disabled] {
     align-items: center; 
     margin-bottom: 10px; 
     flex-shrink: 0; 
+    width: 100%;
     transition: margin-bottom 0.3s ease-out;
 }
 
 /* Center the header (and thus the button) when collapsed */
 .project-list-column.collapsed .project-list-header {
     margin-bottom: 0;
-    width: 100%;
     justify-content: center;
 }
 
@@ -538,4 +544,5 @@ button[disabled] {
 .form-field { margin-bottom: 15px; }
 .form-field label { display: block; margin-bottom: 5px; font-weight: bold; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+
 
