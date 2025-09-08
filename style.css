@@ -476,59 +476,6 @@ button[disabled] {
     flex: 0 0 300px; /* Match .task-board-column */
 }
 
-/* --- Analytics Tab Styles --- */
-.analytics-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-.analytics-header h2 { margin: 0; }
-.analytics-header p { margin: 0; color: #555; }
-.date-picker-input {
-    padding: 8px 12px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-    background-color: #fff;
-    width: 250px;
-    text-align: center;
-    cursor: pointer;
-}
-.key-metrics-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    margin-bottom: 20px;
-}
-.analytics-charts-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    gap: 20px;
-}
-.analytics-card {
-    background-color: rgba(255, 255, 255, 0.6);
-    backdrop-filter: blur(5px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
-.analytics-card h3 {
-    font-size: 16px;
-    font-weight: bold;
-    color: #555;
-    margin: 0 0 10px 0;
-}
-.key-metrics-grid .analytics-card p {
-    font-size: 28px;
-    font-weight: bold;
-    margin: 0;
-}
-.chart-container-donut {
-    max-width: 250px;
-    margin: 0 auto;
-}
-
 
 /* --- Themed Modals --- */
 .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(5px); }
