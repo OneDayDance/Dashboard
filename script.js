@@ -26,7 +26,8 @@ let state = {
     clientFilters: { status: 'all' },
     // projects tab state
     selectedProjectId: null,
-    projectTaskView: 'list' // 'list' or 'board'
+    projectTaskView: 'list', // 'list' or 'board'
+    projectSearchTerm: ''
 };
 const sortableColumns = ['Submission Date', 'Full Name', 'Email', 'Organization', 'Primary Service Category', 'Status'];
 const clientSortableColumns = ['First Name', 'Last Name', 'Email', 'Organization', 'Status'];
@@ -34,7 +35,7 @@ const clientSortableColumns = ['First Name', 'Last Name', 'Email', 'Organization
 
 // --- DOM ELEMENTS ---
 let tokenClient, gapiInited = false, gisInited = false;
-let authorizeButton, signoutButton, appContainer, addClientForm, serviceFilter, statusFilter, searchBar, detailsModal, columnModal, closeModalButtons, listViewBtn, cardViewBtn, modalSaveNoteBtn, archiveToggle, archiveContainer, columnSelectBtn, saveColumnsBtn, landingContainer, clientSearchBar, clientTableContainer, clientDetailsModal, clientStatusFilter, clientListViewBtn, clientCardViewBtn, clientColumnSelectBtn, clientColumnModal, createProjectModal, deleteClientModal, taskDetailsModal, deleteProjectModal;
+let authorizeButton, signoutButton, appContainer, addClientForm, serviceFilter, statusFilter, searchBar, detailsModal, columnModal, closeModalButtons, requestViewToggleBtn, modalSaveNoteBtn, archiveToggle, archiveContainer, columnSelectBtn, saveColumnsBtn, landingContainer, clientSearchBar, clientTableContainer, clientDetailsModal, clientStatusFilter, clientListViewBtn, clientCardViewBtn, clientColumnSelectBtn, clientColumnModal, createProjectModal, deleteClientModal, taskDetailsModal, deleteProjectModal, projectSearchBar;
 let silentAuthAttempted = false;
 
 
@@ -56,8 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
     deleteProjectModal = document.getElementById('delete-project-modal');
     clientColumnModal = document.getElementById('client-column-modal');
     closeModalButtons = document.querySelectorAll('.close-button');
-    listViewBtn = document.getElementById('list-view-btn');
-    cardViewBtn = document.getElementById('card-view-btn');
+    requestViewToggleBtn = document.getElementById('request-view-toggle-btn');
     modalSaveNoteBtn = document.getElementById('modal-save-note-btn');
     archiveToggle = document.getElementById('archive-toggle');
     archiveContainer = document.getElementById('archived-requests-container');
@@ -70,6 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
     clientListViewBtn = document.getElementById('client-list-view-btn');
     clientCardViewBtn = document.getElementById('client-card-view-btn');
     clientColumnSelectBtn = document.getElementById('client-column-select-btn');
+    projectSearchBar = document.getElementById('project-search-bar');
 
     // Assign event listeners
     authorizeButton.onclick = handleAuthClick;
@@ -88,8 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     closeModalButtons.forEach(btn => btn.onclick = () => btn.closest('.modal').style.display = 'none');
     
-    listViewBtn.onclick = () => setView('list');
-    cardViewBtn.onclick = () => setView('card');
+    requestViewToggleBtn.onclick = toggleRequestView;
     columnSelectBtn.onclick = () => showColumnModal('requests');
     saveColumnsBtn.onclick = () => handleSaveColumns('requests');
 
@@ -113,6 +113,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const column = document.querySelector('.project-list-column');
         layout.classList.toggle('collapsed');
         column.classList.toggle('collapsed');
+    };
+    projectSearchBar.oninput = (e) => {
+        state.projectSearchTerm = e.target.value;
+        renderProjectsTab();
     };
 });
 
@@ -191,10 +195,9 @@ function updateFilter(key, value) { state.filters[key] = value; renderRequests()
 function updateSearch(term) { state.searchTerm = term.toLowerCase(); renderRequests(); }
 function updateClientFilter(key, value) { state.clientFilters[key] = value; renderClients(); }
 function updateClientSearch(term) { state.clientSearchTerm = term.toLowerCase(); renderClients(); }
-function setView(view) {
-    state.currentView = view;
-    listViewBtn.classList.toggle('active', view === 'list');
-    cardViewBtn.classList.toggle('active', view === 'card');
+function toggleRequestView() {
+    state.currentView = state.currentView === 'list' ? 'card' : 'list';
+    requestViewToggleBtn.textContent = state.currentView === 'list' ? 'Card View' : 'List View';
     renderRequests();
 }
 function setClientView(view) {
@@ -456,19 +459,50 @@ async function loadTasks() {
     } catch (err) { console.warn("Could not load 'Tasks' sheet.", err); allTasks = { headers: [], rows: [] }; }
 }
 function renderProjectsTab() {
-    const activeList = document.getElementById('active-projects-list'), archivedList = document.getElementById('archived-projects-list'), detailsColumn = document.getElementById('project-details-column');
-    activeList.innerHTML = ''; archivedList.innerHTML = '';
-    const archivedStatuses = ['Completed', 'Cancelled', 'Archived'];
+    const activeList = document.getElementById('active-projects-list');
+    const archivedList = document.getElementById('archived-projects-list');
+    const detailsColumn = document.getElementById('project-details-column');
+    activeList.innerHTML = '';
+    archivedList.innerHTML = '';
+    
     const { headers, rows } = allProjects;
+    
+    // Filter projects based on search term first
+    const searchTerm = state.projectSearchTerm.toLowerCase();
+    let filteredRows = rows;
+    if (searchTerm) {
+        const nameIndex = headers.indexOf('Project Name');
+        const emailIndex = headers.indexOf('Client Email');
+        const clientEmailIndex = allClients.headers.indexOf('Email');
+        const clientFNameIndex = allClients.headers.indexOf('First Name');
+        const clientLNameIndex = allClients.headers.indexOf('Last Name');
+
+        filteredRows = rows.filter(proj => {
+            const projectName = (proj[nameIndex] || '').toLowerCase();
+            const clientEmail = (proj[emailIndex] || '').toLowerCase();
+            const client = allClients.rows.find(c => c[clientEmailIndex] === clientEmail);
+            const clientName = client ? `${client[clientFNameIndex]} ${client[clientLNameIndex]}`.toLowerCase() : '';
+            return projectName.includes(searchTerm) || clientName.includes(searchTerm);
+        });
+    }
+
+    const archivedStatuses = ['Completed', 'Cancelled', 'Archived'];
     const [statusIndex, nameIndex, clientEmailIndex, projectIdIndex] = ['Status', 'Project Name', 'Client Email', 'ProjectID'].map(h => headers.indexOf(h));
-    if ([statusIndex, nameIndex, clientEmailIndex, projectIdIndex].includes(-1)) { activeList.innerHTML = '<p>Project sheet is missing required columns.</p>'; detailsColumn.innerHTML = ''; return; }
-    rows.forEach(proj => {
+    
+    if ([statusIndex, nameIndex, clientEmailIndex, projectIdIndex].includes(-1)) {
+        activeList.innerHTML = '<p>Project sheet is missing required columns.</p>';
+        detailsColumn.innerHTML = '';
+        return;
+    }
+
+    filteredRows.forEach(proj => {
         const isArchived = archivedStatuses.includes(proj[statusIndex]);
         const targetList = isArchived ? archivedList : activeList;
         const client = allClients.rows.find(c => c[allClients.headers.indexOf('Email')] === proj[clientEmailIndex]);
         const clientName = client ? `${client[allClients.headers.indexOf('First Name')]} ${client[allClients.headers.indexOf('Last Name')]}` : 'Unknown Client';
         const item = document.createElement('div');
-        item.className = 'project-list-item'; item.dataset.projectId = proj[projectIdIndex];
+        item.className = 'project-list-item';
+        item.dataset.projectId = proj[projectIdIndex];
         item.innerHTML = `<h4>${proj[nameIndex]}</h4><p>${clientName}</p>`;
         item.onclick = () => {
             document.querySelectorAll('.project-list-item').forEach(i => i.classList.remove('active'));
@@ -478,11 +512,19 @@ function renderProjectsTab() {
         };
         targetList.appendChild(item);
     });
+
     if (state.selectedProjectId) {
         const item = document.querySelector(`.project-list-item[data-project-id="${state.selectedProjectId}"]`);
-        if (item) { item.classList.add('active'); showProjectDetails(state.selectedProjectId); } 
-        else { state.selectedProjectId = null; detailsColumn.innerHTML = '<p>Select a project to view its details.</p>'; }
-    } else { detailsColumn.innerHTML = '<p>Select a project to view its details.</p>'; }
+        if (item) {
+            item.classList.add('active');
+            showProjectDetails(state.selectedProjectId);
+        } else {
+            state.selectedProjectId = null;
+            detailsColumn.innerHTML = '<p>Select a project to view its details.</p>';
+        }
+    } else {
+        detailsColumn.innerHTML = '<p>Select a project to view its details.</p>';
+    }
 }
 function showProjectDetails(projectId, isEditMode = false) {
     const detailsColumn = document.getElementById('project-details-column');
@@ -817,7 +859,7 @@ function handleDragOver(e) {
 
         // Redundancy Check for tasks
         if (isSameContainer) {
-            if (draggingEl.nextElementSibling === afterEl || afterEl === draggingEl) {
+            if (draggingEl.nextElementSibling === afterEl || (afterEl && afterEl.previousElementSibling === draggingEl)) {
                  removePlaceholder();
                  return;
             }
