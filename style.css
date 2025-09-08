@@ -189,8 +189,11 @@ button[disabled] {
 #add-client-form input { padding: 8px; border-radius: 4px; border: 1px solid #ccc; }
 
 /* --- Projects Tab Layout --- */
-.project-layout-container { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: start; transition: grid-template-columns 0.3s ease; }
-.project-layout-container.collapsed { grid-template-columns: 80px 1fr; }
+.project-layout-container { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: start; transition: grid-template-columns 0.3s ease, gap 0.3s ease; }
+.project-layout-container.collapsed {
+    grid-template-columns: auto 1fr;
+    gap: 15px;
+}
 
 /* Sticky Sidebar */
 .project-list-column {
@@ -539,3 +542,4 @@ button[disabled] {
 .form-field { margin-bottom: 15px; }
 .form-field label { display: block; margin-bottom: 5px; font-weight: bold; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+
