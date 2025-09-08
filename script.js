@@ -35,7 +35,7 @@ const clientSortableColumns = ['First Name', 'Last Name', 'Email', 'Organization
 
 // --- DOM ELEMENTS ---
 let tokenClient, gapiInited = false, gisInited = false;
-let authorizeButton, signoutButton, appContainer, addClientForm, serviceFilter, statusFilter, searchBar, detailsModal, columnModal, closeModalButtons, requestViewToggleBtn, modalSaveNoteBtn, archiveToggle, archiveContainer, columnSelectBtn, saveColumnsBtn, landingContainer, clientSearchBar, clientTableContainer, clientDetailsModal, clientStatusFilter, clientListViewBtn, clientCardViewBtn, clientColumnSelectBtn, clientColumnModal, createProjectModal, deleteClientModal, taskDetailsModal, deleteProjectModal, projectSearchBar;
+let authorizeButton, signoutButton, appContainer, addClientForm, serviceFilter, statusFilter, searchBar, detailsModal, columnModal, closeModalButtons, requestViewToggleBtn, modalSaveNoteBtn, archiveToggle, archiveContainer, columnSelectBtn, saveColumnsBtn, landingContainer, clientSearchBar, clientTableContainer, clientDetailsModal, clientStatusFilter, clientListViewBtn, clientCardViewBtn, clientColumnSelectBtn, clientColumnModal, createProjectModal, deleteClientModal, taskDetailsModal, deleteProjectModal, projectSearchBar, gdriveLinkModal;
 let silentAuthAttempted = false;
 
 
@@ -56,6 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
     deleteClientModal = document.getElementById('delete-client-modal');
     deleteProjectModal = document.getElementById('delete-project-modal');
     clientColumnModal = document.getElementById('client-column-modal');
+    gdriveLinkModal = document.getElementById('gdrive-link-modal');
     closeModalButtons = document.querySelectorAll('.close-button');
     requestViewToggleBtn = document.getElementById('request-view-toggle-btn');
     modalSaveNoteBtn = document.getElementById('modal-save-note-btn');
@@ -108,6 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     document.getElementById('create-project-form').addEventListener('submit', handleCreateProjectSubmit);
     document.getElementById('task-details-form').addEventListener('submit', handleSaveTask);
+    document.getElementById('gdrive-link-form').addEventListener('submit', handleSaveGDriveLink);
     document.getElementById('project-list-collapse-btn').onclick = () => {
         const layout = document.getElementById('project-layout-container');
         layout.classList.toggle('collapsed');
@@ -603,29 +605,17 @@ function showProjectDetails(projectId, isEditMode = false) {
 
     detailsColumn.querySelectorAll('.task-item, .task-card').forEach(el => {
         el.onclick = (e) => {
-            // If the click was on a subtask item or its checkbox, do nothing here.
-            // The dedicated change listener for the checkbox will handle the logic.
-            if (e.target.closest('.subtask-item')) {
-                return;
-            }
-            
+            if (e.target.closest('.subtask-item')) return;
             if (e.currentTarget.classList.contains('dragging')) return;
             const taskId = e.currentTarget.dataset.taskId;
-
-            // If it's the main task checkbox
             if (e.target.matches('.task-main input[type="checkbox"]')) {
                  handleTaskStatusChange(taskId, e.target.checked);
-            } else { // Otherwise, open the modal
+            } else {
                  showTaskModal(projectId, taskId);
             }
         };
     });
-
-    // Dedicated listener for subtasks to handle logic
-    detailsColumn.querySelectorAll('.subtask-item input[type="checkbox"]').forEach(cb => {
-        cb.addEventListener('change', handleSubtaskStatusChange);
-    });
-     
+    detailsColumn.querySelectorAll('.subtask-item input[type="checkbox"]').forEach(cb => cb.addEventListener('change', handleSubtaskStatusChange));
     detailsColumn.querySelectorAll('.add-task-to-bucket-btn').forEach(btn => btn.onclick = () => showTaskModal(projectId, null, btn.dataset.bucket));
     document.getElementById('task-view-toggle').onclick = () => {
         state.projectTaskView = state.projectTaskView === 'list' ? 'board' : 'list';
@@ -657,6 +647,16 @@ function showProjectDetails(projectId, isEditMode = false) {
         const req = allRequests.rows.find(r => r[allRequests.headers.indexOf('Submission ID')] === sourceReqLink.dataset.reqId);
         if (req) showRequestDetailsModal(req, allRequests.headers);
     };
+    const folderCard = detailsColumn.querySelector('.folder-link-container');
+    if (folderCard) {
+        folderCard.onclick = () => {
+            if (folderCard.classList.contains('has-link')) {
+                window.open(folderCard.dataset.link, '_blank');
+            } else {
+                showGDriveLinkModal(projectId);
+            }
+        };
+    }
 }
 function renderGenericProjectDetails(data, headers, isEditMode) {
     const clientEmail = data[headers.indexOf('Client Email')];
@@ -664,11 +664,28 @@ function renderGenericProjectDetails(data, headers, isEditMode) {
     const clientName = client ? `${client[allClients.headers.indexOf('First Name')]} ${client[allClients.headers.indexOf('Last Name')]}` : 'Unknown Client';
     const clientPhone = client ? client[allClients.headers.indexOf('Phone')] || 'N/A' : 'N/A';
     const folderLink = data[headers.indexOf('Google Folder Link')] || '';
+    const projectId = data[headers.indexOf('ProjectID')];
 
-    const coreDetails = ['Status', 'Start Date', 'Value'];
-    const personnelDetails = ['Service Provider', 'Location'];
+    // --- Build individual component HTML ---
 
-    let html = `<div class="project-details-grid">
+    let coreDetailsHtml = `<div class="project-details-section"><h4>Core Details</h4><ul>`;
+    ['Status', 'Start Date', 'Value'].forEach(h => {
+        const val = data[headers.indexOf(h)] || '';
+        coreDetailsHtml += `<li><strong>${h}:</strong> ${isEditMode ? `<input type="text" id="project-edit-${h.replace(/\s+/g, '')}" value="${val}">` : val}</li>`;
+    });
+    coreDetailsHtml += `</ul></div>`;
+    
+    let personnelDetailsHtml = `<div class="project-details-section"><h4>Personnel & Location</h4><ul>`;
+    ['Service Provider', 'Location'].forEach(h => {
+        const val = data[headers.indexOf(h)] || '';
+        personnelDetailsHtml += `<li><strong>${h}:</strong> ${isEditMode ? `<input type="text" id="project-edit-${h.replace(/\s+/g, '')}" value="${val}">` : val}</li>`;
+    });
+    if(isEditMode) {
+        personnelDetailsHtml += `<li><strong>Folder Link:</strong><input type="text" id="project-edit-GoogleFolderLink" value="${folderLink}"></li>`;
+    }
+    personnelDetailsHtml += `</ul></div>`;
+
+    const clientCardHtml = `
         <div class="project-client-card interactive-card" data-client-email="${clientEmail}">
             <div class="card-main-content">
                 <h4>Client</h4>
@@ -678,29 +695,28 @@ function renderGenericProjectDetails(data, headers, isEditMode) {
                 <p>Email: <span>${clientEmail}</span></p>
                 <p>Phone: <span>${clientPhone}</span></p>
             </div>
-        </div>
-        <div class="folder-link-container interactive-card">
+        </div>`;
+
+    const hasLink = !!folderLink;
+    const gDriveCardHtml = `
+        <div class="folder-link-container interactive-card ${hasLink ? 'has-link' : ''}" data-project-id="${projectId}" data-link="${folderLink}">
              <div class="card-main-content">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M464 128H272l-54.63-54.63c-6-6-14.14-9.37-22.63-9.37H48C21.5 64 0 85.5 0 112v288c0 26.5 21.5 48 48 48h416c26.5 0 48-21.5 48-48V176c0-26.5-21.5-48-48-48z"/></svg>
                 <h4>Project Folder</h4>
              </div>
-             ${folderLink ? `<a href="${folderLink}" target="_blank">OPEN</a>` : '<p>Not Linked</p>'}
-        </div>
-        <div class="project-details-section"><h4>Core Details</h4><ul>`;
-    coreDetails.forEach(h => {
-        const val = data[headers.indexOf(h)] || '';
-        html += `<li><strong>${h}:</strong> ${isEditMode ? `<input type="text" id="project-edit-${h.replace(/\s+/g, '')}" value="${val}">` : val}</li>`;
-    });
-    html += `</ul></div><div class="project-details-section"><h4>Personnel & Location</h4><ul>`;
-    personnelDetails.forEach(h => {
-        const val = data[headers.indexOf(h)] || '';
-        html += `<li><strong>${h}:</strong> ${isEditMode ? `<input type="text" id="project-edit-${h.replace(/\s+/g, '')}" value="${val}">` : val}</li>`;
-    });
-    if(isEditMode) {
-        html += `<li><strong>Folder Link:</strong><input type="text" id="project-edit-GoogleFolderLink" value="${folderLink}"></li>`;
-    }
-    html += `</ul></div></div>
-    ${renderTasksSection(data[headers.indexOf('ProjectID')])}
+             <div class="card-hover-content">
+                <p>${hasLink ? 'Visit Folder' : 'Link Folder'}</p>
+             </div>
+        </div>`;
+    
+    // --- Assemble final HTML in the desired order ---
+    let html = `<div class="project-details-grid">
+        ${coreDetailsHtml}
+        ${personnelDetailsHtml}
+        ${clientCardHtml}
+        ${gDriveCardHtml}
+    </div>
+    ${renderTasksSection(projectId)}
     ${renderAdvancedDetails(data, headers)}`;
     return html;
 }
@@ -837,14 +853,11 @@ function handleDragOver(e) {
         const container = isListView ? document.getElementById('project-task-list') : document.getElementById('project-task-board');
         const afterEl = isListView ? getDragAfterElementVertical(container, e.clientY, '.task-bucket') : getDragAfterBucketHorizontal(container, e.clientX);
 
-        // Redundancy Check for buckets
         if (draggingEl.nextElementSibling === afterEl || (afterEl && afterEl.previousElementSibling === draggingEl)) {
-            removePlaceholder();
-            return;
+            removePlaceholder(); return;
         }
-        if (!afterEl && container.lastElementChild === draggingEl) { // already at the end
-            removePlaceholder();
-            return;
+        if (!afterEl && container.lastElementChild === draggingEl) {
+            removePlaceholder(); return;
         }
         
         if (!placeholder) {
@@ -853,31 +866,20 @@ function handleDragOver(e) {
         }
         if(isListView) placeholder.style.height = `${draggingEl.offsetHeight}px`;
         
-        if (afterEl) {
-            container.insertBefore(placeholder, afterEl);
-        } else {
-            container.appendChild(placeholder);
-        }
+        if (afterEl) container.insertBefore(placeholder, afterEl);
+        else container.appendChild(placeholder);
+
     } else { // TASK
         const container = e.target.closest('.task-bucket, .task-board-column');
-        if (!container) {
-            removePlaceholder();
-            return;
-        }
-
+        if (!container) { removePlaceholder(); return; }
         const afterEl = getDragAfterElementVertical(container, e.clientY, '.task-item, .task-card');
-        const isSameContainer = draggingEl.parentNode === container;
-
-        // Redundancy Check for tasks
-        if (isSameContainer) {
+        if (draggingEl.parentNode === container) {
             if (draggingEl.nextElementSibling === afterEl || (afterEl && afterEl.previousElementSibling === draggingEl)) {
-                 removePlaceholder();
-                 return;
+                 removePlaceholder(); return;
             }
             const addBtn = container.querySelector('.add-task-to-bucket-btn');
-            if (!afterEl && addBtn && addBtn.previousElementSibling === draggingEl) { // already at the end
-                 removePlaceholder();
-                 return;
+            if (!afterEl && addBtn && addBtn.previousElementSibling === draggingEl) {
+                 removePlaceholder(); return;
             }
         }
         
@@ -887,12 +889,8 @@ function handleDragOver(e) {
         }
         placeholder.style.height = `${draggingEl.offsetHeight}px`;
 
-        if (afterEl) {
-            container.insertBefore(placeholder, afterEl);
-        } else {
-            const addTaskBtn = container.querySelector('.add-task-to-bucket-btn');
-            container.insertBefore(placeholder, addTaskBtn);
-        }
+        if (afterEl) container.insertBefore(placeholder, afterEl);
+        else container.insertBefore(placeholder, container.querySelector('.add-task-to-bucket-btn'));
     }
 }
 
@@ -912,43 +910,31 @@ async function handleDrop(e) {
     const taskId = e.dataTransfer.getData('text/task-id');
     const bucketId = e.dataTransfer.getData('text/bucket-id');
 
-    // Optimistic UI Update: Replace placeholder with the actual element
     placeholder.parentNode.replaceChild(draggedElement, placeholder);
     draggedElement.classList.remove('dragging');
 
     try {
         if (bucketId) {
-            // --- BUCKET DROP SAVE LOGIC ---
             const newBucketsOrder = Array.from(draggedElement.parentNode.children)
                                          .filter(el => el.matches('[data-bucket]'))
                                          .map(el => el.dataset.bucket);
             await updateSheetRow('Projects', 'ProjectID', state.selectedProjectId, { 'Task Buckets': JSON.stringify(newBucketsOrder) });
             await loadProjects();
         } else if (taskId) {
-            // --- TASK DROP SAVE LOGIC ---
-            const allBuckets = document.querySelectorAll('.task-bucket, .task-board-column');
             const allPromises = [];
-            allBuckets.forEach(bucketEl => {
+            document.querySelectorAll('.task-bucket, .task-board-column').forEach(bucketEl => {
                 const bucketName = bucketEl.dataset.bucket;
-                const tasksInBucket = Array.from(bucketEl.querySelectorAll('[data-task-id]'));
-                tasksInBucket.forEach((taskEl, index) => {
-                     allPromises.push(
-                        updateSheetRow('Tasks', 'TaskID', taskEl.dataset.taskId, { 
-                            'Bucket': bucketName, 
-                            'SortIndex': index 
-                        })
-                    );
+                Array.from(bucketEl.querySelectorAll('[data-task-id]')).forEach((taskEl, index) => {
+                     allPromises.push(updateSheetRow('Tasks', 'TaskID', taskEl.dataset.taskId, { 'Bucket': bucketName, 'SortIndex': index }));
                 });
             });
             await Promise.all(allPromises);
             await loadTasks();
         }
-        // Re-render the project details to ensure UI is perfectly in sync with data
         showProjectDetails(state.selectedProjectId);
     } catch (err) {
         alert("Error saving new order. The view will be refreshed to reflect the last saved state.");
         console.error("Drag/drop save error:", err);
-        // On failure, re-render from the last known good state
         showProjectDetails(state.selectedProjectId);
     }
 }
@@ -1037,6 +1023,31 @@ async function handleCreateProjectSubmit(event) {
             document.querySelector('.tab-button[data-tab="projects"]').click();
         }, 1500);
     } catch (err) { statusSpan.textContent = 'Error creating project.'; console.error('Project creation error', err); }
+}
+function showGDriveLinkModal(projectId) {
+    const form = document.getElementById('gdrive-link-form');
+    form.reset();
+    document.getElementById('gdrive-project-id-input').value = projectId;
+    document.getElementById('gdrive-link-status').textContent = '';
+    gdriveLinkModal.style.display = 'block';
+}
+async function handleSaveGDriveLink(event) {
+    event.preventDefault();
+    const statusSpan = document.getElementById('gdrive-link-status');
+    statusSpan.textContent = 'Saving...';
+    const projectId = document.getElementById('gdrive-project-id-input').value;
+    const newLink = document.getElementById('gdrive-link-input').value;
+
+    try {
+        await updateSheetRow('Projects', 'ProjectID', projectId, { 'Google Folder Link': newLink });
+        await loadProjects();
+        showProjectDetails(projectId);
+        statusSpan.textContent = 'Saved!';
+        setTimeout(() => { gdriveLinkModal.style.display = 'none'; }, 1000);
+    } catch (err) {
+        statusSpan.textContent = 'Error saving link.';
+        console.error('GDrive link save error:', err);
+    }
 }
 function showTaskModal(projectId, taskId = null, bucketName = null) {
     const form = document.getElementById('task-details-form'); form.reset();
@@ -1203,12 +1214,11 @@ async function handleSubtaskStatusChange(event) {
 
     try {
         await updateSheetRow('Tasks', 'TaskID', taskId, { 'Subtasks': updatedSubtasksJson });
-        await loadTasks(); // Reload tasks to get fresh data
-        showProjectDetails(state.selectedProjectId); // Re-render view
+        await loadTasks();
+        showProjectDetails(state.selectedProjectId);
     } catch (err) {
         console.error('Subtask status update error', err);
         alert('Could not update subtask status.');
-        // Re-render to revert to last known good state from memory
         showProjectDetails(state.selectedProjectId);
     }
 }
@@ -1505,7 +1515,6 @@ function showDeleteClientModal(rowData, headers) {
         const clientId = rowData[headers.indexOf('ClientID')];
         try {
             await clearSheetRow('Clients', 'ClientID', clientId);
-            // FIX: Remove client from local data to prevent null row
             const clientIndex = allClients.rows.findIndex(r => r[allClients.headers.indexOf('ClientID')] === clientId);
             if (clientIndex > -1) allClients.rows.splice(clientIndex, 1);
             renderClients();
