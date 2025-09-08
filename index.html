@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ODD Dashboard</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 </head>
 <body>
     <div id="landing-container">
@@ -64,7 +65,61 @@
             <div id="archived-requests-container" class="collapsible-content"></div>
         </main>
 
-        <main id="tab-analytics" class="tab-content" style="display: none;"><h2>Analytics</h2><p>Charts and key metrics will go here.</p></main>
+        <main id="tab-analytics" class="tab-content" style="display: none;">
+             <div class="analytics-header">
+                <div>
+                    <h2>Analytics</h2>
+                    <p>A visual overview of your business data.</p>
+                </div>
+                <div>
+                    <input id="date-range-picker" class="date-picker-input" placeholder="Select Date Range">
+                </div>
+            </div>
+
+            <!-- Key Metrics Grid -->
+            <div class="key-metrics-grid">
+                <div id="metric-revenue" class="analytics-card">
+                    <h3>Revenue in Period</h3>
+                    <p>$0.00</p>
+                </div>
+                <div id="metric-new-clients" class="analytics-card">
+                    <h3>New Clients</h3>
+                    <p>0</p>
+                </div>
+                <div id="metric-projects-completed" class="analytics-card">
+                    <h3>Projects Completed</h3>
+                    <p>0</p>
+                </div>
+                <div id="metric-new-requests" class="analytics-card">
+                    <h3>New Requests</h3>
+                    <p>0</p>
+                </div>
+            </div>
+
+            <!-- Charts Grid -->
+            <div class="analytics-charts-grid">
+                <div class="analytics-card">
+                    <h3>Service Request Types</h3>
+                    <canvas id="serviceRequestChart"></canvas>
+                </div>
+                <div class="analytics-card">
+                    <h3>Project Status Distribution</h3>
+                    <div class="chart-container-donut">
+                        <canvas id="projectStatusChart"></canvas>
+                    </div>
+                </div>
+                <div class="analytics-card">
+                    <h3>Active vs. Inactive Clients</h3>
+                     <div class="chart-container-donut">
+                        <canvas id="clientStatusChart"></canvas>
+                    </div>
+                </div>
+                <div class="analytics-card">
+                    <h3>Monthly Revenue (YTD)</h3>
+                    <canvas id="monthlyRevenueChart"></canvas>
+                </div>
+            </div>
+        </main>
         
         <main id="tab-clients" class="tab-content" style="display: none;">
             <div class="client-layout-container">
@@ -108,7 +163,7 @@
                     <div class="project-list-header">
                         <h2 id="project-list-title">Projects</h2>
                         <button id="project-list-collapse-btn" title="Toggle Project List">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="15 18 9 12 15 6"></polyline>
                             </svg>
                         </button>
@@ -369,9 +424,10 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="script.js"></script>
     <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
 </body>
 </html>
-
