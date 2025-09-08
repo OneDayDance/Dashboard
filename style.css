@@ -210,7 +210,10 @@ button[disabled] {
     display: flex;
     flex-direction: column;
     overflow: hidden; /* Crucial for clipping content */
-    transition: padding 0.4s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.4s ease, border 0.4s ease, box-shadow 0.4s ease;
+    transition: padding 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                background-color 0.2s ease 0.2s,
+                border-color 0.2s ease 0.2s,
+                box-shadow 0.2s ease 0.2s;
 }
 
 .project-layout-container.collapsed .project-list-column {
