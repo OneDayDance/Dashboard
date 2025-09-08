@@ -204,11 +204,15 @@ button[disabled] {
 }
 
 /* Styles for elements inside the sidebar for smooth transition */
-.project-list-column > *:not(.project-list-header),
-#project-list-title {
-    transition: opacity 0.2s ease-out, max-height 0.4s ease-out, padding 0.4s ease-out, margin 0.4s ease-out, border 0.4s ease-out, visibility 0.2s;
+#project-list-title,
+.project-search-container,
+.project-list,
+.collapsible-header,
+.project-list-column > h3 {
+    transition: opacity 0.2s ease, visibility 0.2s ease, max-height 0.3s ease, margin 0.3s ease, padding 0.3s ease;
     overflow: hidden;
 }
+
 
 /* Collapsed State */
 .project-list-column.collapsed {
@@ -221,28 +225,21 @@ button[disabled] {
     justify-content: center; /* Center vertically */
 }
 
-/* Hide everything except the button's parent */
-.project-list-column.collapsed > *:not(.project-list-header) {
+/* Hide all content when collapsed */
+.project-list-column.collapsed #project-list-title,
+.project-list-column.collapsed .project-search-container,
+.project-list-column.collapsed .project-list,
+.project-list-column.collapsed .collapsible-header,
+.project-list-column.collapsed > h3 {
    opacity: 0;
    max-height: 0;
-   padding-top: 0;
-   padding-bottom: 0;
-   margin-top: 0;
-   margin-bottom: 0;
-   border-width: 0;
+   margin: 0;
+   padding: 0;
+   border: 0;
    pointer-events: none;
-   visibility: hidden; /* Ensure it's not accessible */
+   visibility: hidden;
 }
 
-/* Inside the parent, hide the title */
-.project-list-column.collapsed #project-list-title {
-    opacity: 0;
-    max-height: 0;
-    margin: 0;
-    padding: 0;
-    pointer-events: none;
-    visibility: hidden;
-}
 
 .project-list-header { 
     display: flex; 
@@ -544,5 +541,6 @@ button[disabled] {
 .form-field { margin-bottom: 15px; }
 .form-field label { display: block; margin-bottom: 5px; font-weight: bold; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+
 
 
