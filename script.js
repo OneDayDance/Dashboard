@@ -467,7 +467,6 @@ function renderProjectsTab() {
     
     const { headers, rows } = allProjects;
     
-    // Filter projects based on search term first
     const searchTerm = state.projectSearchTerm.toLowerCase();
     let filteredRows = rows;
     if (searchTerm) {
@@ -500,11 +499,16 @@ function renderProjectsTab() {
         const targetList = isArchived ? archivedList : activeList;
         const client = allClients.rows.find(c => c[allClients.headers.indexOf('Email')] === proj[clientEmailIndex]);
         const clientName = client ? `${client[allClients.headers.indexOf('First Name')]} ${client[allClients.headers.indexOf('Last Name')]}` : 'Unknown Client';
+        
+        const projectName = proj[nameIndex] || 'P';
+        const initials = projectName.split(' ').map(word => word[0]).join('').substring(0, 2).toUpperCase();
+
         const item = document.createElement('div');
         item.className = 'project-list-item';
         item.dataset.projectId = proj[projectIdIndex];
-        item.setAttribute('title', proj[nameIndex] || 'Unnamed Project');
-        item.innerHTML = `<h4>${proj[nameIndex]}</h4><p>${clientName}</p>`;
+        item.setAttribute('title', projectName);
+        item.setAttribute('data-initials', initials);
+        item.innerHTML = `<h4>${projectName}</h4><p>${clientName}</p>`;
         item.onclick = () => {
             document.querySelectorAll('.project-list-item').forEach(i => i.classList.remove('active'));
             item.classList.add('active');
@@ -548,21 +552,13 @@ function showProjectDetails(projectId, isEditMode = false) {
     if (isEditMode) detailsHtml += `<div class="modal-footer"><button id="project-save-btn">Save</button></div>`;
     detailsColumn.innerHTML = detailsHtml;
 
-    // Actions Dropdown Logic
     const actionsContainer = document.getElementById('project-actions-container');
     const actionsBtn = document.getElementById('project-actions-btn');
     const actionsContent = document.getElementById('project-actions-content');
     let leaveTimeout;
 
-    const showDropdown = () => {
-        clearTimeout(leaveTimeout);
-        actionsContent.style.display = 'block';
-    };
-    const hideDropdown = () => {
-        leaveTimeout = setTimeout(() => {
-            actionsContent.style.display = 'none';
-        }, 300); // A small delay to allow moving mouse from button to menu
-    };
+    const showDropdown = () => { clearTimeout(leaveTimeout); actionsContent.style.display = 'block'; };
+    const hideDropdown = () => { leaveTimeout = setTimeout(() => { actionsContent.style.display = 'none'; }, 300); };
     
     actionsBtn.addEventListener('mouseenter', showDropdown);
     actionsContainer.addEventListener('mouseleave', hideDropdown);
@@ -578,16 +574,10 @@ function showProjectDetails(projectId, isEditMode = false) {
         header.nextElementSibling.classList.toggle('collapsed');
     });
 
-    // --- Drag and Drop Event Listeners ---
     detailsColumn.querySelectorAll('[draggable="true"]').forEach(el => {
         el.addEventListener('dragstart', (e) => {
             e.stopPropagation();
-            const isBucket = el.matches('.task-bucket, .task-board-column');
-            if (isBucket) {
-                e.dataTransfer.setData('text/bucket-id', el.dataset.bucket);
-            } else {
-                e.dataTransfer.setData('text/task-id', el.dataset.taskId);
-            }
+            e.dataTransfer.setData(el.matches('.task-bucket, .task-board-column') ? 'text/bucket-id' : 'text/task-id', el.dataset.bucket || el.dataset.taskId);
             e.dataTransfer.effectAllowed = 'move';
             setTimeout(() => el.classList.add('dragging'), 0);
         });
@@ -597,22 +587,17 @@ function showProjectDetails(projectId, isEditMode = false) {
         });
     });
 
-    const dropzones = detailsColumn.querySelectorAll('.task-bucket, .task-board-column, #project-task-list, #project-task-board');
-    dropzones.forEach(zone => {
+    detailsColumn.querySelectorAll('.task-bucket, .task-board-column, #project-task-list, #project-task-board').forEach(zone => {
         zone.addEventListener('dragover', handleDragOver);
         zone.addEventListener('drop', handleDrop);
     });
 
     detailsColumn.querySelectorAll('.task-item, .task-card').forEach(el => {
         el.onclick = (e) => {
-            if (e.target.closest('.subtask-item')) return;
-            if (e.currentTarget.classList.contains('dragging')) return;
+            if (e.target.closest('.subtask-item') || e.currentTarget.classList.contains('dragging')) return;
             const taskId = e.currentTarget.dataset.taskId;
-            if (e.target.matches('.task-main input[type="checkbox"]')) {
-                 handleTaskStatusChange(taskId, e.target.checked);
-            } else {
-                 showTaskModal(projectId, taskId);
-            }
+            if (e.target.matches('.task-main input[type="checkbox"]')) handleTaskStatusChange(taskId, e.target.checked);
+            else showTaskModal(projectId, taskId);
         };
     });
     detailsColumn.querySelectorAll('.subtask-item input[type="checkbox"]').forEach(cb => cb.addEventListener('change', handleSubtaskStatusChange));
@@ -624,6 +609,7 @@ function showProjectDetails(projectId, isEditMode = false) {
     document.getElementById('add-bucket-btn').onclick = async () => {
         const bucketName = prompt("Enter new bucket name:");
         if (bucketName && bucketName.trim() !== '') {
+            const project = allProjects.rows.find(p => p[allProjects.headers.indexOf('ProjectID')] === projectId);
             const bucketsIndex = allProjects.headers.indexOf('Task Buckets');
             let currentBuckets = [];
             if (bucketsIndex > -1 && project[bucketsIndex]) try { currentBuckets = JSON.parse(project[bucketsIndex]); } catch (e) {}
@@ -650,11 +636,8 @@ function showProjectDetails(projectId, isEditMode = false) {
     const folderCard = detailsColumn.querySelector('.folder-link-container');
     if (folderCard) {
         folderCard.onclick = () => {
-            if (folderCard.classList.contains('has-link')) {
-                window.open(folderCard.dataset.link, '_blank');
-            } else {
-                showGDriveLinkModal(projectId);
-            }
+            if (folderCard.classList.contains('has-link')) window.open(folderCard.dataset.link, '_blank');
+            else showGDriveLinkModal(projectId);
         };
     }
 }
@@ -665,8 +648,6 @@ function renderGenericProjectDetails(data, headers, isEditMode) {
     const clientPhone = client ? client[allClients.headers.indexOf('Phone')] || 'N/A' : 'N/A';
     const folderLink = data[headers.indexOf('Google Folder Link')] || '';
     const projectId = data[headers.indexOf('ProjectID')];
-
-    // --- Build individual component HTML ---
 
     let coreDetailsHtml = `<div class="project-details-section"><h4>Core Details</h4><ul>`;
     ['Status', 'Start Date', 'Value'].forEach(h => {
@@ -680,9 +661,7 @@ function renderGenericProjectDetails(data, headers, isEditMode) {
         const val = data[headers.indexOf(h)] || '';
         personnelDetailsHtml += `<li><strong>${h}:</strong> ${isEditMode ? `<input type="text" id="project-edit-${h.replace(/\s+/g, '')}" value="${val}">` : val}</li>`;
     });
-    if(isEditMode) {
-        personnelDetailsHtml += `<li><strong>Folder Link:</strong><input type="text" id="project-edit-GoogleFolderLink" value="${folderLink}"></li>`;
-    }
+    if(isEditMode) personnelDetailsHtml += `<li><strong>Folder Link:</strong><input type="text" id="project-edit-GoogleFolderLink" value="${folderLink}"></li>`;
     personnelDetailsHtml += `</ul></div>`;
 
     const clientCardHtml = `
@@ -709,8 +688,7 @@ function renderGenericProjectDetails(data, headers, isEditMode) {
              </div>
         </div>`;
     
-    // --- Assemble final HTML in the desired order ---
-    let html = `<div class="project-details-grid">
+    return `<div class="project-details-grid">
         ${coreDetailsHtml}
         ${personnelDetailsHtml}
         ${clientCardHtml}
@@ -718,7 +696,6 @@ function renderGenericProjectDetails(data, headers, isEditMode) {
     </div>
     ${renderTasksSection(projectId)}
     ${renderAdvancedDetails(data, headers)}`;
-    return html;
 }
 function renderTasksSection(projectId) {
     const renderFn = state.projectTaskView === 'list' ? renderTasksAsList : renderTasksAsBoard;
@@ -811,96 +788,50 @@ function getDragAfterElementVertical(container, y, selector) {
     return draggableElements.reduce((closest, child) => {
         const box = child.getBoundingClientRect();
         const offset = y - box.top - box.height / 2;
-        if (offset < 0 && offset > closest.offset) {
-            return { offset: offset, element: child };
-        } else {
-            return closest;
-        }
+        if (offset < 0 && offset > closest.offset) return { offset, element: child };
+        return closest;
     }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
-
 function getDragAfterBucketHorizontal(container, x) {
     const draggableElements = [...container.querySelectorAll('.task-board-column:not(.dragging)')];
     return draggableElements.reduce((closest, child) => {
         const box = child.getBoundingClientRect();
         const offset = x - box.left - box.width / 2;
-        if (offset < 0 && offset > closest.offset) {
-            return { offset: offset, element: child };
-        } else {
-            return closest;
-        }
+        if (offset < 0 && offset > closest.offset) return { offset, element: child };
+        return closest;
     }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
-
 function handleDragOver(e) {
     e.preventDefault();
     const draggingEl = document.querySelector('.dragging');
     if (!draggingEl) return;
 
     let placeholder = document.querySelector('.task-placeholder, .bucket-placeholder');
-    
-    const removePlaceholder = () => {
-        if(placeholder) {
-            placeholder.remove();
-            placeholder = null;
-        }
-    };
+    const removePlaceholder = () => { if(placeholder) placeholder.remove(); placeholder = null; };
 
-    const isBucket = draggingEl.matches('.task-bucket, .task-board-column');
-    
-    if (isBucket) {
+    if (draggingEl.matches('.task-bucket, .task-board-column')) {
         const isListView = draggingEl.matches('.task-bucket');
         const container = isListView ? document.getElementById('project-task-list') : document.getElementById('project-task-board');
         const afterEl = isListView ? getDragAfterElementVertical(container, e.clientY, '.task-bucket') : getDragAfterBucketHorizontal(container, e.clientX);
-
-        if (draggingEl.nextElementSibling === afterEl || (afterEl && afterEl.previousElementSibling === draggingEl)) {
-            removePlaceholder(); return;
-        }
-        if (!afterEl && container.lastElementChild === draggingEl) {
-            removePlaceholder(); return;
-        }
-        
-        if (!placeholder) {
-            placeholder = document.createElement('div');
-            placeholder.className = 'bucket-placeholder';
-        }
+        if ((draggingEl.nextElementSibling === afterEl) || (afterEl && afterEl.previousElementSibling === draggingEl) || (!afterEl && container.lastElementChild === draggingEl)) { removePlaceholder(); return; }
+        if (!placeholder) { placeholder = document.createElement('div'); placeholder.className = 'bucket-placeholder'; }
         if(isListView) placeholder.style.height = `${draggingEl.offsetHeight}px`;
-        
-        if (afterEl) container.insertBefore(placeholder, afterEl);
-        else container.appendChild(placeholder);
-
-    } else { // TASK
+        if (afterEl) container.insertBefore(placeholder, afterEl); else container.appendChild(placeholder);
+    } else {
         const container = e.target.closest('.task-bucket, .task-board-column');
         if (!container) { removePlaceholder(); return; }
         const afterEl = getDragAfterElementVertical(container, e.clientY, '.task-item, .task-card');
-        if (draggingEl.parentNode === container) {
-            if (draggingEl.nextElementSibling === afterEl || (afterEl && afterEl.previousElementSibling === draggingEl)) {
-                 removePlaceholder(); return;
-            }
-            const addBtn = container.querySelector('.add-task-to-bucket-btn');
-            if (!afterEl && addBtn && addBtn.previousElementSibling === draggingEl) {
-                 removePlaceholder(); return;
-            }
-        }
-        
-        if (!placeholder) {
-            placeholder = document.createElement('div');
-            placeholder.className = 'task-placeholder';
-        }
+        const addBtn = container.querySelector('.add-task-to-bucket-btn');
+        if (draggingEl.parentNode === container && ((draggingEl.nextElementSibling === afterEl) || (afterEl && afterEl.previousElementSibling === draggingEl) || (!afterEl && addBtn && addBtn.previousElementSibling === draggingEl))) { removePlaceholder(); return; }
+        if (!placeholder) { placeholder = document.createElement('div'); placeholder.className = 'task-placeholder'; }
         placeholder.style.height = `${draggingEl.offsetHeight}px`;
-
-        if (afterEl) container.insertBefore(placeholder, afterEl);
-        else container.insertBefore(placeholder, container.querySelector('.add-task-to-bucket-btn'));
+        if (afterEl) container.insertBefore(placeholder, afterEl); else container.insertBefore(placeholder, addBtn);
     }
 }
-
 async function handleDrop(e) {
-    e.preventDefault();
-    e.stopPropagation();
-
+    e.preventDefault(); e.stopPropagation();
     const placeholder = document.querySelector('.task-placeholder, .bucket-placeholder');
     const draggedElement = document.querySelector('.dragging');
-    
     if (!draggedElement || !placeholder) {
         if (draggedElement) draggedElement.classList.remove('dragging');
         if (placeholder) placeholder.remove();
@@ -909,31 +840,27 @@ async function handleDrop(e) {
 
     const taskId = e.dataTransfer.getData('text/task-id');
     const bucketId = e.dataTransfer.getData('text/bucket-id');
-
     placeholder.parentNode.replaceChild(draggedElement, placeholder);
     draggedElement.classList.remove('dragging');
 
     try {
         if (bucketId) {
-            const newBucketsOrder = Array.from(draggedElement.parentNode.children)
-                                         .filter(el => el.matches('[data-bucket]'))
-                                         .map(el => el.dataset.bucket);
-            await updateSheetRow('Projects', 'ProjectID', state.selectedProjectId, { 'Task Buckets': JSON.stringify(newBucketsOrder) });
+            const newOrder = Array.from(draggedElement.parentNode.children).filter(el => el.matches('[data-bucket]')).map(el => el.dataset.bucket);
+            await updateSheetRow('Projects', 'ProjectID', state.selectedProjectId, { 'Task Buckets': JSON.stringify(newOrder) });
             await loadProjects();
         } else if (taskId) {
-            const allPromises = [];
+            const promises = [];
             document.querySelectorAll('.task-bucket, .task-board-column').forEach(bucketEl => {
-                const bucketName = bucketEl.dataset.bucket;
-                Array.from(bucketEl.querySelectorAll('[data-task-id]')).forEach((taskEl, index) => {
-                     allPromises.push(updateSheetRow('Tasks', 'TaskID', taskEl.dataset.taskId, { 'Bucket': bucketName, 'SortIndex': index }));
+                Array.from(bucketEl.querySelectorAll('[data-task-id]')).forEach((taskEl, i) => {
+                     promises.push(updateSheetRow('Tasks', 'TaskID', taskEl.dataset.taskId, { 'Bucket': bucketEl.dataset.bucket, 'SortIndex': i }));
                 });
             });
-            await Promise.all(allPromises);
+            await Promise.all(promises);
             await loadTasks();
         }
         showProjectDetails(state.selectedProjectId);
     } catch (err) {
-        alert("Error saving new order. The view will be refreshed to reflect the last saved state.");
+        alert("Error saving new order. The view will be refreshed.");
         console.error("Drag/drop save error:", err);
         showProjectDetails(state.selectedProjectId);
     }
@@ -1618,3 +1545,4 @@ function populateColumnSelector(headers, visibleColumns, containerId) {
         container.innerHTML += `<div><label><input type="checkbox" value="${header}" ${isChecked ? 'checked' : ''}>${header}</label></div>`;
     });
 }
+
