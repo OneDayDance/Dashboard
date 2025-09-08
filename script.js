@@ -492,7 +492,7 @@ function showProjectDetails(projectId, isEditMode = false) {
     let detailsHtml = `
         <div class="project-details-header">
             <h3>${isEditMode ? `<input type="text" id="project-edit-ProjectName" value="${project[headers.indexOf('Project Name')]}">` : project[headers.indexOf('Project Name')]}</h3>
-            <div class="project-actions-dropdown">
+            <div id="project-actions-container" class="project-actions-dropdown">
                 <button id="project-actions-btn">Actions</button>
                 <div id="project-actions-content" class="project-actions-dropdown-content">
                     <a href="#" id="project-edit-action">Edit Project</a>
@@ -505,14 +505,24 @@ function showProjectDetails(projectId, isEditMode = false) {
     if (isEditMode) detailsHtml += `<div class="modal-footer"><button id="project-save-btn">Save</button></div>`;
     detailsColumn.innerHTML = detailsHtml;
 
-    document.getElementById('project-actions-btn').onclick = () => {
-        document.getElementById('project-actions-content').style.display = 'block';
+    // Actions Dropdown Logic
+    const actionsContainer = document.getElementById('project-actions-container');
+    const actionsBtn = document.getElementById('project-actions-btn');
+    const actionsContent = document.getElementById('project-actions-content');
+    let leaveTimeout;
+
+    const showDropdown = () => {
+        clearTimeout(leaveTimeout);
+        actionsContent.style.display = 'block';
     };
-    window.addEventListener('click', (event) => {
-        if (!event.target.matches('#project-actions-btn')) {
-            document.getElementById('project-actions-content').style.display = 'none';
-        }
-    }, { once: true });
+    const hideDropdown = () => {
+        leaveTimeout = setTimeout(() => {
+            actionsContent.style.display = 'none';
+        }, 300); // A small delay to allow moving mouse from button to menu
+    };
+    
+    actionsBtn.addEventListener('mouseenter', showDropdown);
+    actionsContainer.addEventListener('mouseleave', hideDropdown);
     
     document.getElementById('project-edit-action').onclick = () => showProjectDetails(projectId, true);
     document.getElementById('project-archive-action').onclick = () => handleArchiveProject(projectId);
@@ -611,10 +621,18 @@ function renderGenericProjectDetails(data, headers, isEditMode) {
     const clientEmail = data[headers.indexOf('Client Email')];
     const client = allClients.rows.find(c => c[allClients.headers.indexOf('Email')] === clientEmail);
     const clientName = client ? `${client[allClients.headers.indexOf('First Name')]} ${client[allClients.headers.indexOf('Last Name')]}` : 'Unknown Client';
+    const folderLink = data[headers.indexOf('Google Folder Link')] || '';
+
     const coreDetails = ['Status', 'Start Date', 'Value'];
     const personnelDetails = ['Service Provider', 'Location'];
-    let html = `<div class="project-client-card"><h4>Client</h4><a href="#" data-client-email="${clientEmail}">${clientName}</a></div>
-    <div class="project-details-grid">
+
+    let html = `<div class="project-details-grid">
+        <div class="project-client-card"><h4>Client</h4><a href="#" data-client-email="${clientEmail}">${clientName}</a></div>
+        <div class="folder-link-container">
+             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M464 128H272l-54.63-54.63c-6-6-14.14-9.37-22.63-9.37H48C21.5 64 0 85.5 0 112v288c0 26.5 21.5 48 48 48h416c26.5 0 48-21.5 48-48V176c0-26.5-21.5-48-48-48z"/></svg>
+             <h4>Project Folder</h4>
+             ${folderLink ? `<a href="${folderLink}" target="_blank">OPEN</a>` : '<p>Not Linked</p>'}
+        </div>
         <div class="project-details-section"><h4>Core Details</h4><ul>`;
     coreDetails.forEach(h => {
         const val = data[headers.indexOf(h)] || '';
@@ -625,6 +643,9 @@ function renderGenericProjectDetails(data, headers, isEditMode) {
         const val = data[headers.indexOf(h)] || '';
         html += `<li><strong>${h}:</strong> ${isEditMode ? `<input type="text" id="project-edit-${h.replace(/\s+/g, '')}" value="${val}">` : val}</li>`;
     });
+    if(isEditMode) {
+        html += `<li><strong>Folder Link:</strong><input type="text" id="project-edit-GoogleFolderLink" value="${folderLink}"></li>`;
+    }
     html += `</ul></div></div>
     ${renderTasksSection(data[headers.indexOf('ProjectID')])}
     ${renderAdvancedDetails(data, headers)}`;
@@ -685,7 +706,7 @@ function renderTaskItem(taskRow, subtasks) {
     }
     return `<div class="task-item" draggable="true" data-task-id="${taskRow[idIdx]}">
                 <div class="task-main ${isCompleted ? 'completed' : ''}">
-                    <input type="checkbox" ${isCompleted ? 'checked' : ''} onchange="handleTaskStatusChange('${taskRow[idIdx]}', this.checked)">
+                    <input type="checkbox" ${isCompleted ? 'checked' : ''}>
                     <label>${taskRow[nameIdx]}</label>
                 </div>
                 ${subtasksHtml}
@@ -796,11 +817,12 @@ function handleDragOver(e) {
 
         // Redundancy Check for tasks
         if (isSameContainer) {
-            if (draggingEl.nextElementSibling === afterEl) {
+            if (draggingEl.nextElementSibling === afterEl || afterEl === draggingEl) {
                  removePlaceholder();
                  return;
             }
-            if (!afterEl && container.querySelector('.add-task-to-bucket-btn').previousElementSibling === draggingEl) { // already at the end
+            const addBtn = container.querySelector('.add-task-to-bucket-btn');
+            if (!afterEl && addBtn && addBtn.previousElementSibling === draggingEl) { // already at the end
                  removePlaceholder();
                  return;
             }
@@ -893,6 +915,9 @@ async function handleSaveProjectUpdate(projectId) {
         const input = document.getElementById(`project-edit-${h.replace(/\s+/g, '')}`);
         if(input) dataToUpdate[h] = input.value;
     });
+    const folderLinkInput = document.getElementById('project-edit-GoogleFolderLink');
+    if(folderLinkInput) dataToUpdate['Google Folder Link'] = folderLinkInput.value;
+
     try {
         await updateSheetRow('Projects', 'ProjectID', projectId, dataToUpdate);
         await loadProjects();
@@ -1531,5 +1556,4 @@ function populateColumnSelector(headers, visibleColumns, containerId) {
         container.innerHTML += `<div><label><input type="checkbox" value="${header}" ${isChecked ? 'checked' : ''}>${header}</label></div>`;
     });
 }
-
 
