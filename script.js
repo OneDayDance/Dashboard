@@ -110,9 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('task-details-form').addEventListener('submit', handleSaveTask);
     document.getElementById('project-list-collapse-btn').onclick = () => {
         const layout = document.getElementById('project-layout-container');
-        const column = document.querySelector('.project-list-column');
         layout.classList.toggle('collapsed');
-        column.classList.toggle('collapsed');
     };
     projectSearchBar.oninput = (e) => {
         state.projectSearchTerm = e.target.value;
@@ -503,6 +501,7 @@ function renderProjectsTab() {
         const item = document.createElement('div');
         item.className = 'project-list-item';
         item.dataset.projectId = proj[projectIdIndex];
+        item.setAttribute('title', proj[nameIndex] || 'Unnamed Project');
         item.innerHTML = `<h4>${proj[nameIndex]}</h4><p>${clientName}</p>`;
         item.onclick = () => {
             document.querySelectorAll('.project-list-item').forEach(i => i.classList.remove('active'));
@@ -648,9 +647,9 @@ function showProjectDetails(projectId, isEditMode = false) {
             }
         }
     };
-    const clientLink = detailsColumn.querySelector('.project-client-card a');
-    if (clientLink) clientLink.onclick = () => {
-        const client = allClients.rows.find(c => c[allClients.headers.indexOf('Email')] === clientLink.dataset.clientEmail);
+    const clientCard = detailsColumn.querySelector('.project-client-card');
+    if (clientCard) clientCard.onclick = () => {
+        const client = allClients.rows.find(c => c[allClients.headers.indexOf('Email')] === clientCard.dataset.clientEmail);
         if (client) showClientDetailsModal(client, allClients.headers);
     };
     const sourceReqLink = detailsColumn.querySelector('.source-request-link');
@@ -663,16 +662,28 @@ function renderGenericProjectDetails(data, headers, isEditMode) {
     const clientEmail = data[headers.indexOf('Client Email')];
     const client = allClients.rows.find(c => c[allClients.headers.indexOf('Email')] === clientEmail);
     const clientName = client ? `${client[allClients.headers.indexOf('First Name')]} ${client[allClients.headers.indexOf('Last Name')]}` : 'Unknown Client';
+    const clientPhone = client ? client[allClients.headers.indexOf('Phone')] || 'N/A' : 'N/A';
     const folderLink = data[headers.indexOf('Google Folder Link')] || '';
 
     const coreDetails = ['Status', 'Start Date', 'Value'];
     const personnelDetails = ['Service Provider', 'Location'];
 
     let html = `<div class="project-details-grid">
-        <div class="project-client-card"><h4>Client</h4><a href="#" data-client-email="${clientEmail}">${clientName}</a></div>
-        <div class="folder-link-container">
-             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M464 128H272l-54.63-54.63c-6-6-14.14-9.37-22.63-9.37H48C21.5 64 0 85.5 0 112v288c0 26.5 21.5 48 48 48h416c26.5 0 48-21.5 48-48V176c0-26.5-21.5-48-48-48z"/></svg>
-             <h4>Project Folder</h4>
+        <div class="project-client-card interactive-card" data-client-email="${clientEmail}">
+            <div class="card-main-content">
+                <h4>Client</h4>
+                <p>${clientName}</p>
+            </div>
+            <div class="card-hover-content">
+                <p>Email: <span>${clientEmail}</span></p>
+                <p>Phone: <span>${clientPhone}</span></p>
+            </div>
+        </div>
+        <div class="folder-link-container interactive-card">
+             <div class="card-main-content">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M464 128H272l-54.63-54.63c-6-6-14.14-9.37-22.63-9.37H48C21.5 64 0 85.5 0 112v288c0 26.5 21.5 48 48 48h416c26.5 0 48-21.5 48-48V176c0-26.5-21.5-48-48-48z"/></svg>
+                <h4>Project Folder</h4>
+             </div>
              ${folderLink ? `<a href="${folderLink}" target="_blank">OPEN</a>` : '<p>Not Linked</p>'}
         </div>
         <div class="project-details-section"><h4>Core Details</h4><ul>`;
@@ -1598,4 +1609,3 @@ function populateColumnSelector(headers, visibleColumns, containerId) {
         container.innerHTML += `<div><label><input type="checkbox" value="${header}" ${isChecked ? 'checked' : ''}>${header}</label></div>`;
     });
 }
-
