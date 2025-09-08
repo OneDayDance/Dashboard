@@ -294,6 +294,25 @@
         </div>
     </div>
 
+    <!-- GDrive Link Modal -->
+    <div id="gdrive-link-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Link Google Drive Folder</h2>
+            <form id="gdrive-link-form">
+                <input type="hidden" id="gdrive-project-id-input">
+                <div class="form-field">
+                    <label for="gdrive-link-input">Folder URL</label>
+                    <input type="url" id="gdrive-link-input" placeholder="https://drive.google.com/..." required>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" id="gdrive-link-save-btn">Save Link</button>
+                    <span id="gdrive-link-status"></span>
+                </div>
+            </form>
+        </div>
+    </div>
+
 
     <!-- Delete Confirmation Modals -->
     <div id="delete-client-modal" class="modal">
