@@ -198,7 +198,7 @@ button[disabled] {
 }
 
 .project-layout-container.collapsed {
-    grid-template-columns: 50px 1fr; /* Adjust for icon positioning */
+    grid-template-columns: 40px 1fr; /* Adjust for icon positioning */
 }
 
 /* Sidebar Column */
@@ -218,7 +218,7 @@ button[disabled] {
 }
 
 .project-layout-container.collapsed .project-list-column {
-    padding: 5px; /* Adjust padding for icon positioning */
+    padding: 5px 0; /* Adjust padding for icon positioning */
     background-color: transparent;
     border-color: transparent;
     box-shadow: none;
