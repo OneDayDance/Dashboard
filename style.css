@@ -114,7 +114,7 @@ button[disabled] {
     background-color: #FF9D76; /* Orange */
 }
 #request-view-toggle-btn {
-     background-color: #fff; 
+     background-color: #fff;
      color: #333;
 }
 /* Specific button overrides */
@@ -207,15 +207,14 @@ button[disabled] {
 #project-list-title,
 .project-search-container,
 .project-list,
-.collapsible-header,
+.project-list-column .collapsible-header,
 .project-list-column > h3 {
     transition: opacity 0.2s ease, visibility 0.2s ease, max-height 0.3s ease, margin 0.3s ease, padding 0.3s ease;
     overflow: hidden;
 }
 
-
 /* Collapsed State */
-.project-list-column.collapsed {
+.project-layout-container.collapsed .project-list-column {
     background: transparent;
     border: none;
     box-shadow: none;
@@ -226,11 +225,11 @@ button[disabled] {
 }
 
 /* Hide all content when collapsed */
-.project-list-column.collapsed #project-list-title,
-.project-list-column.collapsed .project-search-container,
-.project-list-column.collapsed .project-list,
-.project-list-column.collapsed .collapsible-header,
-.project-list-column.collapsed > h3 {
+.project-layout-container.collapsed .project-list-column #project-list-title,
+.project-layout-container.collapsed .project-list-column .project-search-container,
+.project-layout-container.collapsed .project-list-column .project-list,
+.project-layout-container.collapsed .project-list-column .collapsible-header,
+.project-layout-container.collapsed .project-list-column > h3 {
    opacity: 0;
    max-height: 0;
    margin: 0;
@@ -240,19 +239,18 @@ button[disabled] {
    visibility: hidden;
 }
 
-
-.project-list-header { 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    margin-bottom: 10px; 
-    flex-shrink: 0; 
+.project-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    flex-shrink: 0;
     width: 100%;
     transition: margin-bottom 0.3s ease-out;
 }
 
 /* Center the header (and thus the button) when collapsed */
-.project-list-column.collapsed .project-list-header {
+.project-layout-container.collapsed .project-list-header {
     margin-bottom: 0;
     justify-content: center;
 }
@@ -278,7 +276,7 @@ button[disabled] {
     align-items: center;
     justify-content: center;
 }
-.project-list-column.collapsed #project-list-collapse-btn {
+.project-layout-container.collapsed #project-list-collapse-btn {
     transform: rotate(180deg);
 }
 
@@ -299,7 +297,7 @@ button[disabled] {
     gap: 20px;
     margin-bottom: 20px;
 }
-.project-details-section { 
+.project-details-section {
     background: #f9f9f9;
     border: 1px solid #eee;
     padding: 15px;
@@ -434,8 +432,8 @@ button[disabled] {
 
 /* --- Themed Modals --- */
 .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(5px); }
-.modal-content { 
-    background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 800px; border-radius: 12px; position: relative; box-shadow: 0 5px 15px rgba(0,0,0,0.3); 
+.modal-content {
+    background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 800px; border-radius: 12px; position: relative; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
     display: flex;
     flex-direction: column;
     max-height: 90vh;
@@ -503,8 +501,8 @@ button[disabled] {
     padding-right: 15px; /* Space for scrollbar */
     margin-right: -15px;
 }
-#subtasks-container-modal { 
-    cursor: grab; 
+#subtasks-container-modal {
+    cursor: grab;
     padding: 8px;
     border: 1px solid #ddd;
     border-radius: 4px;
@@ -512,28 +510,28 @@ button[disabled] {
     overflow-y: auto;
     background-color: #fdfdfd;
 }
-#subtasks-container-modal .subtask-item { 
-    display: flex; 
+#subtasks-container-modal .subtask-item {
+    display: flex;
     flex-wrap: nowrap;
-    gap: 8px; 
-    align-items: center; 
-    padding: 5px; 
-    background-color: #f9f9f9; 
-    border-radius: 3px; 
+    gap: 8px;
+    align-items: center;
+    padding: 5px;
+    background-color: #f9f9f9;
+    border-radius: 3px;
     margin-top: 3px;
-} 
+}
 #subtasks-container-modal .subtask-item input[type="checkbox"] {
     width: 16px;
     height: 16px;
     flex-shrink: 0;
 }
-#subtasks-container-modal .subtask-item label { 
-    flex-grow: 1; 
+#subtasks-container-modal .subtask-item label {
+    flex-grow: 1;
     min-width: 0;
     word-break: break-word;
 }
-#subtasks-container-modal .subtask-item button { 
-    flex-shrink: 0; 
+#subtasks-container-modal .subtask-item button {
+    flex-shrink: 0;
 }
 
 
@@ -541,6 +539,3 @@ button[disabled] {
 .form-field { margin-bottom: 15px; }
 .form-field label { display: block; margin-bottom: 5px; font-weight: bold; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-
-
-
