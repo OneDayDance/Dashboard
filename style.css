@@ -198,7 +198,7 @@ button[disabled] {
 }
 
 .project-layout-container.collapsed {
-    grid-template-columns: 60px 1fr; /* 40px button + 20px padding */
+    grid-template-columns: 50px 1fr; /* Adjust for icon positioning */
 }
 
 /* Sidebar Column */
@@ -211,14 +211,14 @@ button[disabled] {
     flex-direction: column;
     overflow: hidden; /* Crucial for clipping content */
     transition: padding 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-                background-color 0.2s ease 0.2s,
-                border-color 0.2s ease 0.2s,
-                box-shadow 0.2s ease 0.2s,
-                backdrop-filter 0.2s ease 0.2s;
+                background-color 0.3s ease 0.1s,
+                border-color 0.3s ease 0.1s,
+                box-shadow 0.3s ease 0.1s,
+                backdrop-filter 0.3s ease 0.1s;
 }
 
 .project-layout-container.collapsed .project-list-column {
-    padding: 10px; /* Padding for the button */
+    padding: 5px; /* Adjust padding for icon positioning */
     background-color: transparent;
     border-color: transparent;
     box-shadow: none;
@@ -301,12 +301,20 @@ button[disabled] {
     display: flex;
     align-items: center;
     justify-content: center;
-    /* Remove transform from button's transition */
     transition: background-color 0.3s ease;
 }
 
 #project-list-collapse-btn:hover {
     background-color: #ddd;
+}
+
+.project-layout-container.collapsed #project-list-collapse-btn {
+    background-color: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.project-layout-container.collapsed #project-list-collapse-btn:hover {
+    background-color: #f5f5f5;
 }
 
 /* Target the SVG icon inside the button for rotation */
