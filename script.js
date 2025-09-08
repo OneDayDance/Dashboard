@@ -453,7 +453,12 @@ async function loadProjects() {
     try {
         const response = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: 'Projects' });
         const values = response.result.values;
-        if (values && values.length > 1) { allProjects = { headers: values[0], rows: values.slice(1) }; } 
+        if (values && values.length > 1) { 
+            allProjects = { 
+                headers: values[0], 
+                rows: values.slice(1).filter(row => row.some(cell => cell)) // Filter out empty rows
+            }; 
+        } 
         else { allProjects = { headers: [], rows: [] }; }
     } catch (err) { console.warn("Could not load 'Projects' sheet.", err); allProjects = { headers: [], rows: [] }; }
 }
@@ -1827,3 +1832,4 @@ function populateColumnSelector(headers, visibleColumns, containerId) {
         container.innerHTML += `<div><label><input type="checkbox" value="${header}" ${isChecked ? 'checked' : ''}>${header}</label></div>`;
     });
 }
+
