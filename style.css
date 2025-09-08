@@ -202,11 +202,18 @@ button[disabled] {
     display: flex;
     flex-direction: column;
 }
-.project-list-column.collapsed > *:not(.project-list):not(#project-list-collapse-btn) {
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.1s, visibility 0.1s;
+.project-list-column.collapsed {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 10px 0;
+    align-items: center;
 }
+
+.project-list-column.collapsed > *:not(#project-list-collapse-btn) {
+   display: none;
+}
+
 .project-list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-shrink: 0; }
 #project-list-title { margin: 0; }
 .project-search-container { padding-bottom: 15px; flex-shrink: 0; }
@@ -224,44 +231,18 @@ button[disabled] {
 .project-list-item h4 { margin: 0 0 5px 0; }
 .project-list-item p { margin: 0; font-size: 12px; color: #555; }
 #project-list-collapse-btn {
-    font-size: 20px; padding: 0; background: #eee; color: #333; border-radius: 50%; width: 30px; height: 30px; line-height: 28px; text-align: center; transition: transform 0.3s ease; flex-shrink: 0;
-}
-
-/* Collapsed Sidebar Redesign */
-.project-list-column.collapsed { align-items: center; }
-.project-list-column.collapsed .project-list-item {
-    height: 40px;
-    width: 40px;
+    font-size: 20px; padding: 0; background: #eee; color: #333; border-radius: 50%; width: 40px; height: 40px; line-height: 40px; text-align: center; transition: transform 0.3s ease; flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0;
-    margin: 4px 0;
-    border-radius: 8px;
-    border-bottom: none;
-    background-color: #e9ecef;
 }
-.project-list-column.collapsed .project-list-item:hover {
-     background-color: #d4f4ff;
-}
-.project-list-column.collapsed .project-list-item.active {
-    background-color: #FF9D76;
-    color: white;
-    font-weight: bold;
-}
-.project-list-column.collapsed .project-list-item h4,
-.project-list-column.collapsed .project-list-item p { display: none; }
-
-.project-list-item::before {
-    content: attr(data-initials);
-    font-size: 14px;
-    display: none;
-}
-.project-list-column.collapsed .project-list-item::before { display: block; }
 .project-list-column.collapsed #project-list-collapse-btn {
     transform: rotate(180deg);
-    margin-top: auto; /* Push to bottom */
-    margin-bottom: 10px;
+}
+
+/* Collapsed Sidebar Redesign */
+.project-list-column.collapsed .project-list-item {
+   display: none;
 }
 
 
@@ -317,6 +298,9 @@ button[disabled] {
     transition: all 0.3s ease;
     cursor: pointer;
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 .interactive-card:hover {
     transform: translateY(-3px);
@@ -521,4 +505,5 @@ button[disabled] {
 .form-field { margin-bottom: 15px; }
 .form-field label { display: block; margin-bottom: 5px; font-weight: bold; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+
 
