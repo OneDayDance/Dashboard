@@ -110,7 +110,7 @@ button[disabled] {
     box-shadow: none;
 }
 
-#authorize_button, .view-controls button.active, #modal-save-note-btn, #save-columns-btn, #client-modal-save-btn, #save-client-columns-btn, #signout_button, #client-modal-edit-btn {
+#authorize_button, .view-controls button.active, #modal-save-note-btn, #save-columns-btn, #client-modal-save-btn, #save-client-columns-btn, #signout_button, #client-modal-edit-btn, #project-actions-btn {
     background-color: #FF9D76; /* Orange */
 }
 
@@ -221,15 +221,28 @@ button[disabled] {
 .project-details-section { margin-bottom: 20px; }
 .project-details-section-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 10px; }
 .project-details-section-header h4 { border: none; margin: 0; padding: 0;}
-.project-details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.project-client-card { background: #f9f9f9; border: 1px solid #eee; padding: 15px; border-radius: 8px; }
-.project-client-card h4 { margin: 0 0 10px 0; }
+.project-details-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+.project-client-card, .folder-link-container { background: #f9f9f9; border: 1px solid #eee; padding: 15px; border-radius: 8px; }
+.project-client-card h4, .folder-link-container h4 { margin: 0 0 10px 0; }
 .project-client-card a { text-decoration: none; font-weight: bold; color: #FF9D76; }
-.task-bucket { cursor: grab; transition: all 0.2s ease-in-out; }
+.folder-link-container { display: flex; justify-content: space-between; align-items: center; }
+.folder-link-container svg { width: 32px; height: 32px; fill: #5f6368; }
+.folder-link-container a {
+    text-decoration: none;
+    color: white;
+    background-color: #76F1FF;
+    padding: 6px 12px;
+    border-radius: 5px;
+    font-weight: bold;
+    font-size: 12px;
+}
+.folder-link-container a:hover { background-color: #5bc0de; }
+.task-bucket { cursor: grab; transition: all 0.2s ease-in-out; border: 2px solid transparent; }
+.task-bucket:hover { border-color: #76F1FF; }
 .task-bucket h5 { background-color: #f0f0f0; padding: 5px 10px; border-radius: 4px; margin: 15px 0 5px; }
 .task-list { list-style-type: none; padding: 0; }
 .task-item { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; background-color: white; border-radius: 4px; margin-bottom: 5px; transition: all 0.2s ease-in-out; }
-.task-item:hover { background-color: #f9f9f9; }
+.task-item:hover { transform: scale(1.02); box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
 .task-main { display: flex; align-items: center; gap: 10px; width: 100%;}
 .task-main input[type="checkbox"] { width: 20px; height: 20px; flex-shrink: 0;}
 .task-main label { flex-grow: 1; }
@@ -240,16 +253,19 @@ button[disabled] {
 .task-progress { width: 100%; background-color: #eee; border-radius: 4px; height: 6px; margin-top: 4px;}
 .task-progress-bar { background-color: #76F1FF; height: 100%; border-radius: 4px; }
 .task-board { display: flex; gap: 15px; overflow-x: auto; padding: 10px 0; min-height: 200px; }
-.task-board-column { flex: 0 0 300px; background: #f4f5f7; border-radius: 8px; padding: 10px; cursor: grab; transition: all 0.2s ease-in-out; }
+.task-board-column { flex: 0 0 300px; background: #f4f5f7; border-radius: 8px; padding: 10px; cursor: grab; transition: all 0.2s ease-in-out; border: 2px solid transparent; }
+.task-board-column:hover { border-color: #76F1FF; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
 .task-board-column h5 { text-align: center; margin: 5px 0 15px; }
 .task-card { background: #fff; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); padding: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s ease-in-out; }
-.task-card:hover { box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+.task-card:hover { transform: scale(1.03); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
 .subtask-summary { font-size: 12px; color: #555; margin: 5px 0 0; }
 
 /* --- Drag and Drop Enhancements --- */
 .dragging {
     opacity: 0.4 !important;
     background: #cceeff !important;
+    transform: scale(1.0) !important;
+    box-shadow: none !important;
 }
 
 .task-placeholder, .bucket-placeholder {
@@ -373,5 +389,4 @@ button[disabled] {
 .form-field { margin-bottom: 15px; }
 .form-field label { display: block; margin-bottom: 5px; font-weight: bold; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-
 
