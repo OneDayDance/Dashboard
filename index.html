@@ -50,8 +50,7 @@
                         </select>
                     </div>
                     <div class="view-controls">
-                        <button id="list-view-btn" class="active">List View</button>
-                        <button id="card-view-btn">Card View</button>
+                        <button id="request-view-toggle-btn">Card View</button>
                         <button id="column-select-btn">Display Options</button>
                     </div>
                 </div>
@@ -107,8 +106,11 @@
             <div id="project-layout-container" class="project-layout-container">
                 <div class="project-list-column card">
                     <div class="project-list-header">
-                        <button id="project-list-collapse-btn" title="Toggle Project List">‹</button>
                         <h2 id="project-list-title">Projects</h2>
+                        <button id="project-list-collapse-btn" title="Toggle Project List">‹</button>
+                    </div>
+                    <div class="project-search-container">
+                        <input type="text" id="project-search-bar" placeholder="Search projects...">
                     </div>
                     <h3>Active Projects</h3>
                     <div id="active-projects-list" class="project-list"></div>
@@ -349,4 +351,3 @@
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
 </body>
 </html>
-
