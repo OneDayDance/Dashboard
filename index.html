@@ -64,7 +64,53 @@
             <div id="archived-requests-container" class="collapsible-content"></div>
         </main>
 
-        <main id="tab-analytics" class="tab-content" style="display: none;"><h2>Analytics</h2><p>Charts and key metrics will go here.</p></main>
+        <main id="tab-analytics" class="tab-content" style="display: none;">
+            <div class="main-header-controls">
+                <h2>Dashboard Analytics</h2>
+            </div>
+            <div class="analytics-grid kpi-grid">
+                <div class="kpi-card">
+                    <h3>Total Revenue (YTD)</h3>
+                    <p id="kpi-total-revenue">$0</p>
+                    <span class="kpi-icon">&#128176;</span>
+                </div>
+                <div class="kpi-card">
+                    <h3>Active Projects</h3>
+                    <p id="kpi-active-projects">0</p>
+                     <span class="kpi-icon">&#128188;</span>
+                </div>
+                <div class="kpi-card">
+                    <h3>New Clients (YTD)</h3>
+                    <p id="kpi-new-clients">0</p>
+                     <span class="kpi-icon">&#128100;</span>
+                </div>
+                <div class="kpi-card">
+                    <h3>Pending Requests</h3>
+                    <p id="kpi-pending-requests">0</p>
+                     <span class="kpi-icon">&#128221;</span>
+                </div>
+            </div>
+            <div class="analytics-grid chart-grid">
+                <div class="chart-container card">
+                    <h3>Revenue Over Time</h3>
+                    <canvas id="revenue-chart"></canvas>
+                </div>
+                <div class="chart-container card">
+                    <h3>Service Request Breakdown</h3>
+                    <canvas id="services-chart"></canvas>
+                </div>
+                <div class="chart-container card">
+                    <h3>Project Status Distribution</h3>
+                    <canvas id="projects-chart"></canvas>
+                </div>
+                 <div class="chart-container card" id="activity-feed-container">
+                    <h3>Recent Activity</h3>
+                    <ul id="activity-feed">
+                        <li>Loading activity...</li>
+                    </ul>
+                </div>
+            </div>
+        </main>
         
         <main id="tab-clients" class="tab-content" style="display: none;">
             <div class="client-layout-container">
@@ -368,7 +414,8 @@
             <button id="save-client-columns-btn">Apply</button>
         </div>
     </div>
-
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="script.js"></script>
     <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
