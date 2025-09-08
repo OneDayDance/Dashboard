@@ -1287,9 +1287,19 @@ function showClientDetailsModal(rowData, headers) {
         populateClientNotesTab(data, headers, false);
         populateClientFinancialsTab(data[headers.indexOf('Email')]);
         populateClientActionsTab(data, headers);
-        const currentTabIsEditable = clientDetailsModal.querySelector('.client-tab-button.active').dataset.editable === 'true';
-        editBtn.style.display = currentTabIsEditable ? 'inline-block' : 'none';
-        saveBtn.style.display = 'none';
+
+        const activeTab = clientDetailsModal.querySelector('.client-tab-button.active');
+        const currentTabIsEditable = activeTab.dataset.editable === 'true';
+        const isActionsTab = activeTab.dataset.tab === 'actions';
+
+        if (isActionsTab) {
+            footer.style.display = 'none';
+        } else {
+            footer.style.display = 'block';
+            editBtn.style.display = currentTabIsEditable ? 'inline-block' : 'none';
+            saveBtn.style.display = 'none';
+        }
+        
         editBtn.onclick = () => renderEditMode(data);
     };
     const renderEditMode = (data) => {
@@ -1841,5 +1851,6 @@ function populateColumnSelector(headers, visibleColumns, containerId) {
         container.innerHTML += `<div><label><input type="checkbox" value="${header}" ${isChecked ? 'checked' : ''}>${header}</label></div>`;
     });
 }
+
 
 
