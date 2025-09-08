@@ -213,7 +213,8 @@ button[disabled] {
     transition: padding 0.4s cubic-bezier(0.4, 0, 0.2, 1),
                 background-color 0.2s ease 0.2s,
                 border-color 0.2s ease 0.2s,
-                box-shadow 0.2s ease 0.2s;
+                box-shadow 0.2s ease 0.2s,
+                backdrop-filter 0.2s ease 0.2s;
 }
 
 .project-layout-container.collapsed .project-list-column {
@@ -221,6 +222,7 @@ button[disabled] {
     background-color: transparent;
     border-color: transparent;
     box-shadow: none;
+    backdrop-filter: none;
 }
 
 /* Sidebar Header */
