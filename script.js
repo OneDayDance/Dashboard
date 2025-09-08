@@ -1276,7 +1276,7 @@ function showClientDetailsModal(rowData, headers) {
         } else {
             footer.style.display = 'block';
             editBtn.style.display = isEditable ? 'inline-block' : 'none';
-            saveBtn.style.display = 'none'; // Cancel edit mode if switching tabs
+            saveBtn.style.display = 'none';
         }
     });
 
@@ -1318,17 +1318,14 @@ function showClientDetailsModal(rowData, headers) {
             renderClients();
             setTimeout(() => { 
                 renderViewMode(updatedRow || currentRowData);
-                // After saving, restore the view to the details tab, which has a footer
-                footer.style.display = 'block';
-                editBtn.style.display = 'inline-block';
-                saveBtn.style.display = 'none';
                 statusSpan.textContent = ''; 
+                tabButtons[0].click();
             }, 1500);
         } catch(err) { statusSpan.textContent = 'Error saving.'; console.error('Client update error:', err); }
     };
     
     renderViewMode(rowData);
-    tabButtons[0].click(); // Activate the first tab and trigger the onclick handler to set initial state
+    tabButtons[0].click(); 
     clientDetailsModal.style.display = 'block';
 }
 function populateClientDetailsTab(rowData, headers, isEditMode) {
@@ -1848,3 +1845,4 @@ function populateColumnSelector(headers, visibleColumns, containerId) {
         container.innerHTML += `<div><label><input type="checkbox" value="${header}" ${isChecked ? 'checked' : ''}>${header}</label></div>`;
     });
 }
+
