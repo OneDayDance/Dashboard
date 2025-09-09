@@ -163,6 +163,8 @@ function showClientDetailsModal(rowData, headers) {
     statusSpan.textContent = '';
 
     const tabButtons = elements.clientDetailsModal.querySelectorAll('.client-tab-button');
+
+    // The tab click handler is the master controller for visibility.
     tabButtons.forEach(button => button.onclick = (e) => {
         tabButtons.forEach(btn => btn.classList.remove('active'));
         e.currentTarget.classList.add('active');
@@ -171,13 +173,14 @@ function showClientDetailsModal(rowData, headers) {
 
         const isEditable = e.currentTarget.dataset.editable === 'true';
 
-        // Corrected logic: Show footer with edit/save buttons only on editable tabs.
-        // Also explicitly reset the state of both buttons.
         if (isEditable) {
+            // Show the footer and reset buttons to "view" mode.
+            // This cancels "edit" mode if the user switches to another editable tab.
             footer.style.display = 'block';
             editBtn.style.display = 'inline-block';
             saveBtn.style.display = 'none';
         } else {
+            // Hide the footer for non-editable tabs.
             footer.style.display = 'none';
         }
     });
@@ -188,21 +191,18 @@ function showClientDetailsModal(rowData, headers) {
         populateClientNotesTab(data, headers, false);
         populateClientFinancialsTab(data[headers.indexOf('Email')]);
         populateClientActionsTab(data, headers);
-        
-        // Ensure buttons are in the correct state for "view" mode
-        editBtn.style.display = 'inline-block';
-        saveBtn.style.display = 'none';
-        editBtn.onclick = () => renderEditMode(data);
     };
 
     const renderEditMode = (data) => {
         populateClientDetailsTab(data, headers, true);
         populateClientNotesTab(data, headers, true);
-        
-        // Ensure buttons are in the correct state for "edit" mode
+    };
+
+    editBtn.onclick = () => {
+        // Switch to "edit" mode visuals
         editBtn.style.display = 'none';
         saveBtn.style.display = 'inline-block';
-        saveBtn.onclick = () => handleSaveClientUpdate(data, headers);
+        renderEditMode(rowData);
     };
 
     const handleSaveClientUpdate = async (currentRowData, currentHeaders) => {
@@ -224,18 +224,24 @@ function showClientDetailsModal(rowData, headers) {
             statusSpan.textContent = 'Saved successfully!';
             renderClients();
             setTimeout(() => {
+                // After saving, go back to view mode by re-clicking the current tab
+                const currentTab = elements.clientDetailsModal.querySelector('.client-tab-button.active');
                 renderViewMode(updatedRow || currentRowData);
+                if (currentTab) currentTab.click();
                 statusSpan.textContent = '';
-                tabButtons[0].click();
             }, 1500);
         } catch (err) {
             statusSpan.textContent = 'Error saving.';
             console.error('Client update error:', err);
         }
     };
+    
+    // Assign the save handler once, so it's always available.
+    saveBtn.onclick = () => handleSaveClientUpdate(rowData, headers);
 
-    renderViewMode(rowData);
-    tabButtons[0].click();
+    // Initial setup
+    renderViewMode(rowData); // Populate content for all tabs
+    tabButtons[0].click();   // Set the initial state for the first tab
     elements.clientDetailsModal.style.display = 'block';
 }
 
@@ -387,4 +393,5 @@ function showDeleteClientModal(rowData, headers) {
         } catch (err) { statusSpan.textContent = 'Error deleting client.'; console.error('Delete client error:', err); confirmBtn.disabled = false; }
     };
 }
+
 
