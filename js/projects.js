@@ -104,7 +104,7 @@ function showProjectDetails(projectId, isEditMode = false) {
         <div class="project-details-header">
             <h3>${isEditMode ? `<input type="text" id="project-edit-ProjectName" value="${project[headers.indexOf('Project Name')]}">` : project[headers.indexOf('Project Name')]}</h3>
             <div id="project-actions-container" class="project-actions-dropdown">
-                <button id="project-actions-btn">Actions</button>
+                <button id="project-actions-btn" class="btn btn-secondary">Actions</button>
                 <div id="project-actions-content" class="project-actions-dropdown-content">
                     <a href="#" id="project-edit-action">Edit Project</a>
                     <a href="#" id="project-archive-action">Archive Project</a>
@@ -113,7 +113,7 @@ function showProjectDetails(projectId, isEditMode = false) {
             </div>
         </div>`;
     detailsHtml += renderGenericProjectDetails(project, headers, isEditMode);
-    if (isEditMode) detailsHtml += `<div class="modal-footer"><button id="project-save-btn">Save</button></div>`;
+    if (isEditMode) detailsHtml += `<div class="modal-footer"><button id="project-save-btn" class="btn btn-primary">Save</button></div>`;
     detailsColumn.innerHTML = detailsHtml;
 
     // --- Event Listeners for details view ---
@@ -164,14 +164,14 @@ function renderGenericProjectDetails(data, headers, isEditMode) {
     const folderLink = data[headers.indexOf('Google Folder Link')] || '';
     const projectId = data[headers.indexOf('ProjectID')];
 
-    let coreDetailsHtml = `<div class="project-details-section"><h4>Core Details</h4><ul>`;
+    let coreDetailsHtml = `<div class="project-details-section content-section"><h4>Core Details</h4><ul>`;
     ['Status', 'Start Date', 'Value'].forEach(h => {
         const val = data[headers.indexOf(h)] || '';
         coreDetailsHtml += `<li><strong>${h}:</strong> ${isEditMode ? `<input type="text" id="project-edit-${h.replace(/\s+/g, '')}" value="${val}">` : val}</li>`;
     });
     coreDetailsHtml += `</ul></div>`;
     
-    let personnelDetailsHtml = `<div class="project-details-section"><h4>Personnel & Location</h4><ul>`;
+    let personnelDetailsHtml = `<div class="project-details-section content-section"><h4>Personnel & Location</h4><ul>`;
     ['Service Provider', 'Location'].forEach(h => {
         const val = data[headers.indexOf(h)] || '';
         personnelDetailsHtml += `<li><strong>${h}:</strong> ${isEditMode ? `<input type="text" id="project-edit-${h.replace(/\s+/g, '')}" value="${val}">` : val}</li>`;
@@ -180,7 +180,7 @@ function renderGenericProjectDetails(data, headers, isEditMode) {
     personnelDetailsHtml += `</ul></div>`;
 
     const clientCardHtml = `
-        <div class="project-client-card interactive-card" data-client-email="${clientEmail}">
+        <div class="project-client-card interactive-card info-card" data-client-email="${clientEmail}">
             <div class="card-main-content">
                 <h4>Client</h4>
                 <p>${clientName}</p>
@@ -193,7 +193,7 @@ function renderGenericProjectDetails(data, headers, isEditMode) {
 
     const hasLink = !!folderLink;
     const gDriveCardHtml = `
-        <div class="folder-link-container interactive-card ${hasLink ? 'has-link' : ''}" data-project-id="${projectId}" data-link="${folderLink}">
+        <div class="folder-link-container interactive-card info-card ${hasLink ? 'has-link' : ''}" data-project-id="${projectId}" data-link="${folderLink}">
              <div class="card-main-content">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M464 128H272l-54.63-54.63c-6-6-14.14-9.37-22.63-9.37H48C21.5 64 0 85.5 0 112v288c0 26.5 21.5 48 48 48h416c26.5 0 48-21.5 48-48V176c0-26.5-21.5-48-48-48z"/></svg>
                 <h4>Project Folder</h4>
@@ -214,12 +214,12 @@ function renderGenericProjectDetails(data, headers, isEditMode) {
 }
 function renderTasksSection(projectId) {
     const renderFn = state.projectTaskView === 'list' ? renderTasksAsList : renderTasksAsBoard;
-    return `<div class="project-details-section">
+    return `<div class="project-details-section content-section">
         <div class="project-details-section-header">
             <h4>Tasks</h4>
             <div class="view-controls">
-                <button id="add-bucket-btn">+</button>
-                <button id="task-view-toggle">${state.projectTaskView === 'list' ? 'Board' : 'List'} View</button>
+                <button id="add-bucket-btn" class="btn btn-secondary">+</button>
+                <button id="task-view-toggle" class="btn btn-subtle">${state.projectTaskView === 'list' ? 'Board' : 'List'} View</button>
             </div>
         </div>
         ${renderFn(projectId)}
@@ -686,7 +686,7 @@ function renderSubtasks(subtasks) {
         item.className = 'subtask-item';
         item.setAttribute('draggable', true);
         item.dataset.index = i;
-        item.innerHTML = `<input type="checkbox" ${sub.completed ? 'checked' : ''}> <label>${sub.name}</label> <button type="button">&times;</button>`;
+        item.innerHTML = `<input type="checkbox" ${sub.completed ? 'checked' : ''}> <label>${sub.name}</label> <button type="button" class="btn btn-subtle">&times;</button>`;
         item.querySelector('input').onchange = (e) => updateSubtaskStatus(i, e.target.checked);
         item.querySelector('button').onclick = () => removeSubtask(i);
         item.ondragstart = (e) => e.dataTransfer.setData('text/subtask-index', i);
@@ -722,7 +722,7 @@ function renderLinks(links) {
     links.forEach((link, i) => {
         const linkEl = document.createElement('div');
         linkEl.className = 'item-tag';
-        linkEl.innerHTML = `<a href="${link}" target="_blank">${link}</a> <button type="button" data-index="${i}">&times;</button>`;
+        linkEl.innerHTML = `<a href="${link}" target="_blank">${link}</a> <button type="button" class="btn btn-subtle" data-index="${i}">&times;</button>`;
         container.appendChild(linkEl);
     });
     // Add event listeners after rendering

@@ -206,7 +206,7 @@ export function showRequestDetailsModal(rowData, headers) {
     let detailsHtml = '<ul>';
     headers.forEach((header, index) => {
         if (rowData[index] && !ignoredFields.includes(header)) {
-            detailsHtml += `<li><strong>${header}:</strong> ${rowData[index]}</li>`;
+            detailsHtml += `<li><strong>${header}:</strong> <div>${rowData[index]}</div></li>`;
         }
     });
     detailsPane.innerHTML = detailsHtml + '</ul>';
@@ -296,3 +296,4 @@ async function handleCreateClient(submissionRow, submissionHeaders) {
         actionStatus.textContent = `Error: ${err.result.error.message}`;
     }
 }
+
