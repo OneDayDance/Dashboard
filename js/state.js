@@ -1,5 +1,5 @@
 // js/state.js
-// Description: Manages the dynamic state of the application.
+// Description: Manages the central state of the application.
 
 export let state = {
     // requests tab state
@@ -36,11 +36,16 @@ export let allClients = { headers: [], rows: [] };
 export let allProjects = { headers: [], rows: [] };
 export let allTasks = { headers: [], rows: [] };
 
+export const sortableColumns = ['Submission Date', 'Full Name', 'Email', 'Organization', 'Primary Service Category', 'Status'];
+export const clientSortableColumns = ['First Name', 'Last Name', 'Email', 'Organization', 'Status'];
+
+// --- STATE SETTERS ---
 export function setAllRequests(data) { allRequests = data; }
 export function setAllClients(data) { allClients = data; }
 export function setAllProjects(data) { allProjects = data; }
 export function setAllTasks(data) { allTasks = data; }
 
+// --- STATE UPDATERS ---
 export function updateState(newState) {
     state = { ...state, ...newState };
 }
@@ -52,3 +57,4 @@ export function updateFilters(key, value) {
 export function updateClientFilters(key, value) {
     state.clientFilters[key] = value;
 }
+

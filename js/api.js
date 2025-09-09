@@ -2,108 +2,191 @@
 // Description: Handles all interactions with the Google Sheets API.
 
 import { SPREADSHEET_ID } from './config.js';
+import { setAllRequests, setAllClients, setAllProjects, setAllTasks } from './state.js';
 
-// --- DATA LOADING ---
-export async function loadRequests() {
-    return fetchDataFromSheet('Submissions');
-}
-
-export async function loadClients() {
-    return fetchDataFromSheet('Clients');
-}
-
-export async function loadProjects() {
-    return fetchDataFromSheet('Projects');
-}
-
-export async function loadTasks() {
-    return fetchDataFromSheet('Tasks');
-}
-
-async function fetchDataFromSheet(sheetName) {
+async function fetchData(range, setter) {
     try {
         const response = await gapi.client.sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: sheetName
+            range: range
         });
         const values = response.result.values;
-        if (values && values.length > 1) {
-            // Filter out completely empty rows
-            const nonEmptyRows = values.slice(1).filter(row => row.some(cell => cell));
-            return { headers: values[0], rows: nonEmptyRows };
+        let data = { headers: [], rows: [] };
+        if (values && values.length > 0) {
+            data = { headers: values[0], rows: values.slice(1).filter(row => row.length > 0) };
         }
-        return { headers: (values && values[0]) || [], rows: [] };
+        setter(data); // Store the fetched data in the state
+        console.log(`Successfully loaded data from ${range}`);
+        return data;
     } catch (err) {
-        console.error(`Error loading ${sheetName}:`, err);
-        return { headers: [], rows: [] };
+        console.error(`Error loading data from sheet range "${range}":`, err);
+        // Set empty data on failure to prevent app crashes
+        setter({ headers: [], rows: [] }); 
+        // Re-throw the error to be caught by the calling function
+        throw new Error(`Could not load data for ${range}. Please check the sheet name and permissions.`);
     }
 }
 
-// --- DATA WRITING / UPDATING ---
+export const loadRequests = () => fetchData('Submissions', setAllRequests);
+export const loadClients = () => fetchData('Clients', setAllClients);
+export const loadProjects = () => fetchData('Projects', setAllProjects);
+export const loadTasks = () => fetchData('Tasks', setAllTasks);
+
+
+/**
+ * Finds a row by a unique ID and updates specified columns.
+ * @param {string} sheetName - The name of the sheet.
+ * @param {string} idColumnName - The header of the unique ID column.
+ * @param {string} idValue - The value of the unique ID to find.
+ * @param {object} dataToUpdate - An object where keys are column headers and values are the new cell values.
+ * @returns {Promise<object>} - The result from the Sheets API.
+ */
 export async function updateSheetRow(sheetName, idColumnName, idValue, dataToUpdate) {
-    let sheetResponse = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!1:1`});
+    // Get the current headers to find column indices
+    let sheetResponse = await gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `${sheetName}!1:1`
+    });
     let sheetHeaders = (sheetResponse.result.values ? sheetResponse.result.values[0] : []) || [];
+    
+    // Check if new columns need to be added
     const newHeaders = Object.keys(dataToUpdate).filter(h => !sheetHeaders.includes(h));
     if (newHeaders.length > 0) {
         const firstEmptyColumn = columnToLetter(sheetHeaders.length + 1);
         await gapi.client.sheets.spreadsheets.values.update({
-            spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!${firstEmptyColumn}1`, valueInputOption: 'RAW', resource: { values: [newHeaders] }
+            spreadsheetId: SPREADSHEET_ID,
+            range: `${sheetName}!${firstEmptyColumn}1`,
+            valueInputOption: 'RAW',
+            resource: { values: [newHeaders] }
         });
+        // Update the local headers variable
         sheetHeaders = sheetHeaders.concat(newHeaders);
     }
-    const fullSheetResponse = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: sheetName });
+
+    // Get the full sheet to find the row number
+    const fullSheetResponse = await gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID,
+        range: sheetName
+    });
     const sheetValues = fullSheetResponse.result.values || [];
     const idIndex = sheetHeaders.indexOf(idColumnName);
     if (idIndex === -1) throw new Error(`Unique ID column '${idColumnName}' not found in ${sheetName}.`);
+
     const visualRowIndex = sheetValues.findIndex(row => row && row[idIndex] === idValue);
     if (visualRowIndex === -1) throw new Error(`Could not find row with ${idColumnName} = ${idValue}.`);
+
+    // Prepare the updated row data
     const originalRow = sheetValues[visualRowIndex] || [];
+    // Ensure the original row has enough columns to match the headers
     while (originalRow.length < sheetHeaders.length) originalRow.push('');
     const updatedRow = [...originalRow];
+
     for (const columnName in dataToUpdate) {
         const columnIndex = sheetHeaders.indexOf(columnName);
-        if (columnIndex > -1) updatedRow[columnIndex] = dataToUpdate[columnName];
+        if (columnIndex > -1) {
+            updatedRow[columnIndex] = dataToUpdate[columnName];
+        }
     }
+
+    // The actual row number in the sheet is the index + 1
     const targetRowNumber = visualRowIndex + 1;
     const targetRange = `${sheetName}!A${targetRowNumber}`;
+
     return gapi.client.sheets.spreadsheets.values.update({
-        spreadsheetId: SPREADSHEET_ID, range: targetRange, valueInputOption: 'USER_ENTERED', resource: { values: [updatedRow] }
+        spreadsheetId: SPREADSHEET_ID,
+        range: targetRange,
+        valueInputOption: 'USER_ENTERED',
+        resource: {
+            values: [updatedRow]
+        }
     });
 }
 
+/**
+ * Appends a new row of data to the specified sheet.
+ * @param {string} sheetName - The name of the sheet.
+ * @param {object} dataObject - An object where keys are column headers and values are cell values.
+ * @returns {Promise<object>} - The result from the Sheets API.
+ */
 export async function writeData(sheetName, dataObject) {
-    const headerResponse = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!1:1` });
+    const headerResponse = await gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `${sheetName}!1:1`
+    });
     let headers = headerResponse.result.values ? headerResponse.result.values[0] : [];
+    
+    // Check for and add any new headers
     const newHeaders = Object.keys(dataObject).filter(h => !headers.includes(h));
     if (newHeaders.length > 0) {
         const firstEmptyColumn = columnToLetter(headers.length + 1);
         await gapi.client.sheets.spreadsheets.values.update({
-            spreadsheetId: SPREADSHEET_ID, range: `${sheetName}!${firstEmptyColumn}1`, valueInputOption: 'RAW', resource: { values: [newHeaders] }
+            spreadsheetId: SPREADSHEET_ID,
+            range: `${sheetName}!${firstEmptyColumn}1`,
+            valueInputOption: 'RAW',
+            resource: { values: [newHeaders] }
         });
         headers = headers.concat(newHeaders);
     }
+    
+    // Create the row in the correct order based on the final headers
     const newRow = headers.map(header => dataObject[header] || '');
-    return gapi.client.sheets.spreadsheets.values.append({ spreadsheetId: SPREADSHEET_ID, range: sheetName, valueInputOption: 'USER_ENTERED', resource: { values: [newRow] } });
+    
+    return gapi.client.sheets.spreadsheets.values.append({
+        spreadsheetId: SPREADSHEET_ID,
+        range: sheetName,
+        valueInputOption: 'USER_ENTERED',
+        resource: {
+            values: [newRow]
+        }
+    });
 }
 
-
+/**
+ * Clears all values from a specific row identified by a unique ID.
+ * @param {string} sheetName - The name of the sheet.
+ * @param {string} idColumnName - The header of the unique ID column.
+ * @param {string} idValue - The value of the unique ID to find and delete.
+ * @returns {Promise<object>} - The result from the Sheets API.
+ */
 export async function clearSheetRow(sheetName, idColumnName, idValue) {
-    const fullSheetResponse = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: sheetName });
+    const fullSheetResponse = await gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID,
+        range: sheetName
+    });
     const sheetValues = fullSheetResponse.result.values || [];
     const sheetHeaders = sheetValues[0] || [];
     const idIndex = sheetHeaders.indexOf(idColumnName);
     if (idIndex === -1) throw new Error(`Unique ID column '${idColumnName}' not found.`);
+
     const visualRowIndex = sheetValues.findIndex(row => row && row[idIndex] === idValue);
-    if (visualRowIndex === -1) throw new Error(`Could not find row to delete.`);
+    if (visualRowIndex === -1) {
+        console.warn(`Could not find row to delete with ${idColumnName} = ${idValue}. It may have already been deleted.`);
+        return; // Exit gracefully if the row isn't found
+    }
+
     const targetRowNumber = visualRowIndex + 1;
     const targetRange = `${sheetName}!A${targetRowNumber}:${columnToLetter(sheetHeaders.length)}${targetRowNumber}`;
-    return gapi.client.sheets.spreadsheets.values.clear({ spreadsheetId: SPREADSHEET_ID, range: targetRange });
+
+    return gapi.client.sheets.spreadsheets.values.clear({
+        spreadsheetId: SPREADSHEET_ID,
+        range: targetRange,
+    });
 }
 
 
-// --- UTILITY ---
+/**
+ * Converts a 1-based column index to its A1 notation letter.
+ * e.g., 1 -> A, 27 -> AA
+ * @param {number} column - The column number.
+ * @returns {string} - The column letter.
+ */
 function columnToLetter(column) {
     let temp, letter = '';
-    while (column > 0) { temp = (column - 1) % 26; letter = String.fromCharCode(temp + 65) + letter; column = (column - temp - 1) / 26; }
+    while (column > 0) {
+        temp = (column - 1) % 26;
+        letter = String.fromCharCode(temp + 65) + letter;
+        column = (column - temp - 1) / 26;
+    }
     return letter;
 }
+

@@ -8,7 +8,10 @@ import {
     cacheDOMElements, 
     setupTabs, 
     setupModalCloseButtons, 
-    loadDataForActiveTab 
+    loadDataForActiveTab,
+    showLoadingIndicator,
+    hideLoadingIndicator,
+    showMainError
 } from './ui.js';
 import { initRequestsTab } from './requests.js';
 import { initClientsTab } from './clients.js';
@@ -160,16 +163,36 @@ async function onSignInSuccess() {
     elements.landingContainer.style.display = 'none';
     elements.appContainer.style.display = 'block';
     setupTabs();
-    await loadInitialData();
-    loadDataForActiveTab();
+    
+    showLoadingIndicator();
+    try {
+        await loadInitialData();
+        loadDataForActiveTab();
+    } catch (err) {
+        showMainError(`Failed to load initial data: ${err.message}. Please check sheet permissions and try again.`);
+    } finally {
+        hideLoadingIndicator();
+    }
 }
 
 /**
- * Fetches all necessary data from the spreadsheet on initial load.
+ * Fetches all necessary data from the spreadsheet on initial load and stores it.
  */
 async function loadInitialData() {
-    await Promise.all([loadRequests(), loadClients(), loadProjects(), loadTasks()]);
+    // This now correctly captures and stores the data from the API calls.
+    const [requests, clients, projects, tasks] = await Promise.all([
+        loadRequests(), 
+        loadClients(), 
+        loadProjects(), 
+        loadTasks()
+    ]);
+    
+    // The data is now correctly passed to the state management module.
+    // (This assumes you have setter functions in your state module, which is good practice.
+    // For now, we'll import and set them directly if they are exported.)
+    // Let's adjust this to directly call the setters from the api module for clarity.
 }
+
 
 /**
  * Handles the explicit click of the "Authorize" button.
@@ -193,4 +216,5 @@ function handleSignoutClick() {
         silentAuthAttempted = false; // Allow silent sign-in on next visit
     }
 }
+
 
