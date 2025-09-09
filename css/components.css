@@ -76,6 +76,7 @@
 }
 .tab-nav {
     display: flex;
+    justify-content: center;
     border-bottom: 2px solid #ccc;
 }
 .tab-button {
@@ -155,4 +156,3 @@
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
-

@@ -129,8 +129,11 @@
                                 <input type="text" id="client-search-bar" placeholder="Search clients...">
                                 <select id="client-status-filter">
                                     <option value="all">All Statuses</option>
+                                    <option value="Lead">Lead</option>
                                     <option value="Active">Active</option>
-                                    <option value="Inactive">Inactive</option>
+                                    <option value="On Hold">On Hold</option>
+                                    <option value="Past Client">Past Client</option>
+                                    <option value="Do Not Contact">Do Not Contact</option>
                                 </select>
                             </div>
                              <div class="view-controls">
@@ -238,13 +241,34 @@
                             <input type="text" id="new-client-last-name" required>
                         </div>
                     </div>
-                    <div class="form-field">
-                        <label for="new-client-email">Email</label>
-                        <input type="email" id="new-client-email" required>
+                     <div class="form-grid">
+                        <div class="form-field">
+                            <label for="new-client-email">Email</label>
+                            <input type="email" id="new-client-email" required>
+                        </div>
+                        <div class="form-field">
+                            <label for="new-client-phone">Phone</label>
+                            <input type="text" id="new-client-phone">
+                        </div>
                     </div>
                     <div class="form-field">
-                        <label for="new-client-phone">Phone</label>
-                        <input type="text" id="new-client-phone">
+                        <label for="new-client-address">Address</label>
+                        <input type="text" id="new-client-address">
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label for="new-client-birthday">Birthday</label>
+                            <input type="date" id="new-client-birthday">
+                        </div>
+                        <div class="form-field">
+                            <label for="new-client-type">Client Type</label>
+                            <select id="new-client-type">
+                                <option>Individual</option>
+                                <option>Company</option>
+                                <option>Non-Profit</option>
+                                <option>Educational</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="form-field">
                         <label for="new-client-organization">Organization</label>
@@ -486,3 +510,4 @@
     <script type="module" src="js/main.js"></script>
 </body>
 </html>
+

@@ -151,6 +151,9 @@ async function handleAddClientSubmit(event) {
         'Last Name': document.getElementById('new-client-last-name').value,
         'Email': document.getElementById('new-client-email').value,
         'Phone': document.getElementById('new-client-phone').value,
+        'Address': document.getElementById('new-client-address').value,
+        'Birthday': document.getElementById('new-client-birthday').value,
+        'Client Type': document.getElementById('new-client-type').value,
         'Organization': document.getElementById('new-client-organization').value,
         'Social Media': document.getElementById('new-client-social').value,
         'Status': 'Active',
@@ -235,7 +238,7 @@ export function showClientDetailsModal(rowData, headers) {
 
     // --- CONTENT POPULATION ---
     function populateClientDetailsTab() {
-        const displayHeaders = ['First Name', 'Last Name', 'Email', 'Phone', 'Organization', 'Status', 'Social Media'];
+        const displayHeaders = ['First Name', 'Last Name', 'Email', 'Phone', 'Address', 'Birthday', 'Client Type', 'Organization', 'Status', 'Social Media'];
         let contentHtml = '<div class="form-grid-condensed">';
         displayHeaders.forEach(h => {
             const val = localState.currentRowData[headers.indexOf(h)] || '';
@@ -243,14 +246,24 @@ export function showClientDetailsModal(rowData, headers) {
             
             let fieldHtml;
             if (localState.isEditMode) {
-                if (h === 'Status') {
+                 if (h === 'Status') {
                     const statuses = ['Lead', 'Active', 'On Hold', 'Past Client', 'Do Not Contact'];
                     fieldHtml = `<select id="${inputId}">`;
                     statuses.forEach(status => {
                         fieldHtml += `<option value="${status}" ${val === status ? 'selected' : ''}>${status}</option>`;
                     });
                     fieldHtml += `</select>`;
-                } else {
+                } else if (h === 'Client Type') {
+                     const types = ['Individual', 'Company', 'Non-Profit', 'Educational'];
+                     fieldHtml = `<select id="${inputId}">`;
+                     types.forEach(type => {
+                         fieldHtml += `<option value="${type}" ${val === type ? 'selected' : ''}>${type}</option>`;
+                     });
+                     fieldHtml += `</select>`;
+                } else if (h === 'Birthday') {
+                    fieldHtml = `<input type="date" id="${inputId}" value="${val}">`;
+                }
+                else {
                     fieldHtml = `<input type="text" id="${inputId}" value="${val}">`;
                 }
             } else {
@@ -394,7 +407,7 @@ export function showClientDetailsModal(rowData, headers) {
     async function handleSaveClientUpdate() {
         statusSpan.textContent = 'Saving...';
         const dataToUpdate = {};
-        const fields = ['First Name', 'Last Name', 'Email', 'Phone', 'Organization', 'Status', 'Social Media', 'Notes', 'Contact Logs'];
+        const fields = ['First Name', 'Last Name', 'Email', 'Phone', 'Address', 'Birthday', 'Client Type', 'Organization', 'Status', 'Social Media', 'Notes', 'Contact Logs'];
         fields.forEach(h => {
             const input = document.getElementById(`client-edit-${h.replace(/\s+/g, '')}`);
             if (input) {
@@ -467,3 +480,4 @@ function showDeleteClientModal(rowData, headers) {
         } catch (err) { statusSpan.textContent = 'Error deleting client.'; console.error('Delete client error:', err); confirmBtn.disabled = false; }
     };
 }
+
