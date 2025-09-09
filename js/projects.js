@@ -177,7 +177,7 @@ function renderFinancialsSection(project, headers, isEditMode = false) {
             itemsHtml += `<tr class="line-item-row">
                 <td><input type="text" class="line-item-desc" value="${item.description || ''}" placeholder="Item Description"></td>
                 <td><input type="number" class="line-item-cost" value="${item.cost || 0}" step="0.01" placeholder="0.00"></td>
-                <td><button type="button" class="btn btn-subtle remove-line-item-btn" data-index="${index}">&times;</button></td>
+                <td><button type="button" class="btn btn-danger remove-line-item-btn" data-index="${index}">&times;</button></td>
             </tr>`;
         });
     } else {
@@ -192,7 +192,7 @@ function renderFinancialsSection(project, headers, isEditMode = false) {
     
     const editControls = isEditMode
         ? `<div class="financials-edit-actions">
-               <button id="add-line-item-btn" type="button" class="btn btn-secondary">Add Item</button>
+               <button id="add-line-item-btn" type="button" class="btn btn-primary">Add Item</button>
                <div>
                    <button id="save-financials-btn" type="button" class="btn btn-primary">Save</button>
                    <button id="cancel-financials-btn" type="button" class="btn btn-subtle">Cancel</button>
@@ -291,7 +291,7 @@ function attachProjectDetailsEventListeners(projectId) {
         newRow.innerHTML = `
             <td><input type="text" class="line-item-desc" placeholder="Item Description"></td>
             <td><input type="number" class="line-item-cost" step="0.01" placeholder="0.00"></td>
-            <td><button type="button" class="btn btn-subtle remove-line-item-btn">&times;</button></td>`;
+            <td><button type="button" class="btn btn-danger remove-line-item-btn">&times;</button></td>`;
         tbody.appendChild(newRow);
         newRow.querySelector('.remove-line-item-btn').onclick = (e) => e.target.closest('tr').remove();
     };
