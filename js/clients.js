@@ -156,7 +156,7 @@ async function handleAddClientSubmit(event) {
 
 // --- REBUILT MODAL FUNCTIONS ---
 
-function showClientDetailsModal(rowData, headers) {
+export function showClientDetailsModal(rowData, headers) {
     // --- STATE MANAGEMENT ---
     let localState = {
         activeTab: 'details',

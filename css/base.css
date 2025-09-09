@@ -66,11 +66,7 @@ main { padding: 20px; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 
 /* --- Responsive adjustments */
-@media (max-width: 900px) {
-    .chart-grid {
-        grid-template-columns: 1fr; /* Stack charts on smaller screens */
-    }
-}
+/* ... existing code ... */
 @media (max-width: 768px) {
     .client-layout-container {
         grid-template-columns: 1fr;
@@ -85,3 +81,42 @@ main { padding: 20px; }
     }
 }
 
+/* --- Modern Form Field Styles --- */
+input[type="text"],
+input[type="email"],
+input[type="number"],
+input[type="date"],
+input[type="url"],
+input[type="password"],
+textarea,
+select {
+    width: 100%;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    background-color: #fcfcfc;
+    font-size: 14px;
+    color: #333;
+    box-sizing: border-box; /* Ensures padding doesn't affect width */
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="number"]:focus,
+input[type="date"]:focus,
+input[type="url"]:focus,
+input[type="password"]:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: #76F1FF; /* Theme accent color */
+    box-shadow: 0 0 0 3px rgba(118, 241, 255, 0.3);
+}
+
+/* Override for smaller inputs in specific contexts */
+.filter-controls input, .filter-controls select,
+.form-grid-condensed input,
+#add-client-form input {
+    padding: 8px 10px;
+}
