@@ -35,6 +35,9 @@ export function renderAnalytics() {
 function renderKpis() {
     const currentYear = new Date().getFullYear();
 
+    // KPI: Total Clients
+    document.getElementById('kpi-total-clients').textContent = allClients.rows.length;
+
     // KPI 1: Total Revenue (YTD)
     const [valIdx, dateIdx] = ['Value', 'Start Date'].map(h => allProjects.headers.indexOf(h));
     let ytdIncome = 0;
@@ -283,4 +286,3 @@ function renderActivityFeed() {
         activityFeed.appendChild(li);
     });
 }
-

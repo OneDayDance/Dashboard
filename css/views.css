@@ -68,9 +68,7 @@
 #activity-feed li .activity-date { display: block; font-size: 12px; color: #888; margin-top: 4px; }
 
 /* --- Clients View --- */
-.client-layout-container { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; align-items: start; }
-.add-client-container h2 { margin-top: 0; }
-#add-client-form { display: flex; flex-direction: column; gap: 10px; }
+.client-layout-container { display: grid; grid-template-columns: 1fr; gap: 20px; align-items: start; }
 
 /* --- Rebuilt Client & Request Modal Views --- */
 .modal-nav { border-right: 1px solid #eee; padding-right: 20px; }
@@ -186,4 +184,3 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 #task-details-modal .form-field label { display: block; margin-bottom: 5px; font-weight: bold; }
 #task-details-modal .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 #task-details-modal .add-item-form .btn { flex-shrink: 0; } /* Prevent add button from shrinking */
-

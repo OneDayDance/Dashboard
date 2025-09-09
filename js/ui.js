@@ -10,7 +10,7 @@ export function cacheDOMElements() {
     elements.authorizeButton = document.getElementById('authorize_button');
     elements.signoutButton = document.getElementById('signout_button');
     elements.appContainer = document.getElementById('app-container');
-    elements.addClientForm = document.getElementById('add-client-form');
+    elements.addClientModal = document.getElementById('add-client-modal');
     elements.serviceFilter = document.getElementById('service-filter');
     elements.statusFilter = document.getElementById('status-filter');
     elements.searchBar = document.getElementById('search-bar');
@@ -174,4 +174,3 @@ export function showMainError(message) {
     errorContainer.innerHTML = `<h2>An Error Occurred</h2><p>${message}</p>`;
     errorContainer.style.display = 'block';
 }
-

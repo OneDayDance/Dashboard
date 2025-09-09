@@ -72,6 +72,11 @@
             </div>
             <div class="analytics-grid kpi-grid">
                 <div class="kpi-card info-card">
+                    <h3>Total Clients</h3>
+                    <p id="kpi-total-clients">0</p>
+                    <span class="kpi-icon">&#128101;</span>
+                </div>
+                <div class="kpi-card info-card">
                     <h3>Total Revenue (YTD)</h3>
                     <p id="kpi-total-revenue">$0</p>
                     <span class="kpi-icon">&#128176;</span>
@@ -129,6 +134,7 @@
                                 </select>
                             </div>
                              <div class="view-controls">
+                                <button id="add-client-btn" class="btn btn-primary">Add Client</button>
                                 <button id="client-list-view-btn" class="btn btn-subtle active">List View</button>
                                 <button id="client-card-view-btn" class="btn btn-subtle">Card View</button>
                                 <button id="client-column-select-btn" class="btn btn-subtle">Display Options</button>
@@ -136,16 +142,6 @@
                         </div>
                     </div>
                     <div id="client-table-container"></div>
-                </div>
-                <div class="add-client-container card content-section">
-                    <h2>Add New Client</h2>
-                    <form id="add-client-form">
-                        <input type="text" id="client-first-name" placeholder="First Name" required>
-                        <input type="text" id="client-last-name" placeholder="Last Name" required>
-                        <input type="email" id="client-email" placeholder="Email" required>
-                        <button type="submit" class="btn btn-primary">Add Client</button>
-                    </form>
-                    <div id="add-client-status"></div>
                 </div>
             </div>
         </main>
@@ -223,6 +219,50 @@
         </div>
     </div>
     
+    <!-- Add Client Modal -->
+    <div id="add-client-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add New Client</h2>
+                <span class="close-button">&times;</span>
+            </div>
+            <form id="add-client-form-modal">
+                <div class="modal-body">
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label for="new-client-first-name">First Name</label>
+                            <input type="text" id="new-client-first-name" required>
+                        </div>
+                        <div class="form-field">
+                            <label for="new-client-last-name">Last Name</label>
+                            <input type="text" id="new-client-last-name" required>
+                        </div>
+                    </div>
+                    <div class="form-field">
+                        <label for="new-client-email">Email</label>
+                        <input type="email" id="new-client-email" required>
+                    </div>
+                    <div class="form-field">
+                        <label for="new-client-phone">Phone</label>
+                        <input type="text" id="new-client-phone">
+                    </div>
+                    <div class="form-field">
+                        <label for="new-client-organization">Organization</label>
+                        <input type="text" id="new-client-organization">
+                    </div>
+                     <div class="form-field">
+                        <label for="new-client-social">Social Media</label>
+                        <input type="text" id="new-client-social" placeholder="e.g., Instagram handle, LinkedIn URL">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Save Client</button>
+                    <span id="add-client-modal-status"></span>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Create Project Modal (Standardized) -->
     <div id="create-project-modal" class="modal">
         <div class="modal-content">
@@ -446,4 +486,3 @@
     <script type="module" src="js/main.js"></script>
 </body>
 </html>
-

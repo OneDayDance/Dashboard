@@ -12,7 +12,14 @@ let refreshData; // This will hold the main data refresh function.
 // --- STATE & EVENT HANDLERS ---
 export function initClientsTab(refreshDataFn) {
     refreshData = refreshDataFn;
-    document.getElementById('add-client-form').addEventListener('submit', handleAddClientSubmit);
+    
+    document.getElementById('add-client-btn').onclick = () => {
+        document.getElementById('add-client-form-modal').reset();
+        document.getElementById('add-client-modal-status').textContent = '';
+        elements.addClientModal.style.display = 'block';
+    };
+    document.getElementById('add-client-form-modal').addEventListener('submit', handleAddClientSubmit);
+
     document.getElementById('client-search-bar').oninput = (e) => { updateState({ clientSearchTerm: e.target.value.toLowerCase() }); renderClients(); };
     document.getElementById('client-status-filter').onchange = (e) => { updateClientFilters('status', e.target.value); renderClients(); };
     document.getElementById('client-list-view-btn').onclick = () => setClientView('list');
@@ -137,20 +144,26 @@ function handleSaveColumns() {
 
 async function handleAddClientSubmit(event) {
     event.preventDefault();
-    const statusDiv = document.getElementById('add-client-status');
+    const statusDiv = document.getElementById('add-client-modal-status');
     statusDiv.textContent = 'Adding client...';
     const clientData = {
-        'First Name': document.getElementById('client-first-name').value,
-        'Last Name': document.getElementById('client-last-name').value,
-        'Email': document.getElementById('client-email').value,
+        'First Name': document.getElementById('new-client-first-name').value,
+        'Last Name': document.getElementById('new-client-last-name').value,
+        'Email': document.getElementById('new-client-email').value,
+        'Phone': document.getElementById('new-client-phone').value,
+        'Organization': document.getElementById('new-client-organization').value,
+        'Social Media': document.getElementById('new-client-social').value,
         'Status': 'Active',
         'ClientID': `C-${Date.now()}`
     };
     try {
-        await writeData('Clients', clientData); // This will now trigger a full data refresh.
+        await writeData('Clients', clientData);
         statusDiv.textContent = 'Client added successfully!';
-        document.getElementById('add-client-form').reset();
-        setTimeout(() => { statusDiv.textContent = ''; }, 3000);
+        document.getElementById('add-client-form-modal').reset();
+        setTimeout(() => {
+            statusDiv.textContent = '';
+            elements.addClientModal.style.display = 'none';
+        }, 2000);
     } catch (err) {
         statusDiv.textContent = `Error: ${err.result.error.message}`;
     }
@@ -227,10 +240,27 @@ export function showClientDetailsModal(rowData, headers) {
         displayHeaders.forEach(h => {
             const val = localState.currentRowData[headers.indexOf(h)] || '';
             const inputId = `client-edit-${h.replace(/\s+/g, '')}`;
+            
+            let fieldHtml;
+            if (localState.isEditMode) {
+                if (h === 'Status') {
+                    const statuses = ['Lead', 'Active', 'On Hold', 'Past Client', 'Do Not Contact'];
+                    fieldHtml = `<select id="${inputId}">`;
+                    statuses.forEach(status => {
+                        fieldHtml += `<option value="${status}" ${val === status ? 'selected' : ''}>${status}</option>`;
+                    });
+                    fieldHtml += `</select>`;
+                } else {
+                    fieldHtml = `<input type="text" id="${inputId}" value="${val}">`;
+                }
+            } else {
+                fieldHtml = `<p>${val || 'N/A'}</p>`;
+            }
+
             contentHtml += `
                 <div class="form-field">
                     <label for="${inputId}">${h}</label>
-                    ${localState.isEditMode ? `<input type="text" id="${inputId}" value="${val}">` : `<p>${val || 'N/A'}</p>`}
+                    ${fieldHtml}
                 </div>`;
         });
         return contentHtml + '</div>';
@@ -437,4 +467,3 @@ function showDeleteClientModal(rowData, headers) {
         } catch (err) { statusSpan.textContent = 'Error deleting client.'; console.error('Delete client error:', err); confirmBtn.disabled = false; }
     };
 }
-
