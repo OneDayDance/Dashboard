@@ -5,6 +5,7 @@ import { state, allProjects, allClients, allTasks, allRequests, updateState } fr
 import { updateSheetRow, writeData, clearSheetRow } from './api.js';
 import { elements } from './ui.js';
 import { showRequestDetailsModal } from './requests.js';
+import { showClientDetailsModal } from './clients.js';
 
 // --- INITIALIZATION ---
 export function initProjectsTab() {
@@ -268,6 +269,19 @@ function attachProjectDetailsEventListeners(projectId) {
             else {
                 elements.gdriveLinkModal.style.display = 'block';
                 document.getElementById('gdrive-project-id-input').value = projectId;
+            }
+        };
+    }
+
+    const clientCard = detailsColumn.querySelector('.project-client-card');
+    if (clientCard) {
+        clientCard.onclick = () => {
+            const clientEmail = clientCard.dataset.clientEmail;
+            const client = allClients.rows.find(c => c[allClients.headers.indexOf('Email')] === clientEmail);
+            if (client) {
+                showClientDetailsModal(client, allClients.headers);
+            } else {
+                alert('Could not find the client details.');
             }
         };
     }
@@ -679,7 +693,7 @@ function renderTasksAsList(projectId) {
         projectTasks.filter(t => (t.row[allTasks.headers.indexOf('Bucket')] || 'General') === bucket).forEach(task => {
             html += renderTaskItem(task.row, task.subtasks);
         });
-        html += `<button class="add-task-to-bucket-btn" data-bucket="${bucket}">+ Add Task</button></div>`;
+        html += `<button class="add-task-to-bucket-btn btn btn-secondary" data-bucket="${bucket}">+ Add Task</button></div>`;
     });
     return html + `</div>`;
 }
@@ -692,7 +706,7 @@ function renderTasksAsBoard(projectId) {
         projectTasks.filter(t => (t.row[allTasks.headers.indexOf('Bucket')] || 'General') === bucket).forEach(task => {
             html += renderTaskCard(task.row, task.subtasks);
         });
-        html += `<button class="add-task-to-bucket-btn" data-bucket="${bucket}">+ Add Task</button></div>`;
+        html += `<button class="add-task-to-bucket-btn btn btn-secondary" data-bucket="${bucket}">+ Add Task</button></div>`;
     });
     return html + `</div>`;
 }
