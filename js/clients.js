@@ -170,14 +170,14 @@ function showClientDetailsModal(rowData, headers) {
         document.getElementById(`client-tab-${e.currentTarget.dataset.tab}`).classList.add('active');
 
         const isEditable = e.currentTarget.dataset.editable === 'true';
-        const isActionsTab = e.currentTarget.dataset.tab === 'actions';
 
-        if (isActionsTab) {
-            footer.style.display = 'none';
-        } else {
+        // Corrected logic: Show footer with edit/save buttons only on editable tabs.
+        if (isEditable) {
             footer.style.display = 'block';
-            editBtn.style.display = isEditable ? 'inline-block' : 'none';
+            editBtn.style.display = 'inline-block';
             saveBtn.style.display = 'none';
+        } else {
+            footer.style.display = 'none';
         }
     });
 
@@ -380,5 +380,3 @@ function showDeleteClientModal(rowData, headers) {
         } catch (err) { statusSpan.textContent = 'Error deleting client.'; console.error('Delete client error:', err); confirmBtn.disabled = false; }
     };
 }
-
-
