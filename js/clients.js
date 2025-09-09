@@ -1,7 +1,7 @@
 // js/clients.js
 // Description: Contains all logic for the 'Clients' tab.
 
-import { state, allClients, allRequests, allProjects, clientSortableColumns, updateState, updateClientFilters, setAllClients } from './state.js';
+import { state, allClients, allRequests, allProjects, clientSortableColumns, updateState, updateClientFilters } from './state.js';
 import { updateSheetRow, writeData, clearSheetRow } from './api.js';
 import { showColumnModal, elements } from './ui.js';
 import { showCreateProjectModal, renderProjectsTab } from './projects.js';
@@ -22,14 +22,16 @@ export function initClientsTab(refreshDataFn) {
 
     document.getElementById('client-search-bar').oninput = (e) => { updateState({ clientSearchTerm: e.target.value.toLowerCase() }); renderClients(); };
     document.getElementById('client-status-filter').onchange = (e) => { updateClientFilters('status', e.target.value); renderClients(); };
-    document.getElementById('client-list-view-btn').onclick = () => setClientView('list');
-    document.getElementById('client-card-view-btn').onclick = () => setClientView('card');
+    elements.clientViewToggleBtn.onclick = toggleClientView;
     document.getElementById('client-column-select-btn').onclick = () => showColumnModal(allClients.headers, state.visibleClientColumns, 'client-column-checkboxes');
     document.getElementById('save-client-columns-btn').onclick = handleSaveColumns;
 }
 
 // --- RENDERING ---
 export function renderClients() {
+    // Update button text based on current view
+    elements.clientViewToggleBtn.textContent = state.clientCurrentView === 'list' ? 'Card View' : 'List View';
+    
     const renderFn = state.clientCurrentView === 'list' ? renderClientsAsList : renderClientsAsCards;
     renderFn();
 }
@@ -128,10 +130,8 @@ function handleClientSort(event) {
     renderClients();
 }
 
-function setClientView(view) {
-    updateState({ clientCurrentView: view });
-    document.getElementById('client-list-view-btn').classList.toggle('active', view === 'list');
-    document.getElementById('client-card-view-btn').classList.toggle('active', view === 'card');
+function toggleClientView() {
+    updateState({ clientCurrentView: state.clientCurrentView === 'list' ? 'card' : 'list' });
     renderClients();
 }
 
@@ -156,8 +156,16 @@ async function handleAddClientSubmit(event) {
         'Client Type': document.getElementById('new-client-type').value,
         'Organization': document.getElementById('new-client-organization').value,
         'Social Media': document.getElementById('new-client-social').value,
-        'Status': 'Active',
-        'ClientID': `C-${Date.now()}`
+        'Status': 'Lead',
+        'ClientID': `C-${Date.now()}`,
+        'Intake Date': new Date().toLocaleDateString(),
+        'Source': document.getElementById('new-client-source').value,
+        'Referral Source': document.getElementById('new-client-referral-source').value,
+        'Client Temperature': document.getElementById('new-client-temperature').value,
+        'Communication Preference': document.getElementById('new-client-comms-pref').value,
+        'Assigned To': document.getElementById('new-client-assigned-to').value,
+        'Next Follow-up Date': document.getElementById('new-client-follow-up').value,
+        'Last Contact Date': ''
     };
     try {
         await writeData('Clients', clientData);
@@ -238,7 +246,12 @@ export function showClientDetailsModal(rowData, headers) {
 
     // --- CONTENT POPULATION ---
     function populateClientDetailsTab() {
-        const displayHeaders = ['First Name', 'Last Name', 'Email', 'Phone', 'Address', 'Birthday', 'Client Type', 'Organization', 'Status', 'Social Media'];
+        const displayHeaders = [
+            'First Name', 'Last Name', 'Email', 'Phone', 'Address', 'Birthday', 
+            'Client Type', 'Organization', 'Status', 'Social Media', 'Intake Date',
+            'Source', 'Referral Source', 'Client Temperature', 'Communication Preference',
+            'Assigned To', 'Next Follow-up Date', 'Last Contact Date'
+        ];
         let contentHtml = '<div class="form-grid-condensed">';
         displayHeaders.forEach(h => {
             const val = localState.currentRowData[headers.indexOf(h)] || '';
@@ -249,19 +262,30 @@ export function showClientDetailsModal(rowData, headers) {
                  if (h === 'Status') {
                     const statuses = ['Lead', 'Active', 'On Hold', 'Past Client', 'Do Not Contact'];
                     fieldHtml = `<select id="${inputId}">`;
-                    statuses.forEach(status => {
-                        fieldHtml += `<option value="${status}" ${val === status ? 'selected' : ''}>${status}</option>`;
-                    });
+                    statuses.forEach(status => { fieldHtml += `<option value="${status}" ${val === status ? 'selected' : ''}>${status}</option>`; });
                     fieldHtml += `</select>`;
                 } else if (h === 'Client Type') {
-                     const types = ['Individual', 'Company', 'Non-Profit', 'Educational'];
+                     const types = ['Individual', 'Company', 'Non-Profit', 'Educational', 'Other'];
                      fieldHtml = `<select id="${inputId}">`;
-                     types.forEach(type => {
-                         fieldHtml += `<option value="${type}" ${val === type ? 'selected' : ''}>${type}</option>`;
-                     });
+                     types.forEach(type => { fieldHtml += `<option value="${type}" ${val === type ? 'selected' : ''}>${type}</option>`; });
                      fieldHtml += `</select>`;
-                } else if (h === 'Birthday') {
+                } else if (['Birthday', 'Intake Date', 'Next Follow-up Date', 'Last Contact Date'].includes(h)) {
                     fieldHtml = `<input type="date" id="${inputId}" value="${val}">`;
+                } else if (h === 'Source') {
+                    const sources = ['Referral', 'Social Media', 'Google', 'Advertisement', 'Event', 'Other'];
+                    fieldHtml = `<select id="${inputId}">`;
+                    sources.forEach(source => { fieldHtml += `<option value="${source}" ${val === source ? 'selected' : ''}>${source}</option>`; });
+                    fieldHtml += `</select>`;
+                } else if (h === 'Client Temperature') {
+                    const temps = ['Hot', 'Warm', 'Cold'];
+                    fieldHtml = `<select id="${inputId}">`;
+                    temps.forEach(temp => { fieldHtml += `<option value="${temp}" ${val === temp ? 'selected' : ''}>${temp}</option>`; });
+                    fieldHtml += `</select>`;
+                } else if (h === 'Communication Preference') {
+                    const prefs = ['Email', 'Phone', 'Text'];
+                    fieldHtml = `<select id="${inputId}">`;
+                    prefs.forEach(pref => { fieldHtml += `<option value="${pref}" ${val === pref ? 'selected' : ''}>${pref}</option>`; });
+                    fieldHtml += `</select>`;
                 }
                 else {
                     fieldHtml = `<input type="text" id="${inputId}" value="${val}">`;
@@ -270,11 +294,7 @@ export function showClientDetailsModal(rowData, headers) {
                 fieldHtml = `<p>${val || 'N/A'}</p>`;
             }
 
-            contentHtml += `
-                <div class="form-field">
-                    <label for="${inputId}">${h}</label>
-                    ${fieldHtml}
-                </div>`;
+            contentHtml += `<div class="form-field"><label for="${inputId}">${h}</label>${fieldHtml}</div>`;
         });
         return contentHtml + '</div>';
     }
@@ -323,7 +343,7 @@ export function showClientDetailsModal(rowData, headers) {
         try { logs = JSON.parse(localState.currentRowData[logsIndex] || '[]'); } catch (e) { console.error("Could not parse logs", e); }
         
         if (logs.length > 0) {
-            logs.forEach(log => contentHtml += `<div class="contact-log"><small>${new Date(log.date).toLocaleString()}</small><p>${log.note}</p></div>`);
+            logs.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(log => contentHtml += `<div class="contact-log"><small>${new Date(log.date).toLocaleString()}</small><p>${log.note}</p></div>`);
         } else {
             contentHtml += '<p>No contact logs.</p>';
         }
@@ -374,9 +394,8 @@ export function showClientDetailsModal(rowData, headers) {
             let logs = JSON.parse(logsInput.value);
             logs.unshift({ date: new Date().toISOString(), note: newNote });
             logsInput.value = JSON.stringify(logs);
-            // Re-render only the notes tab content for instant feedback
             contentArea.innerHTML = populateClientNotesTab();
-            attachContentEventListeners(); // Re-attach listeners to new content
+            attachContentEventListeners();
         };
 
         // --- History specific ---
@@ -407,7 +426,15 @@ export function showClientDetailsModal(rowData, headers) {
     async function handleSaveClientUpdate() {
         statusSpan.textContent = 'Saving...';
         const dataToUpdate = {};
-        const fields = ['First Name', 'Last Name', 'Email', 'Phone', 'Address', 'Birthday', 'Client Type', 'Organization', 'Status', 'Social Media', 'Notes', 'Contact Logs'];
+        const fields = [
+            'First Name', 'Last Name', 'Email', 'Phone', 'Address', 'Birthday', 
+            'Client Type', 'Organization', 'Status', 'Social Media', 'Intake Date',
+            'Source', 'Referral Source', 'Client Temperature', 'Communication Preference',
+            'Assigned To', 'Next Follow-up Date', 'Notes', 'Contact Logs'
+        ];
+        
+        const oldLogs = localState.currentRowData[headers.indexOf('Contact Logs')] || '[]';
+        
         fields.forEach(h => {
             const input = document.getElementById(`client-edit-${h.replace(/\s+/g, '')}`);
             if (input) {
@@ -417,12 +444,17 @@ export function showClientDetailsModal(rowData, headers) {
             }
         });
 
+        // If contact logs were changed, update the last contact date
+        if (dataToUpdate['Contact Logs'] && dataToUpdate['Contact Logs'] !== oldLogs) {
+             dataToUpdate['Last Contact Date'] = new Date().toLocaleDateString();
+        }
+
         try {
             const clientId = localState.currentRowData[headers.indexOf('ClientID')];
             if (Object.keys(dataToUpdate).length > 0) {
                 await updateSheetRow('Clients', 'ClientID', clientId, dataToUpdate);
             }
-            // Data will refresh automatically. We can update local state for a faster feel.
+            
             const updatedRowIndex = allClients.rows.findIndex(r => r[allClients.headers.indexOf('ClientID')] === clientId);
             if(updatedRowIndex > -1) {
                 const newRow = [...allClients.rows[updatedRowIndex]];
@@ -449,7 +481,7 @@ export function showClientDetailsModal(rowData, headers) {
         link.onclick = (e) => {
             e.preventDefault();
             localState.activeTab = e.target.dataset.tab;
-            localState.isEditMode = false; // Always exit edit mode on tab change
+            localState.isEditMode = false;
             render();
             attachContentEventListeners();
         };

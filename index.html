@@ -138,8 +138,7 @@
                             </div>
                              <div class="view-controls">
                                 <button id="add-client-btn" class="btn btn-primary">Add Client</button>
-                                <button id="client-list-view-btn" class="btn btn-subtle active">List View</button>
-                                <button id="client-card-view-btn" class="btn btn-subtle">Card View</button>
+                                <button id="client-view-toggle-btn" class="btn btn-subtle">Card View</button>
                                 <button id="client-column-select-btn" class="btn btn-subtle">Display Options</button>
                             </div>
                         </div>
@@ -277,6 +276,53 @@
                      <div class="form-field">
                         <label for="new-client-social">Social Media</label>
                         <input type="text" id="new-client-social" placeholder="e.g., Instagram handle, LinkedIn URL">
+                    </div>
+                    <hr>
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label for="new-client-source">Source</label>
+                            <select id="new-client-source">
+                                <option selected disabled>Select a source</option>
+                                <option>Referral</option>
+                                <option>Social Media</option>
+                                <option>Google</option>
+                                <option>Advertisement</option>
+                                <option>Event</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label for="new-client-referral-source">Referral Source</label>
+                            <input type="text" id="new-client-referral-source" placeholder="Name of referrer">
+                        </div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label for="new-client-temperature">Client Temperature</label>
+                            <select id="new-client-temperature">
+                                <option>Hot</option>
+                                <option selected>Warm</option>
+                                <option>Cold</option>
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label for="new-client-comms-pref">Communication Preference</label>
+                            <select id="new-client-comms-pref">
+                                <option>Email</option>
+                                <option>Phone</option>
+                                <option>Text</option>
+                            </select>
+                        </div>
+                    </div>
+                     <div class="form-grid">
+                        <div class="form-field">
+                            <label for="new-client-assigned-to">Assigned To</label>
+                            <input type="text" id="new-client-assigned-to">
+                        </div>
+                        <div class="form-field">
+                            <label for="new-client-follow-up">Next Follow-up Date</label>
+                            <input type="date" id="new-client-follow-up">
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">

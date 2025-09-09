@@ -34,8 +34,7 @@ export function cacheDOMElements() {
     elements.clientSearchBar = document.getElementById('client-search-bar');
     elements.clientTableContainer = document.getElementById('client-table-container');
     elements.clientStatusFilter = document.getElementById('client-status-filter');
-    elements.clientListViewBtn = document.getElementById('client-list-view-btn');
-    elements.clientCardViewBtn = document.getElementById('client-card-view-btn');
+    elements.clientViewToggleBtn = document.getElementById('client-view-toggle-btn');
     elements.clientColumnSelectBtn = document.getElementById('client-column-select-btn');
     elements.projectSearchBar = document.getElementById('project-search-bar');
     elements.loadingOverlay = document.getElementById('loading-overlay');
@@ -174,3 +173,4 @@ export function showMainError(message) {
     errorContainer.innerHTML = `<h2>An Error Occurred</h2><p>${message}</p>`;
     errorContainer.style.display = 'block';
 }
+
