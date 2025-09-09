@@ -1,0 +1,140 @@
+/* --- Themed Buttons --- */
+button {
+    border: none;
+    padding: 8px 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    color: white;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+button[disabled] {
+    background-color: #ccc !important;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+#authorize_button, .view-controls button.active, #modal-save-note-btn, #save-columns-btn, #client-modal-save-btn, #save-client-columns-btn, #signout_button, #client-modal-edit-btn, #project-actions-btn, #gdrive-link-save-btn {
+    background-color: #FF9D76; /* Orange */
+}
+#request-view-toggle-btn {
+     background-color: #fff;
+     color: #333;
+}
+/* Specific button overrides */
+#client-tab-actions button, #add-client-form button, #create-project-form button, #task-details-form button, #add-subtask-btn, #add-link-btn, #project-edit-btn, #project-save-btn, #add-bucket-btn, .add-task-to-bucket-btn, #modal-create-client-btn, #modal-create-project-btn {
+    background-color: #FF9D76;
+}
+.add-task-to-bucket-btn {
+    width: 100%;
+    margin-top: 5px;
+    background-color: rgba(255, 157, 118, 0.2);
+    color: #555;
+}
+.add-task-to-bucket-btn:hover {
+     background-color: #FF9D76;
+     color: white;
+}
+#delete-client-btn, #delete-project-btn { background-color: #dc3545 !important; }
+#delete-confirm-btn, #delete-project-confirm-btn { background-color: #dc3545; }
+
+
+/* --- Themed Tabs --- */
+.tabs-container {
+    background-color: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 10px 20px 0;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+.tab-nav {
+    display: flex;
+    border-bottom: 2px solid #ccc;
+}
+.tab-button {
+    padding: 10px 20px;
+    cursor: pointer;
+    background-color: transparent;
+    font-size: 16px;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    color: #333;
+}
+.tab-button:hover { background-color: rgba(0, 0, 0, 0.05); }
+.tab-button.active {
+    border-bottom-color: #76F1FF;
+    font-weight: bold;
+}
+
+/* --- Table Styles --- */
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th, .data-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+.data-table th { background-color: rgba(255, 255, 255, 0.6); }
+.data-table th.sortable { cursor: pointer; position: relative; }
+.data-table th.sortable:hover { background-color: #e2e2e2; }
+.data-table th.sortable::after { content: '\2195'; opacity: 0.3; position: absolute; right: 8px; }
+.data-table th.sorted-asc::after { content: '\25B2'; opacity: 1; }
+.data-table th.sorted-desc::after { content: '\25BC'; opacity: 1; }
+.data-table tbody tr:hover { background-color: #e9ecef; cursor: pointer; }
+
+
+/* --- Themed Modals --- */
+.modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(5px); }
+.modal-content {
+    background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 800px; border-radius: 12px; position: relative; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+}
+.modal-footer { text-align: right; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; flex-shrink: 0; }
+.close-button { color: #aaa; position: absolute; top: 10px; right: 20px; font-size: 28px; font-weight: bold; }
+.close-button:hover, .close-button:focus { color: black; text-decoration: none; cursor: pointer; }
+
+/* Helper class to definitively hide the client modal footer */
+.modal-footer.is-hidden {
+    display: none;
+}
+
+/* --- Loading Overlay --- */
+#loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(5px);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: #333;
+    font-size: 1.2em;
+}
+
+.loading-spinner {
+    border: 8px solid #f3f3f3; /* Light grey */
+    border-top: 8px solid #FF9D76; /* Orange */
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+

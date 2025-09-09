@@ -1,0 +1,87 @@
+/* --- Fluid Gradient Background --- */
+:root {
+    --ang: 0deg; /* Start at 0 for a seamless loop */
+    --c1: #FF9D76;
+    --c2: #76F1FF;
+    --c3: #C176FF;
+    --c4: #FFE176;
+}
+
+html::before {
+    content: "";
+    position: fixed;
+    left: 0; top: 0; right: 0; bottom: 0;
+    z-index: -1;
+    background: linear-gradient(var(--ang), var(--c1), var(--c2), var(--c3), var(--c4));
+    background-size: 200% 200%;
+    animation: bg-pan 18s ease-in-out infinite alternate, bg-rotate 36s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes bg-pan {
+    0%   { background-position: 0% 0%; }
+    50%  { background-position: 100% 0%; }
+    100% { background-position: 0% 100%; }
+}
+
+@keyframes bg-rotate {
+    from { --ang: 0deg; } /* Explicitly start at 0 */
+    to { --ang: 360deg; } /* End at 360 (visually same as 0) */
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    color: #333;
+    padding: 20px;
+}
+
+/* --- General Layout & Themed UI --- */
+header, .card, main {
+    background-color: rgba(255, 255, 255, 0.85); /* Semi-transparent white */
+    backdrop-filter: blur(10px); /* Frosted glass effect */
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+header {
+    text-align: center;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+main { padding: 20px; }
+
+#auth-container {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+}
+
+/* --- Form Field & Grid styles for modals */
+.form-field { margin-bottom: 15px; }
+.form-field label { display: block; margin-bottom: 5px; font-weight: bold; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+
+/* --- Responsive adjustments */
+@media (max-width: 900px) {
+    .chart-grid {
+        grid-template-columns: 1fr; /* Stack charts on smaller screens */
+    }
+}
+@media (max-width: 768px) {
+    .client-layout-container {
+        grid-template-columns: 1fr;
+    }
+    .project-layout-container {
+        grid-template-columns: 1fr;
+    }
+    .project-list-column {
+        position: static;
+        height: auto;
+        max-height: 50vh;
+    }
+}
+
