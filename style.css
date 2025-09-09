@@ -674,6 +674,11 @@ button[disabled] {
     flex-shrink: 0;
 }
 
+/* Helper class to definitively hide the client modal footer */
+.modal-footer.is-hidden {
+    display: none;
+}
+
 
 /* Form Field & Grid styles for modals */
 .form-field { margin-bottom: 15px; }

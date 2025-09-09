@@ -174,14 +174,13 @@ function showClientDetailsModal(rowData, headers) {
         const isEditable = e.currentTarget.dataset.editable === 'true';
 
         if (isEditable) {
-            // Show the footer and reset buttons to "view" mode.
-            // This cancels "edit" mode if the user switches to another editable tab.
-            footer.style.display = 'block';
+            // Use CSS class to show the footer and reset buttons to "view" mode.
+            footer.classList.remove('is-hidden');
             editBtn.style.display = 'inline-block';
             saveBtn.style.display = 'none';
         } else {
-            // Hide the footer for non-editable tabs.
-            footer.style.display = 'none';
+            // Use CSS class to hide the footer for non-editable tabs.
+            footer.classList.add('is-hidden');
         }
     });
 
@@ -393,5 +392,6 @@ function showDeleteClientModal(rowData, headers) {
         } catch (err) { statusSpan.textContent = 'Error deleting client.'; console.error('Delete client error:', err); confirmBtn.disabled = false; }
     };
 }
+
 
 
