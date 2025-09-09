@@ -13,7 +13,7 @@
         <div class="landing-box">
             <h1>Client Management Dashboard</h1>
             <p>Please authorize to manage your clients.</p>
-            <button id="authorize_button" disabled>Loading...</button>
+            <button id="authorize_button" class="btn btn-primary">Loading...</button>
         </div>
     </div>
 
@@ -21,7 +21,7 @@
         <header>
             <h1>Client Management Dashboard</h1>
             <div id="auth-container">
-                <button id="signout_button">Sign Out</button>
+                <button id="signout_button" class="btn btn-primary">Sign Out</button>
             </div>
         </header>
 
@@ -52,8 +52,8 @@
                         </select>
                     </div>
                     <div class="view-controls">
-                        <button id="request-view-toggle-btn">Card View</button>
-                        <button id="column-select-btn">Display Options</button>
+                        <button id="request-view-toggle-btn" class="btn btn-subtle">Card View</button>
+                        <button id="column-select-btn" class="btn btn-subtle">Display Options</button>
                     </div>
                 </div>
             </div>
@@ -71,22 +71,22 @@
                 <h2>Dashboard Analytics</h2>
             </div>
             <div class="analytics-grid kpi-grid">
-                <div class="kpi-card">
+                <div class="kpi-card info-card">
                     <h3>Total Revenue (YTD)</h3>
                     <p id="kpi-total-revenue">$0</p>
                     <span class="kpi-icon">&#128176;</span>
                 </div>
-                <div class="kpi-card">
+                <div class="kpi-card info-card">
                     <h3>Active Projects</h3>
                     <p id="kpi-active-projects">0</p>
                      <span class="kpi-icon">&#128188;</span>
                 </div>
-                <div class="kpi-card">
+                <div class="kpi-card info-card">
                     <h3>New Clients (YTD)</h3>
                     <p id="kpi-new-clients">0</p>
                      <span class="kpi-icon">&#128100;</span>
                 </div>
-                <div class="kpi-card">
+                <div class="kpi-card info-card">
                     <h3>Pending Requests</h3>
                     <p id="kpi-pending-requests">0</p>
                      <span class="kpi-icon">&#128221;</span>
@@ -129,21 +129,21 @@
                                 </select>
                             </div>
                              <div class="view-controls">
-                                <button id="client-list-view-btn" class="active">List View</button>
-                                <button id="client-card-view-btn">Card View</button>
-                                <button id="client-column-select-btn">Display Options</button>
+                                <button id="client-list-view-btn" class="btn btn-subtle active">List View</button>
+                                <button id="client-card-view-btn" class="btn btn-subtle">Card View</button>
+                                <button id="client-column-select-btn" class="btn btn-subtle">Display Options</button>
                             </div>
                         </div>
                     </div>
                     <div id="client-table-container"></div>
                 </div>
-                <div class="add-client-container card">
+                <div class="add-client-container card content-section">
                     <h2>Add New Client</h2>
                     <form id="add-client-form">
                         <input type="text" id="client-first-name" placeholder="First Name" required>
                         <input type="text" id="client-last-name" placeholder="Last Name" required>
                         <input type="email" id="client-email" placeholder="Email" required>
-                        <button type="submit">Add Client</button>
+                        <button type="submit" class="btn btn-primary">Add Client</button>
                     </form>
                     <div id="add-client-status"></div>
                 </div>
@@ -155,8 +155,8 @@
                 <div class="project-list-column card">
                     <div class="project-list-header">
                         <h2 id="project-list-title">Projects</h2>
-                        <button id="project-list-collapse-btn" title="Toggle Project List">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <button id="project-list-collapse-btn" title="Toggle Project List" class="btn btn-secondary">
+                            <svg xmlns="http://www.w.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="15 18 9 12 15 6"></polyline>
                             </svg>
                         </button>
@@ -188,45 +188,36 @@
     </div>
 
     <!-- MODALS -->
-    <!-- Request Details Modal -->
+    <!-- Request Details Modal (Rebuilt) -->
     <div id="details-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h2 id="modal-title">Request Details</h2>
-            <div id="modal-body"></div>
-            <div class="modal-actions">
-                <div id="modal-notes-section">
-                    <h3>Notes</h3>
-                    <textarea id="modal-notes-textarea"></textarea>
-                    <button id="modal-save-note-btn">Save Note</button>
-                    <span id="modal-note-status"></span>
-                </div>
-                <div id="modal-request-actions-section">
-                    <h3>Actions</h3>
-                    <button id="modal-create-client-btn">Create Client</button>
-                    <button id="modal-create-project-btn">Create Project</button>
-                    <span id="modal-request-actions-status"></span>
-                </div>
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2 id="request-modal-title">Request Details</h2>
+                <span class="close-button">&times;</span>
+            </div>
+            <div class="modal-body two-column">
+                <div id="request-details-pane" class="modal-pane"></div>
+                <div id="request-actions-pane" class="modal-pane"></div>
             </div>
         </div>
     </div>
 
-    <!-- Client Details Modal (Rebuilt Structure) -->
+    <!-- Client Details Modal -->
     <div id="client-details-modal" class="modal">
         <div class="modal-content large">
             <div class="modal-header">
                 <h2 id="client-modal-name">Client Details</h2>
                 <span class="close-button">&times;</span>
             </div>
-            <div class="client-modal-layout">
-                <nav class="client-modal-nav">
+            <div class="modal-body two-column">
+                <nav class="modal-nav">
                     <a href="#" class="nav-link active" data-tab="details">Details</a>
                     <a href="#" class="nav-link" data-tab="history">History</a>
                     <a href="#" class="nav-link" data-tab="notes">Notes & Logs</a>
                     <a href="#" class="nav-link" data-tab="financials">Financials</a>
                     <a href="#" class="nav-link" data-tab="actions">Actions</a>
                 </nav>
-                <div class="client-modal-content">
+                <div class="modal-pane-content">
                     <!-- JS will render content here -->
                 </div>
             </div>
@@ -237,133 +228,147 @@
         </div>
     </div>
     
-    <!-- Create Project Modal -->
+    <!-- Create Project Modal (Standardized) -->
     <div id="create-project-modal" class="modal">
         <div class="modal-content">
-             <span class="close-button">&times;</span>
-            <h2>Create New Project</h2>
+            <div class="modal-header">
+                <h2>Create New Project</h2>
+                <span class="close-button">&times;</span>
+            </div>
             <form id="create-project-form">
-                <div class="form-field">
-                    <label for="project-client-name">Client</label>
-                    <input type="text" id="project-client-name" readonly>
-                </div>
-                 <div class="form-field">
-                    <label for="project-source-request">Source Request (Optional)</label>
-                    <select id="project-source-request"></select>
-                </div>
-                <div class="form-field">
-                    <label for="project-name">Project Name</label>
-                    <input type="text" id="project-name" required>
-                </div>
-                <div class="form-field">
-                    <label for="project-type">Project Type</label>
-                    <select id="project-type">
-                        <option>General</option>
-                        <option>Film</option>
-                        <option>Photography</option>
-                        <option>Design</option>
-                    </select>
-                </div>
-                <div class="form-field">
-                    <label for="project-status">Status</label>
-                    <select id="project-status">
-                        <option>Not Started</option>
-                        <option>In Progress</option>
-                        <option>Completed</option>
-                        <option>On Hold</option>
-                    </select>
-                </div>
-                <div class="form-field">
-                    <label for="project-value">Value ($)</label>
-                    <input type="number" id="project-value" placeholder="0.00">
-                </div>
-                 <div class="form-field">
-                    <label for="project-start-date">Start Date</label>
-                    <input type="date" id="project-start-date">
+                <div class="modal-body">
+                    <div class="form-field">
+                        <label for="project-client-name">Client</label>
+                        <input type="text" id="project-client-name" readonly>
+                    </div>
+                    <div class="form-field">
+                        <label for="project-source-request">Source Request (Optional)</label>
+                        <select id="project-source-request"></select>
+                    </div>
+                    <div class="form-field">
+                        <label for="project-name">Project Name</label>
+                        <input type="text" id="project-name" required>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label for="project-type">Project Type</label>
+                            <select id="project-type">
+                                <option>General</option>
+                                <option>Film</option>
+                                <option>Photography</option>
+                                <option>Design</option>
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label for="project-status">Status</label>
+                            <select id="project-status">
+                                <option>Not Started</option>
+                                <option>In Progress</option>
+                                <option>Completed</option>
+                                <option>On Hold</option>
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label for="project-value">Value ($)</label>
+                            <input type="number" id="project-value" placeholder="0.00">
+                        </div>
+                        <div class="form-field">
+                            <label for="project-start-date">Start Date</label>
+                            <input type="date" id="project-start-date">
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit">Create Project</button>
+                    <button type="submit" class="btn btn-primary">Create Project</button>
                     <span id="create-project-status"></span>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Task Details Modal -->
+    <!-- Task Details Modal (Standardized) -->
     <div id="task-details-modal" class="modal">
         <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h2 id="task-modal-title">New Task</h2>
+            <div class="modal-header">
+                <h2 id="task-modal-title">New Task</h2>
+                <span class="close-button">&times;</span>
+            </div>
             <form id="task-details-form">
-                <input type="hidden" id="task-id-input">
-                <input type="hidden" id="task-project-id-input">
-                <div class="form-field">
-                    <label for="task-title">Title</label>
-                    <input type="text" id="task-title" required>
-                </div>
-                 <div class="form-field">
-                    <label for="task-description">Description</label>
-                    <textarea id="task-description"></textarea>
-                </div>
-                <div class="form-grid">
+                <div class="modal-body">
+                    <input type="hidden" id="task-id-input">
+                    <input type="hidden" id="task-project-id-input">
                     <div class="form-field">
-                        <label for="task-due-date">Due Date</label>
-                        <input type="date" id="task-due-date">
+                        <label for="task-title">Title</label>
+                        <input type="text" id="task-title" required>
                     </div>
                     <div class="form-field">
-                        <label for="task-assignee">Assignee</label>
-                        <input type="text" id="task-assignee">
+                        <label for="task-description">Description</label>
+                        <textarea id="task-description"></textarea>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label for="task-due-date">Due Date</label>
+                            <input type="date" id="task-due-date">
+                        </div>
+                        <div class="form-field">
+                            <label for="task-assignee">Assignee</label>
+                            <input type="text" id="task-assignee">
+                        </div>
+                        <div class="form-field">
+                            <label for="task-status">Status</label>
+                            <select id="task-status">
+                                <option>To Do</option>
+                                <option>In Progress</option>
+                                <option>Done</option>
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label for="task-bucket">Bucket</label>
+                            <select id="task-bucket"></select>
+                        </div>
                     </div>
                     <div class="form-field">
-                        <label for="task-status">Status</label>
-                        <select id="task-status">
-                            <option>To Do</option>
-                            <option>In Progress</option>
-                            <option>Done</option>
-                        </select>
+                        <label>Subtasks</label>
+                        <div id="subtasks-container-modal" class="subtasks-container"></div>
+                        <div class="add-item-form">
+                            <input type="text" id="new-subtask-name" placeholder="New subtask...">
+                            <button type="button" id="add-subtask-btn" class="btn btn-secondary">Add</button>
+                        </div>
                     </div>
                     <div class="form-field">
-                        <label for="task-bucket">Bucket</label>
-                        <select id="task-bucket"></select>
+                        <label>Links</label>
+                        <div id="links-container"></div>
+                        <div class="add-item-form">
+                            <input type="text" id="new-link-url" placeholder="https://example.com">
+                            <button type="button" id="add-link-btn" class="btn btn-secondary">Add</button>
+                        </div>
                     </div>
                 </div>
-                <div class="form-field">
-                    <label>Subtasks</label>
-                    <div id="subtasks-container-modal" class="subtasks-container"></div>
-                    <div class="add-item-form">
-                        <input type="text" id="new-subtask-name" placeholder="New subtask...">
-                        <button type="button" id="add-subtask-btn">Add</button>
-                    </div>
-                </div>
-                 <div class="form-field">
-                    <label>Links</label>
-                    <div id="links-container"></div>
-                    <div class="add-item-form">
-                        <input type="text" id="new-link-url" placeholder="https://example.com">
-                        <button type="button" id="add-link-btn">Add</button>
-                    </div>
-                </div>
-                 <div class="modal-footer">
-                    <button type="submit">Save Task</button>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Save Task</button>
                     <span id="task-modal-status"></span>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- GDrive Link Modal -->
+    <!-- GDrive Link Modal (Standardized) -->
     <div id="gdrive-link-modal" class="modal">
         <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h2>Link Google Drive Folder</h2>
+            <div class="modal-header">
+                <h2>Link Google Drive Folder</h2>
+                <span class="close-button">&times;</span>
+            </div>
             <form id="gdrive-link-form">
-                <input type="hidden" id="gdrive-project-id-input">
-                <div class="form-field">
-                    <label for="gdrive-link-input">Folder URL</label>
-                    <input type="url" id="gdrive-link-input" placeholder="https://drive.google.com/..." required>
+                <div class="modal-body">
+                    <input type="hidden" id="gdrive-project-id-input">
+                    <div class="form-field">
+                        <label for="gdrive-link-input">Folder URL</label>
+                        <input type="url" id="gdrive-link-input" placeholder="https://drive.google.com/..." required>
+                    </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" id="gdrive-link-save-btn">Save Link</button>
+                    <button type="submit" id="gdrive-link-save-btn" class="btn btn-primary">Save Link</button>
                     <span id="gdrive-link-status"></span>
                 </div>
             </form>
@@ -371,54 +376,74 @@
     </div>
 
 
-    <!-- Delete Confirmation Modals -->
+    <!-- Delete Confirmation Modals (Standardized) -->
     <div id="delete-client-modal" class="modal">
         <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h2>Confirm Deletion</h2>
-            <div class="warning-box">
-                <p><strong>Warning:</strong> This action is permanent and cannot be undone. All data associated with this client will be cleared.</p>
+            <div class="modal-header">
+                <h2>Confirm Deletion</h2>
+                <span class="close-button">&times;</span>
             </div>
-            <p>To proceed, please type "Delete" in the box below.</p>
-            <input type="text" id="delete-confirm-input" placeholder="Type Delete to confirm">
+            <div class="modal-body">
+                <div class="warning-box">
+                    <p><strong>Warning:</strong> This action is permanent and cannot be undone. All data associated with this client will be cleared.</p>
+                </div>
+                <p>To proceed, please type "Delete" in the box below.</p>
+                <input type="text" id="delete-confirm-input" placeholder="Type Delete to confirm">
+            </div>
             <div class="modal-footer">
-                <button id="delete-confirm-btn" disabled>Delete Client</button>
+                <button id="delete-confirm-btn" class="btn btn-danger" disabled>Delete Client</button>
                 <span id="delete-client-status"></span>
             </div>
         </div>
     </div>
      <div id="delete-project-modal" class="modal">
         <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h2>Confirm Project Deletion</h2>
-            <div class="warning-box">
-                <p><strong>Warning:</strong> This action is permanent and cannot be undone. This project and all of its associated tasks will be permanently deleted.</p>
+            <div class="modal-header">
+                <h2>Confirm Project Deletion</h2>
+                <span class="close-button">&times;</span>
             </div>
-            <p>To proceed, please type "Delete" in the box below.</p>
-            <input type="text" id="delete-project-confirm-input" placeholder="Type Delete to confirm">
+            <div class="modal-body">
+                <div class="warning-box">
+                    <p><strong>Warning:</strong> This action is permanent and cannot be undone. This project and all of its associated tasks will be permanently deleted.</p>
+                </div>
+                <p>To proceed, please type "Delete" in the box below.</p>
+                <input type="text" id="delete-project-confirm-input" placeholder="Type Delete to confirm">
+            </div>
             <div class="modal-footer">
-                <button id="delete-project-confirm-btn" disabled>Delete Project</button>
+                <button id="delete-project-confirm-btn" class="btn btn-danger" disabled>Delete Project</button>
                 <span id="delete-project-status"></span>
             </div>
         </div>
     </div>
 
 
-    <!-- Column Selector Modals -->
+    <!-- Column Selector Modals (Standardized) -->
     <div id="column-modal" class="modal">
         <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h2>Select Request Columns</h2>
-            <div id="column-checkboxes"></div>
-            <button id="save-columns-btn">Apply</button>
+            <div class="modal-header">
+                <h2>Select Request Columns</h2>
+                <span class="close-button">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="column-checkboxes"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="save-columns-btn" class="btn btn-primary">Apply</button>
+            </div>
         </div>
     </div>
     <div id="client-column-modal" class="modal">
          <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h2>Select Client Columns</h2>
-            <div id="client-column-checkboxes"></div>
-            <button id="save-client-columns-btn">Apply</button>
+            <div class="modal-header">
+                <h2>Select Client Columns</h2>
+                <span class="close-button">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="client-column-checkboxes"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="save-client-columns-btn" class="btn btn-primary">Apply</button>
+            </div>
         </div>
     </div>
     

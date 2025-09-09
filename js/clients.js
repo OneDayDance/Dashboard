@@ -68,7 +68,7 @@ function renderClientsAsCards() {
     const cardContainer = document.createElement('div'); cardContainer.className = 'card-container';
     processedRows.forEach(row => {
         const card = document.createElement('div');
-        card.className = 'client-card';
+        card.className = 'client-card info-card';
         card.onclick = () => showClientDetailsModal(row, headers);
         let cardContent = `<h3>${row[headers.indexOf('First Name')] || 'No Name'}</h3>`;
         state.visibleClientColumns.forEach(headerText => {
@@ -168,7 +168,7 @@ function showClientDetailsModal(rowData, headers) {
     const modal = elements.clientDetailsModal;
     const nameHeader = modal.querySelector('#client-modal-name');
     const navLinks = modal.querySelectorAll('.nav-link');
-    const contentArea = modal.querySelector('.client-modal-content');
+    const contentArea = modal.querySelector('.modal-pane-content');
     const footer = modal.querySelector('.modal-footer');
     const statusSpan = modal.querySelector('#client-modal-status');
 
@@ -199,13 +199,13 @@ function showClientDetailsModal(rowData, headers) {
         if (editableTabs.includes(localState.activeTab)) {
             if (localState.isEditMode) {
                 const saveBtn = document.createElement('button');
-                saveBtn.id = 'client-modal-save-btn';
+                saveBtn.className = 'btn btn-primary';
                 saveBtn.textContent = 'Save Changes';
                 saveBtn.onclick = handleSaveClientUpdate;
                 footer.appendChild(saveBtn);
             } else {
                 const editBtn = document.createElement('button');
-                editBtn.id = 'client-modal-edit-btn';
+                editBtn.className = 'btn btn-secondary';
                 editBtn.textContent = 'Edit';
                 editBtn.onclick = () => {
                     localState.isEditMode = true;
@@ -287,7 +287,7 @@ function showClientDetailsModal(rowData, headers) {
             contentHtml += `<input type="hidden" id="client-edit-ContactLogs" value='${JSON.stringify(logs)}'>
                 <h3>Add New Contact Log</h3>
                 <textarea id="new-contact-log-entry" placeholder="Log a call, meeting, or email..."></textarea>
-                <button id="add-contact-log-btn" class="secondary">Add Log</button>`;
+                <button id="add-contact-log-btn" class="btn btn-secondary">Add Log</button>`;
         }
         return contentHtml;
     }
@@ -313,8 +313,8 @@ function showClientDetailsModal(rowData, headers) {
         return `
             <h3>Actions</h3>
             <div class="action-buttons-container">
-                <button id="modal-new-project-btn">Create New Project</button>
-                <button id="modal-delete-client-btn" class="danger">Delete Client</button>
+                <button id="modal-new-project-btn" class="btn btn-primary">Create New Project</button>
+                <button id="modal-delete-client-btn" class="btn btn-danger">Delete Client</button>
             </div>`;
     }
 

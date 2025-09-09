@@ -100,7 +100,7 @@ function renderRequestsAsCards(requestRows, container) {
     requestRows.forEach(row => {
         const originalIndex = allRequests.rows.indexOf(row);
         const card = document.createElement('div');
-        card.className = 'request-card';
+        card.className = 'request-card info-card';
         card.onclick = () => showRequestDetailsModal(row, headers);
         let cardContent = '';
         state.visibleColumns.forEach(headerText => {
@@ -191,60 +191,68 @@ function handleSaveColumns() {
     renderRequests();
 }
 
-// --- MODAL FUNCTIONS ---
+// --- MODAL FUNCTIONS (REBUILT) ---
 export function showRequestDetailsModal(rowData, headers) {
-    const modalBody = document.getElementById('modal-body');
+    const modal = elements.detailsModal;
+    const title = modal.querySelector('#request-modal-title');
+    const detailsPane = modal.querySelector('#request-details-pane');
+    const actionsPane = modal.querySelector('#request-actions-pane');
+
+    // Set Title
+    title.textContent = `Request from ${rowData[headers.indexOf('Full Name')] || 'N/A'}`;
+
+    // Populate Details Pane
     const ignoredFields = ['Raw Payload', 'All Services JSON', 'Submission ID', 'Timestamp', 'Notes'];
-    let contentHtml = '<ul>';
+    let detailsHtml = '<ul>';
     headers.forEach((header, index) => {
-        if (rowData[index] && !ignoredFields.includes(header)) contentHtml += `<li><strong>${header}:</strong> ${rowData[index]}</li>`;
+        if (rowData[index] && !ignoredFields.includes(header)) {
+            detailsHtml += `<li><strong>${header}:</strong> ${rowData[index]}</li>`;
+        }
     });
-    modalBody.innerHTML = contentHtml + '</ul>';
+    detailsPane.innerHTML = detailsHtml + '</ul>';
 
-    const notesTextarea = document.getElementById('modal-notes-textarea');
-    const noteStatus = document.getElementById('modal-note-status');
-    const originalIndex = allRequests.rows.indexOf(rowData);
-    noteStatus.textContent = '';
-    notesTextarea.value = rowData[headers.indexOf('Notes')] || '';
-    document.getElementById('modal-save-note-btn').onclick = () => handleSaveNote(originalIndex);
-
-    const createClientBtn = document.getElementById('modal-create-client-btn');
-    const createProjectBtn = document.getElementById('modal-create-project-btn');
-    const actionStatus = document.getElementById('modal-request-actions-status');
-
+    // Populate Actions Pane
+    const notes = rowData[headers.indexOf('Notes')] || '';
     const submissionEmail = rowData[headers.indexOf('Email')];
-    if (!submissionEmail) {
-        createClientBtn.disabled = true;
-        createProjectBtn.disabled = true;
-        actionStatus.textContent = "No email in submission.";
-    } else {
-        const clientExists = allClients.rows.some(r => r[allClients.headers.indexOf('Email')] === submissionEmail);
-        createClientBtn.disabled = clientExists;
-        createProjectBtn.disabled = !clientExists;
+    const clientExists = allClients.rows.some(r => r[allClients.headers.indexOf('Email')] === submissionEmail);
 
-        if (clientExists) {
-            actionStatus.textContent = "Client already exists.";
-            createClientBtn.onclick = null;
-        } else {
-            actionStatus.textContent = "";
-            createClientBtn.onclick = () => handleCreateClient(rowData, headers);
-        }
-
-        if (!clientExists) {
-            if (actionStatus.textContent === "") { // Don't overwrite other statuses
-                actionStatus.textContent = "Create client before making project.";
-            }
-            createProjectBtn.onclick = null;
-        } else {
-            createProjectBtn.onclick = () => {
-                const client = allClients.rows.find(c => c[allClients.headers.indexOf('Email')] === submissionEmail);
-                elements.detailsModal.style.display = 'none';
-                showCreateProjectModal(client, allClients.headers, rowData[headers.indexOf('Submission ID')]);
-            };
-        }
+    let actionsHtml = `
+        <div class="content-section">
+            <h3>Notes</h3>
+            <textarea id="modal-notes-textarea">${notes}</textarea>
+            <button id="modal-save-note-btn" class="btn btn-secondary">Save Note</button>
+            <span id="modal-note-status"></span>
+        </div>
+        <div class="content-section">
+            <h3>Actions</h3>
+            <div class="action-buttons-container">
+                <button id="modal-create-client-btn" class="btn btn-primary" ${!submissionEmail || clientExists ? 'disabled' : ''}>Create Client</button>
+                <button id="modal-create-project-btn" class="btn btn-primary" ${!clientExists ? 'disabled' : ''}>Create Project</button>
+            </div>
+            <span id="modal-request-actions-status">${clientExists ? 'Client already exists.' : ''}</span>
+        </div>
+    `;
+    actionsPane.innerHTML = actionsHtml;
+    
+    // Add Event Listeners
+    const originalIndex = allRequests.rows.indexOf(rowData);
+    document.getElementById('modal-save-note-btn').onclick = () => handleSaveNote(originalIndex);
+    
+    const createClientBtn = document.getElementById('modal-create-client-btn');
+    if (createClientBtn && !createClientBtn.disabled) {
+        createClientBtn.onclick = () => handleCreateClient(rowData, headers);
     }
 
-    elements.detailsModal.style.display = 'block';
+    const createProjectBtn = document.getElementById('modal-create-project-btn');
+    if (createProjectBtn && !createProjectBtn.disabled) {
+        createProjectBtn.onclick = () => {
+            const client = allClients.rows.find(c => c[allClients.headers.indexOf('Email')] === submissionEmail);
+            modal.style.display = 'none';
+            showCreateProjectModal(client, allClients.headers, rowData[headers.indexOf('Submission ID')]);
+        };
+    }
+
+    modal.style.display = 'block';
 }
 
 async function handleSaveNote(rowIndex) {
@@ -288,4 +296,3 @@ async function handleCreateClient(submissionRow, submissionHeaders) {
         actionStatus.textContent = `Error: ${err.result.error.message}`;
     }
 }
-

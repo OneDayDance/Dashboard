@@ -1,51 +1,68 @@
-/* --- Themed Buttons --- */
-button {
+/* --- Standardized Buttons --- */
+.btn {
     border: none;
     padding: 8px 16px;
-    border-radius: 5px;
+    border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
-    font-weight: bold;
-    color: white;
+    font-weight: 500;
     transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
-button:hover {
+.btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
 
-button[disabled] {
+.btn[disabled] {
     background-color: #ccc !important;
+    color: #888 !important;
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
 }
 
-#authorize_button, .view-controls button.active, #modal-save-note-btn, #save-columns-btn, #client-modal-save-btn, #save-client-columns-btn, #signout_button, #client-modal-edit-btn, #project-actions-btn, #gdrive-link-save-btn {
-    background-color: #FF9D76; /* Orange */
-}
-#request-view-toggle-btn {
-     background-color: #fff;
-     color: #333;
-}
-/* Specific button overrides */
-#client-tab-actions button, #add-client-form button, #create-project-form button, #task-details-form button, #add-subtask-btn, #add-link-btn, #project-edit-btn, #project-save-btn, #add-bucket-btn, .add-task-to-bucket-btn, #modal-create-client-btn, #modal-create-project-btn {
+.btn-primary {
     background-color: #FF9D76;
+    color: white;
 }
-.add-task-to-bucket-btn {
-    width: 100%;
-    margin-top: 5px;
-    background-color: rgba(255, 157, 118, 0.2);
-    color: #555;
+.btn-primary:hover {
+    background-color: #ff8a5c;
 }
-.add-task-to-bucket-btn:hover {
-     background-color: #FF9D76;
-     color: white;
-}
-#delete-client-btn, #delete-project-btn { background-color: #dc3545 !important; }
-#delete-confirm-btn, #delete-project-confirm-btn { background-color: #dc3545; }
 
+.btn-secondary {
+    background-color: #f0f0f0;
+    color: #333;
+}
+.btn-secondary:hover {
+    background-color: #e0e0e0;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    color: white;
+}
+.btn-danger:hover {
+    background-color: #c82333;
+}
+
+.btn-subtle {
+    background-color: #fff;
+    color: #333;
+    border: 1px solid #ccc;
+}
+.btn-subtle:hover {
+    background-color: #f8f9fa;
+    border-color: #bbb;
+}
+.btn-subtle.active {
+    background-color: #d4f4ff;
+    border-color: #76F1FF;
+}
 
 /* --- Themed Tabs --- */
 .tabs-container {
@@ -66,6 +83,7 @@ button[disabled] {
     cursor: pointer;
     background-color: transparent;
     font-size: 16px;
+    border: none;
     border-bottom: 3px solid transparent;
     margin-bottom: -2px;
     color: #333;
@@ -88,22 +106,22 @@ button[disabled] {
 .data-table tbody tr:hover { background-color: #e9ecef; cursor: pointer; }
 
 
-/* --- Themed Modals --- */
+/* --- Standardized Modals --- */
 .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(5px); }
 .modal-content {
-    background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 800px; border-radius: 12px; position: relative; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    display: flex;
-    flex-direction: column;
-    max-height: 90vh;
+    background-color: #fefefe; margin: 5% auto; padding: 0; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 12px; position: relative; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    display: flex; flex-direction: column; max-height: 90vh;
 }
-.modal-footer { text-align: right; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; flex-shrink: 0; }
-.close-button { color: #aaa; position: absolute; top: 10px; right: 20px; font-size: 28px; font-weight: bold; }
-.close-button:hover, .close-button:focus { color: black; text-decoration: none; cursor: pointer; }
+.modal-content.large { max-width: 1000px; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid #eee; }
+.modal-header h2 { margin: 0; font-size: 1.25em; }
+.modal-body { padding: 20px; overflow-y: auto; flex-grow: 1; }
+.modal-body.two-column { display: grid; grid-template-columns: 200px 1fr; gap: 20px; }
+.modal-footer { display: flex; justify-content: flex-end; align-items: center; gap: 10px; text-align: right; border-top: 1px solid #eee; padding: 15px 20px; background-color: #f9f9f9; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; }
+.close-button { color: #aaa; background: none; border: none; font-size: 28px; font-weight: bold; cursor: pointer; padding: 0; line-height: 1; }
+.close-button:hover, .close-button:focus { color: black; }
+.warning-box { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 10px; border-radius: 5px; margin-bottom: 15px; }
 
-/* Helper class to definitively hide the client modal footer */
-.modal-footer.is-hidden {
-    display: none;
-}
 
 /* --- Loading Overlay --- */
 #loading-overlay {
