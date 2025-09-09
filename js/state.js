@@ -1,6 +1,11 @@
 // js/state.js
 // Description: Manages the central state of the application.
 
+// --- CONFIGURATION CONSTANTS ---
+export const sortableColumns = ['Submission Date', 'Full Name', 'Email', 'Organization', 'Primary Service Category', 'Status'];
+export const clientSortableColumns = ['First Name', 'Last Name', 'Email', 'Organization', 'Status'];
+
+// --- DYNAMIC STATE ---
 export let state = {
     // requests tab state
     sortColumn: 'Submission Date',
@@ -22,22 +27,12 @@ export let state = {
     projectSearchTerm: ''
 };
 
-export let charts = {
-    revenue: null,
-    services: null,
-    projects: null
-};
-
-export const sortableColumns = ['Submission Date', 'Full Name', 'Email', 'Organization', 'Primary Service Category', 'Status'];
-export const clientSortableColumns = ['First Name', 'Last Name', 'Email', 'Organization', 'Status'];
-
+// Data stores for spreadsheet content
 export let allRequests = { headers: [], rows: [] };
 export let allClients = { headers: [], rows: [] };
 export let allProjects = { headers: [], rows: [] };
 export let allTasks = { headers: [], rows: [] };
 
-export const sortableColumns = ['Submission Date', 'Full Name', 'Email', 'Organization', 'Primary Service Category', 'Status'];
-export const clientSortableColumns = ['First Name', 'Last Name', 'Email', 'Organization', 'Status'];
 
 // --- STATE SETTERS ---
 export function setAllRequests(data) { allRequests = data; }
