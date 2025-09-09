@@ -3,6 +3,7 @@
 
 import { SPREADSHEET_ID } from './config.js';
 import { setAllRequests, setAllClients, setAllProjects, setAllTasks } from './state.js';
+import { loadInitialData } from './main.js';
 
 async function fetchData(range, setter) {
     try {
@@ -92,7 +93,7 @@ export async function updateSheetRow(sheetName, idColumnName, idValue, dataToUpd
     const targetRowNumber = visualRowIndex + 1;
     const targetRange = `${sheetName}!A${targetRowNumber}`;
 
-    return gapi.client.sheets.spreadsheets.values.update({
+    const result = await gapi.client.sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
         range: targetRange,
         valueInputOption: 'USER_ENTERED',
@@ -100,6 +101,9 @@ export async function updateSheetRow(sheetName, idColumnName, idValue, dataToUpd
             values: [updatedRow]
         }
     });
+
+    await loadInitialData(); // Refresh all data after a successful update.
+    return result;
 }
 
 /**
@@ -155,10 +159,8 @@ export async function writeData(sheetName, dataObject) {
 
     // 5. Find the first completely empty row to write to.
     let targetRowNumber = -1;
-    // Start checking from the second row (index 1), after the headers.
     for (let i = 1; i < sheetValues.length; i++) {
         const row = sheetValues[i];
-        // A row is considered empty if it's an empty array or all its cells are empty.
         const isEmpty = row.length === 0 || row.every(cell => cell === null || cell === '');
         if (isEmpty) {
             targetRowNumber = i + 1; // Sheet rows are 1-based
@@ -166,11 +168,12 @@ export async function writeData(sheetName, dataObject) {
         }
     }
 
+    let result;
     // 6. If an empty row was found, UPDATE it. Otherwise, APPEND a new row.
     if (targetRowNumber !== -1) {
         console.log(`Found empty row at ${targetRowNumber}. Updating...`);
         const targetRange = `${sheetName}!A${targetRowNumber}`;
-        return gapi.client.sheets.spreadsheets.values.update({
+        result = await gapi.client.sheets.spreadsheets.values.update({
             spreadsheetId: SPREADSHEET_ID,
             range: targetRange,
             valueInputOption: 'USER_ENTERED',
@@ -180,7 +183,7 @@ export async function writeData(sheetName, dataObject) {
         });
     } else {
         console.log('No empty rows found. Appending to sheet...');
-        return gapi.client.sheets.spreadsheets.values.append({
+        result = await gapi.client.sheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
             range: sheetName,
             valueInputOption: 'USER_ENTERED',
@@ -190,6 +193,9 @@ export async function writeData(sheetName, dataObject) {
             }
         });
     }
+
+    await loadInitialData(); // Refresh all data after a successful write.
+    return result;
 }
 
 /**
@@ -218,10 +224,13 @@ export async function clearSheetRow(sheetName, idColumnName, idValue) {
     const targetRowNumber = visualRowIndex + 1;
     const targetRange = `${sheetName}!A${targetRowNumber}:${columnToLetter(sheetHeaders.length)}${targetRowNumber}`;
 
-    return gapi.client.sheets.spreadsheets.values.clear({
+    const result = await gapi.client.sheets.spreadsheets.values.clear({
         spreadsheetId: SPREADSHEET_ID,
         range: targetRange,
     });
+
+    await loadInitialData(); // Refresh all data after a successful clear.
+    return result;
 }
 
 

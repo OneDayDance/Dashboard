@@ -337,6 +337,8 @@ async function handleSaveFinancials(projectId) {
     });
     try {
         await updateSheetRow('Projects', 'ProjectID', projectId, { 'Cost Breakdown': JSON.stringify(lineItems) });
+        // The UI will refresh automatically because updateSheetRow triggers a full data reload and re-render.
+        // For an instant-feel update, we can still call showProjectDetails.
         showProjectDetails(projectId);
     } catch (err) { alert('Error saving financials.'); console.error(err); }
 }
@@ -369,7 +371,7 @@ async function handleCreateProjectSubmit(event) {
                 }
             } catch (e) {
                 console.error("Could not parse quote breakdown from request:", e);
-                // --- FIX: Handle non-JSON strings gracefully ---
+                // Handle non-JSON strings gracefully
                 const description = request[quoteIndex]; // Treat the string as the description
                 const totalCostIndex = allRequests.headers.indexOf('Quote Total');
                 const cost = (totalCostIndex > -1 && request[totalCostIndex]) ? parseFloat(request[totalCostIndex]) || 0 : 0;
@@ -400,15 +402,19 @@ async function handleCreateProjectSubmit(event) {
     };
 
     try {
-        await writeData('Projects', projectData);
+        await writeData('Projects', projectData); // This now triggers a data refresh internally.
         if (projectData['Source Request ID']) {
             await updateSheetRow('Submissions', 'Submission ID', projectData['Source Request ID'], { 'Status': 'Archived' });
         }
+        
         statusSpan.textContent = 'Project created!';
+        
         setTimeout(() => {
             elements.createProjectModal.style.display = 'none';
-            document.querySelector('.tab-button[data-tab="projects"]').click();
+            // The click will trigger a re-render using the data that was just refreshed.
+            document.querySelector('.tab-button[data-tab="projects"]').click(); 
         }, 1500);
+
     } catch (err) { statusSpan.textContent = 'Error creating project.'; console.error('Project creation error', err); }
 }
 
@@ -448,9 +454,10 @@ async function handleDeleteProject(projectId) {
         const tasksToDelete = allTasks.rows.filter(t => t[allTasks.headers.indexOf('ProjectID')] === projectId);
         const taskDeletionPromises = tasksToDelete.map(t => clearSheetRow('Tasks', 'TaskID', t[allTasks.headers.indexOf('TaskID')]));
         await Promise.all(taskDeletionPromises);
-        await clearSheetRow('Projects', 'ProjectID', projectId);
+        await clearSheetRow('Projects', 'ProjectID', projectId); // This now triggers the refresh
         updateState({ selectedProjectId: null });
         statusSpan.textContent = 'Project deleted.';
+        renderProjectsTab(); // Re-render the tab with the updated (now missing) project
         setTimeout(() => elements.deleteProjectModal.style.display = 'none', 1500);
     } catch(err) {
         statusSpan.textContent = 'Error deleting project.';
