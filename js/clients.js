@@ -172,6 +172,7 @@ function showClientDetailsModal(rowData, headers) {
         const isEditable = e.currentTarget.dataset.editable === 'true';
 
         // Corrected logic: Show footer with edit/save buttons only on editable tabs.
+        // Also explicitly reset the state of both buttons.
         if (isEditable) {
             footer.style.display = 'block';
             editBtn.style.display = 'inline-block';
@@ -187,12 +188,18 @@ function showClientDetailsModal(rowData, headers) {
         populateClientNotesTab(data, headers, false);
         populateClientFinancialsTab(data[headers.indexOf('Email')]);
         populateClientActionsTab(data, headers);
+        
+        // Ensure buttons are in the correct state for "view" mode
+        editBtn.style.display = 'inline-block';
+        saveBtn.style.display = 'none';
         editBtn.onclick = () => renderEditMode(data);
     };
 
     const renderEditMode = (data) => {
         populateClientDetailsTab(data, headers, true);
         populateClientNotesTab(data, headers, true);
+        
+        // Ensure buttons are in the correct state for "edit" mode
         editBtn.style.display = 'none';
         saveBtn.style.display = 'inline-block';
         saveBtn.onclick = () => handleSaveClientUpdate(data, headers);
@@ -380,3 +387,4 @@ function showDeleteClientModal(rowData, headers) {
         } catch (err) { statusSpan.textContent = 'Error deleting client.'; console.error('Delete client error:', err); confirmBtn.disabled = false; }
     };
 }
+
