@@ -8,9 +8,6 @@ import { showRequestDetailsModal } from './requests.js';
 
 // --- INITIALIZATION ---
 export function initProjectsTab() {
-    document.getElementById('project-list-collapse-btn').onclick = () => {
-        document.getElementById('project-layout-container').classList.toggle('collapsed');
-    };
     document.getElementById('project-search-bar').oninput = (e) => {
         updateState({ projectSearchTerm: e.target.value });
         renderProjectsTab();
@@ -125,12 +122,14 @@ function showProjectDetails(projectId, isEditMode = false) {
     const showDropdown = () => { clearTimeout(leaveTimeout); actionsContent.style.display = 'block'; };
     const hideDropdown = () => { leaveTimeout = setTimeout(() => { actionsContent.style.display = 'none'; }, 300); };
     
-    actionsBtn.addEventListener('mouseenter', showDropdown);
-    actionsContainer.addEventListener('mouseleave', hideDropdown);
-    
-    document.getElementById('project-edit-action').onclick = (e) => { e.preventDefault(); showProjectDetails(projectId, true); };
-    document.getElementById('project-archive-action').onclick = (e) => { e.preventDefault(); handleArchiveProject(projectId); };
-    document.getElementById('project-delete-action').onclick = (e) => { e.preventDefault(); showDeleteProjectModal(projectId); };
+    if (actionsBtn) {
+        actionsBtn.addEventListener('mouseenter', showDropdown);
+        actionsContainer.addEventListener('mouseleave', hideDropdown);
+        document.getElementById('project-edit-action').onclick = (e) => { e.preventDefault(); showProjectDetails(projectId, true); };
+        document.getElementById('project-archive-action').onclick = (e) => { e.preventDefault(); handleArchiveProject(projectId); };
+        document.getElementById('project-delete-action').onclick = (e) => { e.preventDefault(); showDeleteProjectModal(projectId); };
+    }
+
 
     if (isEditMode) document.getElementById('project-save-btn').onclick = () => handleSaveProjectUpdate(projectId);
 
@@ -147,6 +146,22 @@ function showProjectDetails(projectId, isEditMode = false) {
             const request = allRequests.rows.find(r => r[allRequests.headers.indexOf('Submission ID')] === reqId);
             if (request) {
                 showRequestDetailsModal(request, allRequests.headers);
+            }
+        });
+    }
+    
+    const gdriveCard = detailsColumn.querySelector('.folder-link-container');
+    if (gdriveCard) {
+        gdriveCard.addEventListener('click', (e) => {
+            e.preventDefault();
+            const link = gdriveCard.dataset.link;
+            if (link) {
+                window.open(link, '_blank');
+            } else {
+                elements.gdriveLinkModal.style.display = 'block';
+                document.getElementById('gdrive-project-id-input').value = projectId;
+                document.getElementById('gdrive-link-input').value = '';
+                document.getElementById('gdrive-link-status').textContent = '';
             }
         });
     }

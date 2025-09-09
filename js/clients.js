@@ -14,7 +14,7 @@ export function initClientsTab() {
     document.getElementById('client-status-filter').onchange = (e) => { updateClientFilters('status', e.target.value); renderClients(); };
     document.getElementById('client-list-view-btn').onclick = () => setClientView('list');
     document.getElementById('client-card-view-btn').onclick = () => setClientView('card');
-    document.getElementById('client-column-select-btn').onclick = () => showColumnModal('clients');
+    document.getElementById('client-column-select-btn').onclick = () => showColumnModal(allClients.headers, state.visibleClientColumns, 'client-column-checkboxes');
     document.getElementById('save-client-columns-btn').onclick = handleSaveColumns;
 }
 

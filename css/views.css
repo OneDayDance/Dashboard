@@ -91,36 +91,29 @@
 .modal-pane-content ul, .modal-pane ul { list-style: none; padding: 0; margin: 0; }
 .modal-pane-content li, .modal-pane li { padding: 8px 0; border-bottom: 1px solid #eee; display: flex; }
 .modal-pane-content li strong, .modal-pane li strong { display: inline-block; width: 180px; color: #555; flex-shrink: 0; }
+#request-details-pane li div { flex-grow: 1; word-break: break-word; }
 .modal-pane-content a, .modal-pane a { color: #FF9D76; text-decoration: none; font-weight: bold; }
 .modal-pane-content textarea { width: 100%; min-height: 100px; padding: 8px; border-radius: 4px; border: 1px solid #ccc; box-sizing: border-box; resize: vertical;}
 .action-buttons-container { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
 p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: #333; }
-
 /* Request modal specific layout */
 #details-modal .modal-body { 
     display: grid; 
-    grid-template-columns: 1fr; /* Default to a single column */
+    grid-template-columns: 1fr;
     gap: 20px;
 }
-
-/* Use two columns only on wider screens */
-@media (min-width: 768px) {
+@media (min-width: 900px) {
     #details-modal .modal-body {
         grid-template-columns: 2fr 1fr;
     }
 }
 
+
 /* --- Projects View --- */
-.project-layout-container { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: start; transition: grid-template-columns 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-.project-layout-container.collapsed { grid-template-columns: 50px 1fr; }
-.project-list-column { position: sticky; top: 20px; align-self: start; height: calc(100vh - 180px); display: flex; flex-direction: column; overflow: hidden; transition: padding 0.4s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease 0.1s, border-color 0.3s ease 0.1s, box-shadow 0.3s ease 0.1s, backdrop-filter 0.3s ease 0.1s; }
-.project-layout-container.collapsed .project-list-column { padding: 5px; background-color: transparent; border-color: transparent; box-shadow: none; backdrop-filter: none; }
+.project-layout-container { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: start; }
+.project-list-column { position: sticky; top: 20px; align-self: start; height: calc(100vh - 180px); display: flex; flex-direction: column; overflow: hidden; }
 .project-list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-shrink: 0; gap: 10px; }
-.project-layout-container.collapsed .project-list-header { margin-bottom: 0; justify-content: center; }
-#project-list-title { margin: 0; white-space: nowrap; overflow: hidden; flex-grow: 1; min-width: 0; transition: opacity 0.2s ease, max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1); max-width: 500px; }
-.project-layout-container.collapsed #project-list-title { opacity: 0; max-width: 0; pointer-events: none; }
-.project-search-container, .project-list, .project-list-column .collapsible-header, .project-list-column > h3 { transition: opacity 0.2s ease; opacity: 1; }
-.project-layout-container.collapsed .project-search-container, .project-layout-container.collapsed .project-list, .project-layout-container.collapsed .project-list-column .collapsible-header, .project-layout-container.collapsed .project-list-column > h3 { opacity: 0; pointer-events: none; }
+#project-list-title { margin: 0; white-space: nowrap; overflow: hidden; flex-grow: 1; min-width: 0; }
 .project-search-container { padding-bottom: 15px; flex-shrink: 0; }
 #project-search-bar { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; box-sizing: border-box; }
 .project-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex-grow: 1; }
@@ -129,9 +122,6 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 .project-list-item.active { background-color: #d4f4ff; font-weight: bold; }
 .project-list-item h4 { margin: 0 0 5px 0; }
 .project-list-item p { margin: 0; font-size: 12px; color: #555; }
-#project-list-collapse-btn { width: 40px; height: 40px; flex-shrink: 0; }
-#project-list-collapse-btn svg { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-.project-layout-container.collapsed #project-list-collapse-btn svg { transform: rotate(180deg); }
 #project-details-column h3 { margin-top: 0; }
 .project-details-header { display: flex; justify-content: space-between; align-items: center; }
 .project-actions-dropdown { position: relative; }
@@ -147,6 +137,7 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 .project-details-section-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 10px; }
 .project-details-section-header h4 { border: none; margin: 0; padding: 0;}
 .interactive-card { text-align: center; }
+.info-card.interactive-card:hover { transform: translateY(-3px); }
 .interactive-card .card-main-content, .interactive-card .card-hover-content { transition: opacity 0.3s ease, transform 0.3s ease; display: flex; flex-direction: column; justify-content: center; align-items: center; }
 .interactive-card .card-main-content h4 { margin: 0; font-size: 14px; color: #555; }
 .interactive-card .card-main-content p { margin: 5px 0 0; font-size: 16px; font-weight: bold; }
@@ -159,31 +150,33 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 .folder-link-container .card-main-content { gap: 8px; }
 .folder-link-container svg { width: 32px; height: 32px; fill: #5f6368; }
 .folder-link-container .card-main-content h4 { font-size: 16px; margin-top: 5px; }
-.task-bucket { cursor: grab; transition: all 0.2s ease-in-out; border: 2px solid transparent; }
-.task-bucket:hover { border-color: #76F1FF; }
-.task-bucket h5 { background-color: #f0f0f0; padding: 5px 10px; border-radius: 4px; margin: 15px 0 5px; }
-.task-list { list-style-type: none; padding: 0; }
-.task-item { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; background-color: white; border-radius: 4px; margin-bottom: 5px; transition: all 0.2s ease-in-out; }
-.task-item:hover { transform: scale(1.02); box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
-.task-main { display: flex; align-items: center; gap: 10px; width: 100%;}
-.task-main input[type="checkbox"] { width: 20px; height: 20px; flex-shrink: 0;}
-.task-main label { flex-grow: 1; }
-.task-main.completed label { text-decoration: line-through; color: #888; }
-.subtask-list { list-style: none; padding-left: 30px; margin-top: 5px; width: 100%;}
-.subtask-item { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 2px 0;}
-.subtask-item input { cursor: pointer; }
-.task-progress { width: 100%; background-color: #eee; border-radius: 4px; height: 6px; margin-top: 4px;}
-.task-progress-bar { background-color: #76F1FF; height: 100%; border-radius: 4px; }
-.task-board { display: flex; flex-wrap: wrap; gap: 15px; padding: 10px 0; min-height: 200px; }
-.task-board-column { flex: 0 0 300px; background: #f4f5f7; border-radius: 8px; padding: 10px; cursor: grab; transition: all 0.2s ease-in-out; border: 2px solid transparent; }
-.task-board-column:hover { border-color: #76F1FF; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-.task-board-column h5 { text-align: center; margin: 5px 0 15px; }
-.task-card { background: #fff; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); padding: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s ease-in-out; }
-.task-card:hover { transform: scale(1.03); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
-.subtask-summary { font-size: 12px; color: #555; margin: 5px 0 0; }
-.dragging { opacity: 0.4 !important; background: #cceeff !important; transform: scale(1.0) !important; box-shadow: none !important; }
-.task-placeholder, .bucket-placeholder { background-color: rgba(118, 241, 255, 0.3); border: 2px dashed #76F1FF; border-radius: 4px; margin-bottom: 5px; box-sizing: border-box; transition: all 0.1s ease; pointer-events: none; }
-.bucket-placeholder { border-radius: 8px; flex: 0 0 300px; }
+
+/* Restored Task Section Styles */
+.project-details-section .task-bucket { cursor: grab; transition: all 0.2s ease-in-out; border: 2px solid transparent; }
+.project-details-section .task-bucket:hover { border-color: #76F1FF; }
+.project-details-section .task-bucket h5 { background-color: #f0f0f0; padding: 5px 10px; border-radius: 4px; margin: 15px 0 5px; }
+.project-details-section .task-list { list-style-type: none; padding: 0; }
+.project-details-section .task-item { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; background-color: white; border-radius: 4px; margin-bottom: 5px; transition: all 0.2s ease-in-out; }
+.project-details-section .task-item:hover { transform: scale(1.02); box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
+.project-details-section .task-main { display: flex; align-items: center; gap: 10px; width: 100%;}
+.project-details-section .task-main input[type="checkbox"] { width: 20px; height: 20px; flex-shrink: 0;}
+.project-details-section .task-main label { flex-grow: 1; }
+.project-details-section .task-main.completed label { text-decoration: line-through; color: #888; }
+.project-details-section .subtask-list { list-style: none; padding-left: 30px; margin-top: 5px; width: 100%;}
+.project-details-section .subtask-item { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 2px 0;}
+.project-details-section .subtask-item input { cursor: pointer; }
+.project-details-section .task-progress { width: 100%; background-color: #eee; border-radius: 4px; height: 6px; margin-top: 4px;}
+.project-details-section .task-progress-bar { background-color: #76F1FF; height: 100%; border-radius: 4px; }
+.project-details-section .task-board { display: flex; flex-wrap: wrap; gap: 15px; padding: 10px 0; min-height: 200px; }
+.project-details-section .task-board-column { flex: 0 0 300px; background: #f4f5f7; border-radius: 8px; padding: 10px; cursor: grab; transition: all 0.2s ease-in-out; border: 2px solid transparent; }
+.project-details-section .task-board-column:hover { border-color: #76F1FF; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+.project-details-section .task-board-column h5 { text-align: center; margin: 5px 0 15px; }
+.project-details-section .task-card { background: #fff; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); padding: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s ease-in-out; }
+.project-details-section .task-card:hover { transform: scale(1.03); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+.project-details-section .subtask-summary { font-size: 12px; color: #555; margin: 5px 0 0; }
+.project-details-section .dragging { opacity: 0.4 !important; background: #cceeff !important; transform: scale(1.0) !important; box-shadow: none !important; }
+.project-details-section .task-placeholder, .project-details-section .bucket-placeholder { background-color: rgba(118, 241, 255, 0.3); border: 2px dashed #76F1FF; border-radius: 4px; margin-bottom: 5px; box-sizing: border-box; transition: all 0.1s ease; pointer-events: none; }
+.project-details-section .bucket-placeholder { border-radius: 8px; flex: 0 0 300px; }
 
 /* Item Tags (used in modals) */
 .item-tag a { color: #FF9D76; }
@@ -191,5 +184,4 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 .item-tag button { background: none; border: none; color: #888; cursor: pointer; font-size: 14px; padding: 0;}
 .add-item-form { display: flex; gap: 5px; margin-top: 5px; }
 .add-item-form input { flex-grow: 1; }
-
 
