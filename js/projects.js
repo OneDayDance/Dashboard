@@ -355,8 +355,10 @@ async function handleCreateProjectSubmit(event) {
     if (sourceRequestId) {
         const request = allRequests.rows.find(r => r[allRequests.headers.indexOf('Submission ID')] === sourceRequestId);
         const quoteIndex = allRequests.headers.indexOf('Quote Breakdown');
+        
         if (request && quoteIndex > -1 && request[quoteIndex]) {
             try {
+                // Attempt to parse the quote breakdown as JSON
                 const parsedQuote = JSON.parse(request[quoteIndex]);
                 if (Array.isArray(parsedQuote)) {
                     const formattedLineItems = parsedQuote.map(item => ({
@@ -365,7 +367,27 @@ async function handleCreateProjectSubmit(event) {
                     }));
                     costBreakdown = JSON.stringify(formattedLineItems);
                 }
-            } catch (e) { console.error("Could not parse quote breakdown from request:", e); }
+            } catch (e) {
+                console.error("Could not parse quote breakdown from request:", e);
+                // --- FIX: Handle non-JSON strings gracefully ---
+                const description = request[quoteIndex]; // Treat the string as the description
+                const totalCostIndex = allRequests.headers.indexOf('Quote Total');
+                const cost = (totalCostIndex > -1 && request[totalCostIndex]) ? parseFloat(request[totalCostIndex]) || 0 : 0;
+                
+                const lineItem = [{ description: description, cost: cost }];
+                costBreakdown = JSON.stringify(lineItem);
+            }
+        } else if (request) {
+             // Fallback if 'Quote Breakdown' column doesn't exist or is empty
+             const descriptionIndex = allRequests.headers.indexOf('Primary Service Category');
+             const description = (descriptionIndex > -1 && request[descriptionIndex]) ? request[descriptionIndex] : 'Initial project cost';
+             const totalCostIndex = allRequests.headers.indexOf('Quote Total');
+             const cost = (totalCostIndex > -1 && request[totalCostIndex]) ? parseFloat(request[totalCostIndex]) || 0 : 0;
+
+             if (cost > 0 || description !== 'Initial project cost') {
+                 const lineItem = [{ description: description, cost: cost }];
+                 costBreakdown = JSON.stringify(lineItem);
+             }
         }
     }
 

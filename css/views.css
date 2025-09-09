@@ -185,4 +185,5 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 #task-details-modal .form-field { margin-bottom: 15px; }
 #task-details-modal .form-field label { display: block; margin-bottom: 5px; font-weight: bold; }
 #task-details-modal .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+#task-details-modal .add-item-form .btn { flex-shrink: 0; } /* Prevent add button from shrinking */
 
