@@ -103,29 +103,30 @@ export async function updateSheetRow(sheetName, idColumnName, idValue, dataToUpd
 }
 
 /**
- * Appends a new row of data to the specified sheet, dynamically matching columns.
+ * Appends or inserts a new row of data, dynamically matching columns and filling empty rows.
  * @param {string} sheetName - The name of the sheet.
  * @param {object} dataObject - An object where keys are column headers and values are cell values.
  * @returns {Promise<object>} - The result from the Sheets API.
  */
 export async function writeData(sheetName, dataObject) {
-    // 1. Get existing headers from the sheet.
-    const headerResponse = await gapi.client.sheets.spreadsheets.values.get({
+    // 1. Get all data from the sheet to find headers and empty rows.
+    const fullSheetResponse = await gapi.client.sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
-        range: `${sheetName}!1:1`
+        range: sheetName
     });
-    let headers = (headerResponse.result.values ? headerResponse.result.values[0] : []) || [];
-    
-    // 2. Normalize existing headers and data keys for robust matching (lowercase, trimmed).
-    const normalize = str => str.toLowerCase().trim();
+    const sheetValues = fullSheetResponse.result.values || [];
+    let headers = sheetValues.length > 0 ? sheetValues[0] : [];
+
+    // 2. Normalize headers and data keys for robust matching.
+    const normalize = str => (str || '').toLowerCase().trim();
     const headerMap = new Map();
-    headers.forEach(h => headerMap.set(normalize(h), h));
+    headers.forEach(h => { if (h) headerMap.set(normalize(h), h); });
     
     const dataKeys = Object.keys(dataObject);
     const dataKeyMap = new Map();
     dataKeys.forEach(k => dataKeyMap.set(normalize(k), k));
 
-    // 3. Identify headers that are in the data but not on the sheet.
+    // 3. Identify and add any new headers to the sheet.
     const newHeaders = [];
     for (const normalizedKey of dataKeyMap.keys()) {
         if (!headerMap.has(normalizedKey)) {
@@ -133,7 +134,6 @@ export async function writeData(sheetName, dataObject) {
         }
     }
 
-    // 4. If there are new headers, append them to the first row of the sheet.
     if (newHeaders.length > 0) {
         const firstEmptyColumn = columnToLetter(headers.length + 1);
         await gapi.client.sheets.spreadsheets.values.update({
@@ -142,27 +142,54 @@ export async function writeData(sheetName, dataObject) {
             valueInputOption: 'RAW',
             resource: { values: [newHeaders] }
         });
-        // Update the local headers array to reflect the newly added columns.
+        // Update local headers array to reflect the newly added columns.
         headers = headers.concat(newHeaders);
     }
     
-    // 5. Create the new row array in the exact order of the final sheet headers.
+    // 4. Create the new row array in the correct order based on the final headers.
     const newRow = headers.map(header => {
         const normalizedHeader = normalize(header);
         const originalDataKey = dataKeyMap.get(normalizedHeader);
-        // If a matching key was found in the data, use its value, otherwise use an empty string.
         return originalDataKey ? dataObject[originalDataKey] : '';
     });
-    
-    // 6. Append the fully constructed row to the sheet.
-    return gapi.client.sheets.spreadsheets.values.append({
-        spreadsheetId: SPREADSHEET_ID,
-        range: sheetName,
-        valueInputOption: 'USER_ENTERED',
-        resource: {
-            values: [newRow]
+
+    // 5. Find the first completely empty row to write to.
+    let targetRowNumber = -1;
+    // Start checking from the second row (index 1), after the headers.
+    for (let i = 1; i < sheetValues.length; i++) {
+        const row = sheetValues[i];
+        // A row is considered empty if it's an empty array or all its cells are empty.
+        const isEmpty = row.length === 0 || row.every(cell => cell === null || cell === '');
+        if (isEmpty) {
+            targetRowNumber = i + 1; // Sheet rows are 1-based
+            break;
         }
-    });
+    }
+
+    // 6. If an empty row was found, UPDATE it. Otherwise, APPEND a new row.
+    if (targetRowNumber !== -1) {
+        console.log(`Found empty row at ${targetRowNumber}. Updating...`);
+        const targetRange = `${sheetName}!A${targetRowNumber}`;
+        return gapi.client.sheets.spreadsheets.values.update({
+            spreadsheetId: SPREADSHEET_ID,
+            range: targetRange,
+            valueInputOption: 'USER_ENTERED',
+            resource: {
+                values: [newRow]
+            }
+        });
+    } else {
+        console.log('No empty rows found. Appending to sheet...');
+        return gapi.client.sheets.spreadsheets.values.append({
+            spreadsheetId: SPREADSHEET_ID,
+            range: sheetName,
+            valueInputOption: 'USER_ENTERED',
+            insertDataOption: 'INSERT_ROWS',
+            resource: {
+                values: [newRow]
+            }
+        });
+    }
 }
 
 /**
@@ -213,3 +240,4 @@ function columnToLetter(column) {
     }
     return letter;
 }
+
