@@ -340,8 +340,11 @@ async function handleSaveFinancials(projectId) {
     });
     try {
         await updateSheetRow('Projects', 'ProjectID', projectId, { 'Cost Breakdown': JSON.stringify(lineItems) });
-        showProjectDetails(projectId);
-    } catch (err) { alert('Error saving financials.'); console.error(err); }
+        await refreshData();
+    } catch (err) { 
+        alert('Error saving financials.'); 
+        console.error(err); 
+    }
 }
 
 
@@ -407,6 +410,7 @@ async function handleCreateProjectSubmit(event) {
         if (projectData['Source Request ID']) {
             await updateSheetRow('Submissions', 'Submission ID', projectData['Source Request ID'], { 'Status': 'Archived' });
         }
+        await refreshData();
         
         statusSpan.textContent = 'Project created!';
         
@@ -426,13 +430,14 @@ async function handleSaveProjectUpdate(projectId) {
     });
     try {
         await updateSheetRow('Projects', 'ProjectID', projectId, dataToUpdate);
-        showProjectDetails(projectId);
+        await refreshData();
     } catch(err) { console.error('Project update error', err); alert('Could not save project updates.'); }
 }
 
 async function handleArchiveProject(projectId) {
     try {
         await updateSheetRow('Projects', 'ProjectID', projectId, { 'Status': 'Archived' });
+        await refreshData();
     } catch(err) { console.error('Archive project error', err); alert('Could not archive project.'); }
 }
 
@@ -455,10 +460,10 @@ async function handleDeleteProject(projectId) {
         await Promise.all(taskDeletionPromises);
         await clearSheetRow('Projects', 'ProjectID', projectId); 
         updateState({ selectedProjectId: null });
+        await refreshData();
         statusSpan.textContent = 'Project deleted.';
         setTimeout(() => { 
             elements.deleteProjectModal.style.display = 'none';
-            renderProjectsTab();
         }, 1500);
     } catch(err) {
         statusSpan.textContent = 'Error deleting project.';
@@ -475,7 +480,7 @@ async function handleSaveGDriveLink(event) {
 
     try {
         await updateSheetRow('Projects', 'ProjectID', projectId, { 'Google Folder Link': newLink });
-        showProjectDetails(projectId);
+        await refreshData();
         statusSpan.textContent = 'Saved!';
         setTimeout(() => { elements.gdriveLinkModal.style.display = 'none'; }, 1000);
     } catch (err) {
@@ -565,20 +570,24 @@ async function handleDrop(e) {
     draggedElement.classList.remove('dragging');
 
     try {
+        const promises = [];
         if (bucketId) {
             const newOrder = Array.from(draggedElement.parentNode.children).filter(el => el.matches('[data-bucket]')).map(el => el.dataset.bucket);
-            await updateSheetRow('Projects', 'ProjectID', state.selectedProjectId, { 'Task Buckets': JSON.stringify(newOrder) });
+            promises.push(updateSheetRow('Projects', 'ProjectID', state.selectedProjectId, { 'Task Buckets': JSON.stringify(newOrder) }));
         } else if (taskId) {
-            const promises = [];
             document.querySelectorAll('.task-bucket, .task-board-column').forEach(bucketEl => {
                 Array.from(bucketEl.querySelectorAll('[data-task-id]')).forEach((taskEl, i) => {
                      promises.push(updateSheetRow('Tasks', 'TaskID', taskEl.dataset.taskId, { 'Bucket': bucketEl.dataset.bucket, 'SortIndex': i }));
                 });
             });
-            await Promise.all(promises);
         }
-        showProjectDetails(state.selectedProjectId);
-    } catch (err) { alert("Error saving new order."); console.error("Drag/drop save error:", err); showProjectDetails(state.selectedProjectId); }
+        await Promise.all(promises);
+        await refreshData();
+    } catch (err) { 
+        alert("Error saving new order."); 
+        console.error("Drag/drop save error:", err); 
+        await refreshData(); // Refresh even on error to get back to a consistent state
+    }
 }
 
 // --- TASK RENDERING & MODALS ---
@@ -634,7 +643,7 @@ async function handleSaveTask(event) {
             taskData.SortIndex = tasksInBucket.length;
             await writeData('Tasks', taskData); 
         }
-        showProjectDetails(taskData.ProjectID);
+        await refreshData();
         statusSpan.textContent = 'Saved!';
         setTimeout(() => { elements.taskDetailsModal.style.display = 'none'; }, 1000);
     } catch (err) { statusSpan.textContent = 'Error saving task.'; console.error('Task save error', err); }
@@ -667,7 +676,7 @@ function setupTaskClickHandlers(container, projectId) {
                 currentBuckets.push(bucketName.trim());
                 try {
                     await updateSheetRow('Projects', 'ProjectID', projectId, { 'Task Buckets': JSON.stringify(currentBuckets) });
-                    showProjectDetails(projectId);
+                    await refreshData();
                 } catch (err) { alert("Could not save new bucket."); console.error(err); }
             }
         }
@@ -677,6 +686,7 @@ async function handleTaskStatusChange(taskId, isChecked) {
     const newStatus = isChecked ? 'Done' : 'To Do';
     try {
         await updateSheetRow('Tasks', 'TaskID', taskId, { 'Status': newStatus });
+        await refreshData();
     } catch(err) { console.error('Task status update error', err); alert('Could not update task status.'); }
 }
 async function handleSubtaskStatusChange(event) {
@@ -695,7 +705,12 @@ async function handleSubtaskStatusChange(event) {
     const updatedSubtasksJson = JSON.stringify(subtasks);
     try {
         await updateSheetRow('Tasks', 'TaskID', taskId, { 'Subtasks': updatedSubtasksJson });
-    } catch (err) { console.error('Subtask status update error', err); alert('Could not update subtask status.'); showProjectDetails(state.selectedProjectId); }
+        await refreshData();
+    } catch (err) { 
+        console.error('Subtask status update error', err); 
+        alert('Could not update subtask status.'); 
+        await refreshData();
+    }
 }
 function getProjectTasksSorted(projectId) {
     const { headers, rows } = allTasks, [idIdx, sortIdx, subtaskIdx] = ['ProjectID', 'SortIndex', 'Subtasks'].map(h => headers.indexOf(h));
