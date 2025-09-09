@@ -1,0 +1,241 @@
+// js/analytics.js
+// Description: Contains all logic for the 'Analytics' tab.
+
+import { allProjects, allRequests, allClients, charts } from './state.js';
+
+export function renderAnalytics() {
+    // Destroy previous charts to prevent memory leaks
+    Object.keys(charts).forEach(key => {
+        if (charts[key]) {
+            charts[key].destroy();
+        }
+    });
+
+    if (!allProjects.rows.length && !allRequests.rows.length && !allClients.rows.length) {
+        document.getElementById('tab-analytics').innerHTML = '<h2>Analytics</h2><p>No data available to display analytics.</p>';
+        return;
+    }
+
+    renderKpis();
+    renderRevenueChart();
+    renderServicesChart();
+    renderProjectsChart();
+    renderActivityFeed();
+}
+
+function renderKpis() {
+    const currentYear = new Date().getFullYear();
+
+    // KPI 1: Total Revenue (YTD)
+    const [valIdx, dateIdx] = ['Value', 'Start Date'].map(h => allProjects.headers.indexOf(h));
+    let ytdIncome = 0;
+    if (valIdx > -1 && dateIdx > -1) {
+        allProjects.rows.forEach(row => {
+            if (row[dateIdx] && new Date(row[dateIdx]).getFullYear() === currentYear) {
+                ytdIncome += parseFloat(row[valIdx]) || 0;
+            }
+        });
+    }
+    document.getElementById('kpi-total-revenue').textContent = `$${ytdIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+    // KPI 2: Active Projects
+    const statusIdxProj = allProjects.headers.indexOf('Status');
+    const inactiveStatuses = ['Completed', 'Cancelled', 'Archived'];
+    let activeProjects = 0;
+    if (statusIdxProj > -1) {
+        activeProjects = allProjects.rows.filter(row => !inactiveStatuses.includes(row[statusIdxProj])).length;
+    }
+    document.getElementById('kpi-active-projects').textContent = activeProjects;
+
+    // KPI 3: New Clients (YTD)
+    const clientIdIdx = allClients.headers.indexOf('ClientID');
+    let newClients = 0;
+    if (clientIdIdx > -1) {
+        newClients = allClients.rows.filter(row => {
+            const id = row[clientIdIdx];
+            if (id && id.startsWith('C-')) {
+                const timestamp = parseInt(id.split('-')[1]);
+                if (!isNaN(timestamp)) {
+                    return new Date(timestamp).getFullYear() === currentYear;
+                }
+            }
+            return false;
+        }).length;
+    }
+    document.getElementById('kpi-new-clients').textContent = newClients;
+
+    // KPI 4: Pending Requests
+    const statusIdxReq = allRequests.headers.indexOf('Status');
+    let pendingRequests = 0;
+    if (statusIdxReq > -1) {
+        pendingRequests = allRequests.rows.filter(row => (row[statusIdxReq] || 'New') === 'New' || row[statusIdxReq] === 'Contacted').length;
+    }
+    document.getElementById('kpi-pending-requests').textContent = pendingRequests;
+}
+
+function renderRevenueChart() {
+    const revenueData = {};
+    const [valIdx, dateIdx] = ['Value', 'Start Date'].map(h => allProjects.headers.indexOf(h));
+
+    if (valIdx === -1 || dateIdx === -1) return;
+
+    allProjects.rows.forEach(row => {
+        const dateStr = row[dateIdx];
+        const value = parseFloat(row[valIdx]) || 0;
+        if (dateStr && value > 0) {
+            try {
+                const date = new Date(dateStr);
+                const month = date.toLocaleString('default', { month: 'short', year: '2-digit' });
+                if (revenueData[month]) {
+                    revenueData[month] += value;
+                } else {
+                    revenueData[month] = value;
+                }
+            } catch (e) { /* ignore invalid dates */ }
+        }
+    });
+
+    const sortedKeys = Object.keys(revenueData).sort((a, b) => {
+        const [monthA, yearA] = a.split(' ');
+        const [monthB, yearB] = b.split(' ');
+        const dateA = new Date(`01 ${monthA} 20${yearA}`);
+        const dateB = new Date(`01 ${monthB} 20${yearB}`);
+        return dateA - dateB;
+    });
+
+    const labels = sortedKeys;
+    const dataPoints = sortedKeys.map(key => revenueData[key]);
+
+    const ctx = document.getElementById('revenue-chart').getContext('2d');
+    charts.revenue = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Revenue',
+                data: dataPoints,
+                backgroundColor: 'rgba(255, 157, 118, 0.2)',
+                borderColor: 'rgba(255, 157, 118, 1)',
+                borderWidth: 2,
+                tension: 0.3,
+                fill: true,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+}
+
+function renderServicesChart() {
+    const servicesCount = {};
+    const serviceIdx = allRequests.headers.indexOf('Primary Service Category');
+    if (serviceIdx === -1) return;
+    
+    allRequests.rows.forEach(row => {
+        const service = row[serviceIdx] || 'Uncategorized';
+        servicesCount[service] = (servicesCount[service] || 0) + 1;
+    });
+
+    const labels = Object.keys(servicesCount);
+    const dataPoints = Object.values(servicesCount);
+    const backgroundColors = ['#FF9D76', '#76F1FF', '#C176FF', '#FFE176', '#8BFF76', '#FF76B7'];
+
+    const ctx = document.getElementById('services-chart').getContext('2d');
+    charts.services = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Service Requests',
+                data: dataPoints,
+                backgroundColor: backgroundColors,
+                hoverOffset: 4
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+}
+
+function renderProjectsChart() {
+    const statusCount = {};
+    const statusIdx = allProjects.headers.indexOf('Status');
+    if (statusIdx === -1) return;
+    
+    allProjects.rows.forEach(row => {
+        const status = row[statusIdx] || 'Not Started';
+        statusCount[status] = (statusCount[status] || 0) + 1;
+    });
+
+    const labels = Object.keys(statusCount);
+    const dataPoints = Object.values(statusCount);
+
+    const ctx = document.getElementById('projects-chart').getContext('2d');
+    charts.projects = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Number of Projects',
+                data: dataPoints,
+                backgroundColor: '#76F1FF',
+                borderColor: '#59B6C2',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+
+function renderActivityFeed() {
+    const activityFeed = document.getElementById('activity-feed');
+    activityFeed.innerHTML = '';
+    let combinedActivity = [];
+
+    const [subDateIdx, nameIdx, serviceIdx] = ['Submission Date', 'Full Name', 'Primary Service Category'].map(h => allRequests.headers.indexOf(h));
+    if (subDateIdx > -1) {
+        allRequests.rows.forEach(row => {
+            const date = new Date(row[subDateIdx]);
+            if (!isNaN(date.getTime())) {
+                combinedActivity.push({
+                    date: date,
+                    text: `New request from <strong>${row[nameIdx] || 'N/A'}</strong> for <em>${row[serviceIdx] || 'N/A'}</em>.`
+                });
+            }
+        });
+    }
+
+    const [projNameIdx, projDateIdx] = ['Project Name', 'Start Date'].map(h => allProjects.headers.indexOf(h));
+    if (projNameIdx > -1 && projDateIdx > -1) {
+        allProjects.rows.forEach(row => {
+            const date = new Date(row[projDateIdx]);
+            if (!isNaN(date.getTime())) {
+                combinedActivity.push({
+                    date: date,
+                    text: `Project started: <strong>${row[projNameIdx]}</strong>.`
+                });
+            }
+        });
+    }
+    
+    combinedActivity.sort((a, b) => b.date - a.date);
+    const recentActivities = combinedActivity.slice(0, 15);
+    
+    if (recentActivities.length === 0) {
+        activityFeed.innerHTML = '<li>No recent activity found.</li>';
+        return;
+    }
+
+    recentActivities.forEach(activity => {
+        const li = document.createElement('li');
+        li.innerHTML = `${activity.text} <span class="activity-date">${activity.date.toLocaleDateString()}</span>`;
+        activityFeed.appendChild(li);
+    });
+}
