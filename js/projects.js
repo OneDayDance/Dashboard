@@ -152,8 +152,11 @@ function showProjectDetails(projectId, isEditMode = false) {
     
     const gdriveCard = detailsColumn.querySelector('.folder-link-container');
     if (gdriveCard) {
-        gdriveCard.addEventListener('click', (e) => {
+        // Using .onclick to ensure only one handler is ever attached, preventing listener stacking.
+        gdriveCard.onclick = (e) => {
             e.preventDefault();
+            e.stopPropagation(); // Stop the event from bubbling up to other elements.
+
             const link = gdriveCard.dataset.link;
             if (link) {
                 window.open(link, '_blank');
@@ -163,7 +166,7 @@ function showProjectDetails(projectId, isEditMode = false) {
                 document.getElementById('gdrive-link-input').value = '';
                 document.getElementById('gdrive-link-status').textContent = '';
             }
-        });
+        };
     }
 
     setupDragAndDrop(detailsColumn);
@@ -750,4 +753,3 @@ function renderLinks(links) {
         });
     });
 }
-
