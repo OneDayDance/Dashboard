@@ -211,29 +211,28 @@
         </div>
     </div>
 
-    <!-- Client Details Modal -->
+    <!-- Client Details Modal (Rebuilt Structure) -->
     <div id="client-details-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h2>Client Details</h2>
-            <div class="client-modal-tabs">
-                <button class="client-tab-button active" data-tab="details" data-editable="true">Details</button>
-                <button class="client-tab-button" data-tab="history" data-editable="false">History</button>
-                <button class="client-tab-button" data-tab="notes" data-editable="true">Notes & Logs</button>
-                <button class="client-tab-button" data-tab="financials" data-editable="false">Financials</button>
-                <button class="client-tab-button" data-tab="actions" data-editable="false">Actions</button>
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2 id="client-modal-name">Client Details</h2>
+                <span class="close-button">&times;</span>
             </div>
-            <div id="client-modal-body">
-                <div class="client-tab-content active" id="client-tab-details"></div>
-                <div class="client-tab-content" id="client-tab-history"></div>
-                <div class="client-tab-content" id="client-tab-notes"></div>
-                <div class="client-tab-content" id="client-tab-financials"></div>
-                <div class="client-tab-content" id="client-tab-actions"></div>
+            <div class="client-modal-layout">
+                <nav class="client-modal-nav">
+                    <a href="#" class="nav-link active" data-tab="details">Details</a>
+                    <a href="#" class="nav-link" data-tab="history">History</a>
+                    <a href="#" class="nav-link" data-tab="notes">Notes & Logs</a>
+                    <a href="#" class="nav-link" data-tab="financials">Financials</a>
+                    <a href="#" class="nav-link" data-tab="actions">Actions</a>
+                </nav>
+                <div class="client-modal-content">
+                    <!-- JS will render content here -->
+                </div>
             </div>
             <div class="modal-footer">
-                 <button id="client-modal-edit-btn">Edit</button>
-                 <button id="client-modal-save-btn" style="display:none;">Save Changes</button>
-                 <span id="client-modal-status"></span>
+                <!-- JS will render buttons here -->
+                <span id="client-modal-status"></span>
             </div>
         </div>
     </div>

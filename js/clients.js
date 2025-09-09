@@ -154,57 +154,212 @@ async function handleAddClientSubmit(event) {
     }
 }
 
-// --- MODAL FUNCTIONS ---
+// --- REBUILT MODAL FUNCTIONS ---
+
 function showClientDetailsModal(rowData, headers) {
-    const editBtn = document.getElementById('client-modal-edit-btn');
-    const saveBtn = document.getElementById('client-modal-save-btn');
-    const statusSpan = document.getElementById('client-modal-status');
-    const footer = elements.clientDetailsModal.querySelector('.modal-footer');
-    statusSpan.textContent = '';
+    // --- STATE MANAGEMENT ---
+    let localState = {
+        activeTab: 'details',
+        isEditMode: false,
+        currentRowData: [...rowData]
+    };
 
-    const tabButtons = elements.clientDetailsModal.querySelectorAll('.client-tab-button');
+    // --- DOM ELEMENT REFERENCES ---
+    const modal = elements.clientDetailsModal;
+    const nameHeader = modal.querySelector('#client-modal-name');
+    const navLinks = modal.querySelectorAll('.nav-link');
+    const contentArea = modal.querySelector('.client-modal-content');
+    const footer = modal.querySelector('.modal-footer');
+    const statusSpan = modal.querySelector('#client-modal-status');
 
-    // The tab click handler is the master controller for visibility.
-    tabButtons.forEach(button => button.onclick = (e) => {
-        tabButtons.forEach(btn => btn.classList.remove('active'));
-        e.currentTarget.classList.add('active');
-        elements.clientDetailsModal.querySelectorAll('.client-tab-content').forEach(c => c.classList.remove('active'));
-        document.getElementById(`client-tab-${e.currentTarget.dataset.tab}`).classList.add('active');
+    // --- RENDER LOGIC ---
+    function render() {
+        // Update name
+        const [fName, lName] = [localState.currentRowData[headers.indexOf('First Name')], localState.currentRowData[headers.indexOf('Last Name')]];
+        nameHeader.textContent = `${fName || ''} ${lName || ''}`.trim() || 'Client Details';
 
-        const isEditable = e.currentTarget.dataset.editable === 'true';
+        // Update nav links
+        navLinks.forEach(link => {
+            link.classList.toggle('active', link.dataset.tab === localState.activeTab);
+        });
 
-        if (isEditable) {
-            // Use CSS class to show the footer and reset buttons to "view" mode.
-            footer.classList.remove('is-hidden');
-            editBtn.style.display = 'inline-block';
-            saveBtn.style.display = 'none';
-        } else {
-            // Use CSS class to hide the footer for non-editable tabs.
-            footer.classList.add('is-hidden');
+        // Render content
+        const tabRenderers = {
+            details: populateClientDetailsTab,
+            history: populateClientHistoryTab,
+            notes: populateClientNotesTab,
+            financials: populateClientFinancialsTab,
+            actions: populateClientActionsTab,
+        };
+        contentArea.innerHTML = tabRenderers[localState.activeTab]();
+
+        // Render footer
+        const editableTabs = ['details', 'notes'];
+        footer.innerHTML = ''; // Clear previous buttons
+        if (editableTabs.includes(localState.activeTab)) {
+            if (localState.isEditMode) {
+                const saveBtn = document.createElement('button');
+                saveBtn.id = 'client-modal-save-btn';
+                saveBtn.textContent = 'Save Changes';
+                saveBtn.onclick = handleSaveClientUpdate;
+                footer.appendChild(saveBtn);
+            } else {
+                const editBtn = document.createElement('button');
+                editBtn.id = 'client-modal-edit-btn';
+                editBtn.textContent = 'Edit';
+                editBtn.onclick = () => {
+                    localState.isEditMode = true;
+                    render();
+                };
+                footer.appendChild(editBtn);
+            }
         }
-    });
+        footer.appendChild(statusSpan); // Re-append status span
+        statusSpan.textContent = '';
+    }
 
-    const renderViewMode = (data) => {
-        populateClientDetailsTab(data, headers, false);
-        populateClientHistoryTab(data[headers.indexOf('Email')]);
-        populateClientNotesTab(data, headers, false);
-        populateClientFinancialsTab(data[headers.indexOf('Email')]);
-        populateClientActionsTab(data, headers);
-    };
+    // --- CONTENT POPULATION ---
+    function populateClientDetailsTab() {
+        const displayHeaders = ['First Name', 'Last Name', 'Email', 'Phone', 'Organization', 'Status', 'Social Media'];
+        let contentHtml = '<div class="form-grid-condensed">';
+        displayHeaders.forEach(h => {
+            const val = localState.currentRowData[headers.indexOf(h)] || '';
+            const inputId = `client-edit-${h.replace(/\s+/g, '')}`;
+            contentHtml += `
+                <div class="form-field">
+                    <label for="${inputId}">${h}</label>
+                    ${localState.isEditMode ? `<input type="text" id="${inputId}" value="${val}">` : `<p>${val || 'N/A'}</p>`}
+                </div>`;
+        });
+        return contentHtml + '</div>';
+    }
 
-    const renderEditMode = (data) => {
-        populateClientDetailsTab(data, headers, true);
-        populateClientNotesTab(data, headers, true);
-    };
+    function populateClientHistoryTab() {
+        const clientEmail = localState.currentRowData[headers.indexOf('Email')];
+        let contentHtml = '<h3>Service Requests</h3>';
+        const clientRequests = allRequests.rows.filter(row => row[allRequests.headers.indexOf('Email')] === clientEmail);
+        if (clientRequests.length > 0) {
+            contentHtml += '<ul>';
+            clientRequests.forEach(req => {
+                const reqDate = req[allRequests.headers.indexOf('Submission Date')] || 'No Date';
+                const reqService = req[allRequests.headers.indexOf('Primary Service Category')] || 'No Service';
+                contentHtml += `<li><strong>${reqDate}:</strong> <a href="#" class="linked-request" data-req-id="${req[allRequests.headers.indexOf('Submission ID')]}">${reqService}</a></li>`;
+            });
+            contentHtml += '</ul>';
+        } else { contentHtml += '<p>No service requests found for this client.</p>'; }
+    
+        contentHtml += '<h3>Projects</h3>';
+        const clientProjects = allProjects.rows.filter(row => row[allProjects.headers.indexOf('Client Email')] === clientEmail);
+        if (clientProjects.length > 0) {
+            contentHtml += '<ul>';
+            clientProjects.forEach(proj => {
+                const projDate = proj[allProjects.headers.indexOf('Start Date')] || 'No Date';
+                const projName = proj[allProjects.headers.indexOf('Project Name')] || 'No Name';
+                contentHtml += `<li><strong>${projDate}:</strong> <a href="#" class="linked-project" data-proj-id="${proj[allProjects.headers.indexOf('ProjectID')]}">${projName}</a></li>`;
+            });
+            contentHtml += '</ul>';
+        } else { contentHtml += '<p>No projects found for this client.</p>'; }
+        return contentHtml;
+    }
 
-    editBtn.onclick = () => {
-        // Switch to "edit" mode visuals
-        editBtn.style.display = 'none';
-        saveBtn.style.display = 'inline-block';
-        renderEditMode(rowData);
-    };
+    function populateClientNotesTab() {
+        const notesIndex = headers.indexOf('Notes');
+        const logsIndex = headers.indexOf('Contact Logs');
+        const notesVal = localState.currentRowData[notesIndex] || '';
+        let contentHtml = '<h3>General Notes</h3>';
+        if (localState.isEditMode) {
+            contentHtml += `<textarea id="client-edit-Notes">${notesVal}</textarea>`;
+        } else {
+            contentHtml += `<p class="pre-wrap">${notesVal || 'No notes.'}</p>`;
+        }
 
-    const handleSaveClientUpdate = async (currentRowData, currentHeaders) => {
+        contentHtml += '<h3>Contact Logs</h3>';
+        let logs = []; 
+        try { logs = JSON.parse(localState.currentRowData[logsIndex] || '[]'); } catch (e) { console.error("Could not parse logs", e); }
+        
+        if (logs.length > 0) {
+            logs.forEach(log => contentHtml += `<div class="contact-log"><small>${new Date(log.date).toLocaleString()}</small><p>${log.note}</p></div>`);
+        } else {
+            contentHtml += '<p>No contact logs.</p>';
+        }
+
+        if (localState.isEditMode) {
+            contentHtml += `<input type="hidden" id="client-edit-ContactLogs" value='${JSON.stringify(logs)}'>
+                <h3>Add New Contact Log</h3>
+                <textarea id="new-contact-log-entry" placeholder="Log a call, meeting, or email..."></textarea>
+                <button id="add-contact-log-btn" class="secondary">Add Log</button>`;
+        }
+        return contentHtml;
+    }
+
+    function populateClientFinancialsTab() {
+        const clientEmail = localState.currentRowData[headers.indexOf('Email')];
+        let contentHtml = '<h3>Year-to-Date Income</h3>';
+        if (allProjects.headers.length > 0) {
+            const [emailIdx, valIdx, dateIdx] = ['Client Email', 'Value', 'Start Date'].map(h => allProjects.headers.indexOf(h));
+            const currentYear = new Date().getFullYear();
+            let ytdIncome = 0;
+            allProjects.rows.forEach(row => {
+                if (row[dateIdx] && row[emailIdx] === clientEmail && new Date(row[dateIdx]).getFullYear() === currentYear) {
+                    ytdIncome += parseFloat(row[valIdx]) || 0;
+                }
+            });
+            contentHtml += `<p class="financial-total">$${ytdIncome.toFixed(2)}</p>`;
+        } else { contentHtml += '<p>Project data is not available.</p>'; }
+        return contentHtml;
+    }
+
+    function populateClientActionsTab() {
+        return `
+            <h3>Actions</h3>
+            <div class="action-buttons-container">
+                <button id="modal-new-project-btn">Create New Project</button>
+                <button id="modal-delete-client-btn" class="danger">Delete Client</button>
+            </div>`;
+    }
+
+    // --- EVENT HANDLERS ---
+    function attachContentEventListeners() {
+        // --- Note/Log specific ---
+        const addLogBtn = document.getElementById('add-contact-log-btn');
+        if (addLogBtn) addLogBtn.onclick = () => {
+            const newNote = document.getElementById('new-contact-log-entry').value; 
+            if (!newNote) return;
+            const logsInput = document.getElementById('client-edit-ContactLogs');
+            let logs = JSON.parse(logsInput.value);
+            logs.unshift({ date: new Date().toISOString(), note: newNote });
+            logsInput.value = JSON.stringify(logs);
+            // Re-render only the notes tab content for instant feedback
+            contentArea.innerHTML = populateClientNotesTab();
+            attachContentEventListeners(); // Re-attach listeners to new content
+        };
+
+        // --- History specific ---
+        contentArea.querySelectorAll('.linked-request').forEach(link => {
+            link.onclick = (e) => {
+                e.preventDefault();
+                const request = allRequests.rows.find(r => r[allRequests.headers.indexOf('Submission ID')] === e.target.dataset.reqId);
+                if (request) { modal.style.display = 'none'; showRequestDetailsModal(request, allRequests.headers); }
+            };
+        });
+        contentArea.querySelectorAll('.linked-project').forEach(link => {
+            link.onclick = (e) => {
+                e.preventDefault();
+                modal.style.display = 'none';
+                document.querySelector('.tab-button[data-tab="projects"]').click();
+                setTimeout(() => { updateState({ selectedProjectId: e.target.dataset.projId }); renderProjectsTab(); }, 100);
+            };
+        });
+
+        // --- Actions specific ---
+        const newProjectBtn = document.getElementById('modal-new-project-btn');
+        if (newProjectBtn) newProjectBtn.onclick = () => showCreateProjectModal(localState.currentRowData, headers);
+        
+        const deleteClientBtn = document.getElementById('modal-delete-client-btn');
+        if(deleteClientBtn) deleteClientBtn.onclick = () => showDeleteClientModal(localState.currentRowData, headers);
+    }
+    
+    async function handleSaveClientUpdate() {
         statusSpan.textContent = 'Saving...';
         const dataToUpdate = {};
         const fields = ['First Name', 'Last Name', 'Email', 'Phone', 'Organization', 'Status', 'Social Media', 'Notes', 'Contact Logs'];
@@ -212,164 +367,61 @@ function showClientDetailsModal(rowData, headers) {
             const input = document.getElementById(`client-edit-${h.replace(/\s+/g, '')}`);
             if (input) {
                 const newValue = input.value;
-                const oldValue = currentRowData[currentHeaders.indexOf(h)] || '';
+                const oldValue = localState.currentRowData[headers.indexOf(h)] || '';
                 if (oldValue !== newValue) dataToUpdate[h] = newValue;
             }
         });
+
         try {
-            const clientId = currentRowData[currentHeaders.indexOf('ClientID')];
-            if (Object.keys(dataToUpdate).length > 0) await updateSheetRow('Clients', 'ClientID', clientId, dataToUpdate);
-            const updatedRow = allClients.rows.find(r => r[allClients.headers.indexOf('ClientID')] === clientId);
+            const clientId = localState.currentRowData[headers.indexOf('ClientID')];
+            if (Object.keys(dataToUpdate).length > 0) {
+                await updateSheetRow('Clients', 'ClientID', clientId, dataToUpdate);
+            }
             statusSpan.textContent = 'Saved successfully!';
-            renderClients();
+            
+            // Update local and global state before re-rendering
+            const updatedRowIndex = allClients.rows.findIndex(r => r[allClients.headers.indexOf('ClientID')] === clientId);
+            if(updatedRowIndex > -1) {
+                // Create a new row array with the updates applied
+                const newRow = [...allClients.rows[updatedRowIndex]];
+                Object.keys(dataToUpdate).forEach(key => {
+                    const headerIndex = headers.indexOf(key);
+                    if (headerIndex > -1) newRow[headerIndex] = dataToUpdate[key];
+                });
+                allClients.rows[updatedRowIndex] = newRow;
+                localState.currentRowData = newRow;
+            }
+
+            renderClients(); // Update the main view
+            
             setTimeout(() => {
-                // After saving, go back to view mode by re-clicking the current tab
-                const currentTab = elements.clientDetailsModal.querySelector('.client-tab-button.active');
-                renderViewMode(updatedRow || currentRowData);
-                if (currentTab) currentTab.click();
-                statusSpan.textContent = '';
-            }, 1500);
+                localState.isEditMode = false;
+                render();
+                attachContentEventListeners();
+            }, 1000);
+
         } catch (err) {
             statusSpan.textContent = 'Error saving.';
             console.error('Client update error:', err);
         }
-    };
-    
-    // Assign the save handler once, so it's always available.
-    saveBtn.onclick = () => handleSaveClientUpdate(rowData, headers);
-
-    // Initial setup
-    renderViewMode(rowData); // Populate content for all tabs
-    tabButtons[0].click();   // Set the initial state for the first tab
-    elements.clientDetailsModal.style.display = 'block';
-}
-
-
-function populateClientDetailsTab(rowData, headers, isEditMode) {
-    const container = document.getElementById('client-tab-details');
-    const displayHeaders = ['First Name', 'Last Name', 'Email', 'Phone', 'Organization', 'Status', 'Social Media'];
-    let contentHtml = '<ul>';
-    displayHeaders.forEach(h => {
-        const val = rowData[headers.indexOf(h)] || '';
-        contentHtml += `<li><strong>${h}:</strong> ${isEditMode ? `<input type="text" id="client-edit-${h.replace(/\s+/g, '')}" value="${val}">` : (val || 'N/A')}</li>`;
-    });
-    container.innerHTML = contentHtml + '</ul>';
-}
-
-function populateClientHistoryTab(clientEmail) {
-    const container = document.getElementById('client-tab-history');
-    let contentHtml = '<h3>Service Requests</h3>';
-    const clientRequests = allRequests.rows.filter(row => row[allRequests.headers.indexOf('Email')] === clientEmail);
-    if (clientRequests.length > 0) {
-        contentHtml += '<ul>';
-        clientRequests.forEach(req => {
-            const reqDate = req[allRequests.headers.indexOf('Submission Date')] || 'No Date';
-            const reqService = req[allRequests.headers.indexOf('Primary Service Category')] || 'No Service';
-            const reqId = req[allRequests.headers.indexOf('Submission ID')];
-            contentHtml += `<li><strong>${reqDate}:</strong> <a href="#" class="linked-request" data-req-id="${reqId}">${reqService}</a></li>`;
-        });
-        contentHtml += '</ul>';
-    } else { contentHtml += '<p>No service requests found for this client.</p>'; }
-
-    contentHtml += '<h3>Projects</h3>';
-    const clientProjects = allProjects.rows.filter(row => row[allProjects.headers.indexOf('Client Email')] === clientEmail);
-    if (clientProjects.length > 0) {
-        contentHtml += '<ul>';
-        clientProjects.forEach(proj => {
-            const projDate = proj[allProjects.headers.indexOf('Start Date')] || 'No Date';
-            const projName = proj[allProjects.headers.indexOf('Project Name')] || 'No Name';
-            const projId = proj[allProjects.headers.indexOf('ProjectID')];
-            contentHtml += `<li><strong>${projDate}:</strong> <a href="#" class="linked-project" data-proj-id="${projId}">${projName}</a></li>`;
-        });
-        contentHtml += '</ul>';
-    } else { contentHtml += '<p>No projects found for this client.</p>'; }
-
-    container.innerHTML = contentHtml;
-
-    // Add event listeners
-    container.querySelectorAll('.linked-request').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const reqId = e.currentTarget.dataset.reqId;
-            const request = allRequests.rows.find(r => r[allRequests.headers.indexOf('Submission ID')] === reqId);
-            if (request) {
-                elements.clientDetailsModal.style.display = 'none';
-                showRequestDetailsModal(request, allRequests.headers);
-            }
-        });
-    });
-
-    container.querySelectorAll('.linked-project').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const projId = e.currentTarget.dataset.projId;
-            elements.clientDetailsModal.style.display = 'none';
-            document.querySelector('.tab-button[data-tab="projects"]').click();
-            setTimeout(() => {
-                updateState({ selectedProjectId: projId });
-                renderProjectsTab();
-            }, 100); // Timeout to allow tab switch to complete
-        });
-    });
-}
-
-function populateClientNotesTab(rowData, headers, isEditMode) {
-    const container = document.getElementById('client-tab-notes');
-    let contentHtml = '<h3>General Notes</h3>';
-    const notesIndex = headers.indexOf('Notes'), logsIndex = headers.indexOf('Contact Logs');
-    if (isEditMode) {
-        contentHtml += `<textarea id="client-edit-Notes">${rowData[notesIndex] || ''}</textarea>`;
-    } else { contentHtml += `<p>${(rowData[notesIndex] || 'No notes.').replace(/\n/g, '<br>')}</p>`; }
-    contentHtml += '<h3>Contact Logs</h3>';
-    let logs = []; try { logs = JSON.parse(rowData[logsIndex] || '[]'); } catch (e) { console.error("Could not parse logs", e); }
-    if (logs.length > 0) logs.forEach(log => contentHtml += `<div class="contact-log"><small>${new Date(log.date).toLocaleString()}</small><p>${log.note}</p></div>`);
-    else contentHtml += '<p>No contact logs.</p>';
-    if (isEditMode) {
-        contentHtml += `<input type="hidden" id="client-edit-ContactLogs" value='${JSON.stringify(logs)}'>
-            <h3>Add New Contact Log</h3>
-            <textarea id="new-contact-log-entry" placeholder="Log a call, meeting, or email..."></textarea>
-            <button id="add-contact-log-btn">Add Log</button>`;
     }
-    container.innerHTML = contentHtml;
-    if (isEditMode) document.getElementById('add-contact-log-btn').onclick = () => {
-        const newNote = document.getElementById('new-contact-log-entry').value; if (!newNote) return;
-        logs.unshift({ date: new Date().toISOString(), note: newNote });
-        document.getElementById('client-edit-ContactLogs').value = JSON.stringify(logs);
-        populateClientNotesTab(rowData, headers, true);
-    };
+
+    navLinks.forEach(link => {
+        link.onclick = (e) => {
+            e.preventDefault();
+            localState.activeTab = e.target.dataset.tab;
+            localState.isEditMode = false; // Always exit edit mode on tab change
+            render();
+            attachContentEventListeners();
+        };
+    });
+
+    // --- INITIALIZATION ---
+    render();
+    attachContentEventListeners();
+    modal.style.display = 'block';
 }
 
-
-function populateClientFinancialsTab(clientEmail) {
-    const container = document.getElementById('client-tab-financials');
-    let contentHtml = '<h3>Year-to-Date Income</h3>';
-    if (allProjects.headers.length > 0) {
-        const [emailIdx, valIdx, dateIdx] = ['Client Email', 'Value', 'Start Date'].map(h => allProjects.headers.indexOf(h));
-        const currentYear = new Date().getFullYear();
-        let ytdIncome = 0;
-        allProjects.rows.forEach(row => {
-            if (row[dateIdx] && row[emailIdx] === clientEmail && new Date(row[dateIdx]).getFullYear() === currentYear) {
-                ytdIncome += parseFloat(row[valIdx]) || 0;
-            }
-        });
-        contentHtml += `<h2>$${ytdIncome.toFixed(2)}</h2>`;
-    } else { contentHtml += '<p>Project data is not available.</p>'; }
-    container.innerHTML = contentHtml;
-}
-
-function populateClientActionsTab(rowData, headers) {
-    const container = document.getElementById('client-tab-actions');
-    container.innerHTML = '<h3>Actions</h3>';
-    const createProjectBtn = document.createElement('button');
-    createProjectBtn.textContent = 'Create New Project';
-    createProjectBtn.onclick = () => showCreateProjectModal(rowData, headers);
-    container.appendChild(createProjectBtn);
-    const deleteClientBtn = document.createElement('button');
-    deleteClientBtn.id = 'delete-client-btn';
-    deleteClientBtn.textContent = 'Delete Client';
-    deleteClientBtn.onclick = () => showDeleteClientModal(rowData, headers);
-    container.appendChild(deleteClientBtn);
-}
 
 function showDeleteClientModal(rowData, headers) {
     elements.clientDetailsModal.style.display = 'none';
@@ -392,6 +444,4 @@ function showDeleteClientModal(rowData, headers) {
         } catch (err) { statusSpan.textContent = 'Error deleting client.'; console.error('Delete client error:', err); confirmBtn.disabled = false; }
     };
 }
-
-
 
