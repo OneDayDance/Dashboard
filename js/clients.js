@@ -7,8 +7,11 @@ import { showColumnModal, elements } from './ui.js';
 import { showCreateProjectModal, renderProjectsTab } from './projects.js';
 import { showRequestDetailsModal } from './requests.js';
 
+let refreshData; // This will hold the main data refresh function.
+
 // --- STATE & EVENT HANDLERS ---
-export function initClientsTab() {
+export function initClientsTab(refreshDataFn) {
+    refreshData = refreshDataFn;
     document.getElementById('add-client-form').addEventListener('submit', handleAddClientSubmit);
     document.getElementById('client-search-bar').oninput = (e) => { updateState({ clientSearchTerm: e.target.value.toLowerCase() }); renderClients(); };
     document.getElementById('client-status-filter').onchange = (e) => { updateClientFilters('status', e.target.value); renderClients(); };
@@ -144,10 +147,9 @@ async function handleAddClientSubmit(event) {
         'ClientID': `C-${Date.now()}`
     };
     try {
-        await writeData('Clients', clientData);
+        await writeData('Clients', clientData); // This will now trigger a full data refresh.
         statusDiv.textContent = 'Client added successfully!';
         document.getElementById('add-client-form').reset();
-        // The main data reload will handle updating the view.
         setTimeout(() => { statusDiv.textContent = ''; }, 3000);
     } catch (err) {
         statusDiv.textContent = `Error: ${err.result.error.message}`;
@@ -377,23 +379,17 @@ export function showClientDetailsModal(rowData, headers) {
             if (Object.keys(dataToUpdate).length > 0) {
                 await updateSheetRow('Clients', 'ClientID', clientId, dataToUpdate);
             }
-            statusSpan.textContent = 'Saved successfully!';
-            
-            // Update local and global state before re-rendering
+            // Data will refresh automatically. We can update local state for a faster feel.
             const updatedRowIndex = allClients.rows.findIndex(r => r[allClients.headers.indexOf('ClientID')] === clientId);
             if(updatedRowIndex > -1) {
-                // Create a new row array with the updates applied
                 const newRow = [...allClients.rows[updatedRowIndex]];
                 Object.keys(dataToUpdate).forEach(key => {
                     const headerIndex = headers.indexOf(key);
                     if (headerIndex > -1) newRow[headerIndex] = dataToUpdate[key];
                 });
-                allClients.rows[updatedRowIndex] = newRow;
                 localState.currentRowData = newRow;
             }
-
-            renderClients(); // Update the main view
-            
+            statusSpan.textContent = 'Saved successfully!';
             setTimeout(() => {
                 localState.isEditMode = false;
                 render();
@@ -436,9 +432,6 @@ function showDeleteClientModal(rowData, headers) {
         const clientId = rowData[headers.indexOf('ClientID')];
         try {
             await clearSheetRow('Clients', 'ClientID', clientId);
-            const clientIndex = allClients.rows.findIndex(r => r[allClients.headers.indexOf('ClientID')] === clientId);
-            if (clientIndex > -1) allClients.rows.splice(clientIndex, 1);
-            renderClients();
             statusSpan.textContent = 'Client deleted.';
             setTimeout(() => { elements.deleteClientModal.style.display = 'none'; }, 1500);
         } catch (err) { statusSpan.textContent = 'Error deleting client.'; console.error('Delete client error:', err); confirmBtn.disabled = false; }

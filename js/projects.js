@@ -3,12 +3,15 @@
 
 import { state, allProjects, allClients, allTasks, allRequests, updateState } from './state.js';
 import { updateSheetRow, writeData, clearSheetRow } from './api.js';
-import { elements } from './ui.js';
+import { elements, loadDataForActiveTab } from './ui.js';
 import { showRequestDetailsModal } from './requests.js';
 import { showClientDetailsModal } from './clients.js';
 
+let refreshData; // This will hold the main data refresh function.
+
 // --- INITIALIZATION ---
-export function initProjectsTab() {
+export function initProjectsTab(refreshDataFn) {
+    refreshData = refreshDataFn;
     document.getElementById('project-search-bar').oninput = (e) => {
         updateState({ projectSearchTerm: e.target.value });
         renderProjectsTab();
@@ -337,8 +340,6 @@ async function handleSaveFinancials(projectId) {
     });
     try {
         await updateSheetRow('Projects', 'ProjectID', projectId, { 'Cost Breakdown': JSON.stringify(lineItems) });
-        // The UI will refresh automatically because updateSheetRow triggers a full data reload and re-render.
-        // For an instant-feel update, we can still call showProjectDetails.
         showProjectDetails(projectId);
     } catch (err) { alert('Error saving financials.'); console.error(err); }
 }
@@ -402,7 +403,7 @@ async function handleCreateProjectSubmit(event) {
     };
 
     try {
-        await writeData('Projects', projectData); // This now triggers a data refresh internally.
+        await writeData('Projects', projectData);
         if (projectData['Source Request ID']) {
             await updateSheetRow('Submissions', 'Submission ID', projectData['Source Request ID'], { 'Status': 'Archived' });
         }
@@ -411,7 +412,6 @@ async function handleCreateProjectSubmit(event) {
         
         setTimeout(() => {
             elements.createProjectModal.style.display = 'none';
-            // The click will trigger a re-render using the data that was just refreshed.
             document.querySelector('.tab-button[data-tab="projects"]').click(); 
         }, 1500);
 
@@ -433,7 +433,6 @@ async function handleSaveProjectUpdate(projectId) {
 async function handleArchiveProject(projectId) {
     try {
         await updateSheetRow('Projects', 'ProjectID', projectId, { 'Status': 'Archived' });
-        renderProjectsTab();
     } catch(err) { console.error('Archive project error', err); alert('Could not archive project.'); }
 }
 
@@ -454,11 +453,13 @@ async function handleDeleteProject(projectId) {
         const tasksToDelete = allTasks.rows.filter(t => t[allTasks.headers.indexOf('ProjectID')] === projectId);
         const taskDeletionPromises = tasksToDelete.map(t => clearSheetRow('Tasks', 'TaskID', t[allTasks.headers.indexOf('TaskID')]));
         await Promise.all(taskDeletionPromises);
-        await clearSheetRow('Projects', 'ProjectID', projectId); // This now triggers the refresh
+        await clearSheetRow('Projects', 'ProjectID', projectId); 
         updateState({ selectedProjectId: null });
         statusSpan.textContent = 'Project deleted.';
-        renderProjectsTab(); // Re-render the tab with the updated (now missing) project
-        setTimeout(() => elements.deleteProjectModal.style.display = 'none', 1500);
+        setTimeout(() => { 
+            elements.deleteProjectModal.style.display = 'none';
+            renderProjectsTab();
+        }, 1500);
     } catch(err) {
         statusSpan.textContent = 'Error deleting project.';
         console.error('Delete project error', err);
@@ -625,8 +626,9 @@ async function handleSaveTask(event) {
         'Links': document.getElementById('links-data').value
     };
     try {
-        if (taskId) await updateSheetRow('Tasks', 'TaskID', taskId, taskData);
-        else { 
+        if (taskId) {
+            await updateSheetRow('Tasks', 'TaskID', taskId, taskData);
+        } else { 
             taskData.TaskID = `T-${Date.now()}`; 
             const tasksInBucket = getProjectTasksSorted(taskData.ProjectID).filter(t => (t.row[allTasks.headers.indexOf('Bucket')] || 'General') === taskData.Bucket);
             taskData.SortIndex = tasksInBucket.length;
@@ -675,9 +677,6 @@ async function handleTaskStatusChange(taskId, isChecked) {
     const newStatus = isChecked ? 'Done' : 'To Do';
     try {
         await updateSheetRow('Tasks', 'TaskID', taskId, { 'Status': newStatus });
-        const task = allTasks.rows.find(t => t[allTasks.headers.indexOf('TaskID')] === taskId);
-        const projectId = task ? task[allTasks.headers.indexOf('ProjectID')] : state.selectedProjectId;
-        if(projectId) showProjectDetails(projectId);
     } catch(err) { console.error('Task status update error', err); alert('Could not update task status.'); }
 }
 async function handleSubtaskStatusChange(event) {
@@ -696,7 +695,6 @@ async function handleSubtaskStatusChange(event) {
     const updatedSubtasksJson = JSON.stringify(subtasks);
     try {
         await updateSheetRow('Tasks', 'TaskID', taskId, { 'Subtasks': updatedSubtasksJson });
-        showProjectDetails(state.selectedProjectId);
     } catch (err) { console.error('Subtask status update error', err); alert('Could not update subtask status.'); showProjectDetails(state.selectedProjectId); }
 }
 function getProjectTasksSorted(projectId) {

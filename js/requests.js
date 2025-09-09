@@ -3,11 +3,14 @@
 
 import { state, allRequests, allClients, sortableColumns, updateState, updateFilters } from './state.js';
 import { updateSheetRow, writeData } from './api.js';
-import { showColumnModal, elements } from './ui.js';
+import { showColumnModal, elements, loadDataForActiveTab } from './ui.js';
 import { showCreateProjectModal } from './projects.js';
 
+let refreshData; // This will hold the main data refresh function.
+
 // --- STATE & EVENT HANDLERS ---
-export function initRequestsTab() {
+export function initRequestsTab(refreshDataFn) {
+    refreshData = refreshDataFn;
     document.getElementById('service-filter').onchange = (e) => { updateFilters('service', e.target.value); renderRequests(); };
     document.getElementById('status-filter').onchange = (e) => { updateFilters('status', e.target.value); renderRequests(); };
     document.getElementById('search-bar').oninput = (e) => { updateState({ searchTerm: e.target.value.toLowerCase() }); renderRequests(); };
@@ -65,7 +68,7 @@ function renderRequestsAsList(requestRows, container) {
     table.innerHTML = headerHtml + '</tr></thead>';
     const tbody = document.createElement('tbody');
     requestRows.forEach(row => {
-        const originalIndex = allRequests.rows.indexOf(row);
+        const submissionId = row[headers.indexOf('Submission ID')];
         const tr = document.createElement('tr');
         tr.onclick = () => showRequestDetailsModal(row, headers);
         state.visibleColumns.forEach(headerText => {
@@ -73,13 +76,13 @@ function renderRequestsAsList(requestRows, container) {
             const td = document.createElement('td');
             if (headerText === 'Status') {
                 const statusSelect = document.createElement('select');
-                statusSelect.dataset.rowIndex = originalIndex;
+                statusSelect.dataset.submissionId = submissionId;
                 const currentStatus = row[cellIndex] || 'New';
                 ['New', 'Contacted', 'Archived'].forEach(status => {
                     statusSelect.add(new Option(status, status, false, status === currentStatus));
                 });
                 statusSelect.onclick = (e) => e.stopPropagation();
-                statusSelect.onchange = (e) => handleStatusChange(e, originalIndex);
+                statusSelect.onchange = handleStatusChange;
                 td.appendChild(statusSelect);
             } else { td.textContent = row[cellIndex] || ''; }
             tr.appendChild(td);
@@ -98,7 +101,7 @@ function renderRequestsAsCards(requestRows, container) {
     const cardContainer = document.createElement('div');
     cardContainer.className = 'card-container';
     requestRows.forEach(row => {
-        const originalIndex = allRequests.rows.indexOf(row);
+        const submissionId = row[headers.indexOf('Submission ID')];
         const card = document.createElement('div');
         card.className = 'request-card info-card';
         card.onclick = () => showRequestDetailsModal(row, headers);
@@ -111,13 +114,13 @@ function renderRequestsAsCards(requestRows, container) {
         card.innerHTML = cardContent;
         const statusIndex = headers.indexOf('Status');
         const statusSelect = document.createElement('select');
-        statusSelect.dataset.rowIndex = originalIndex;
+        statusSelect.dataset.submissionId = submissionId;
         const currentStatus = row[statusIndex] || 'New';
         ['New', 'Contacted', 'Archived'].forEach(status => {
             statusSelect.add(new Option(status, status, false, status === currentStatus));
         });
         statusSelect.onclick = (e) => e.stopPropagation();
-        statusSelect.onchange = (e) => handleStatusChange(e, originalIndex);
+        statusSelect.onchange = handleStatusChange;
         card.appendChild(statusSelect);
         cardContainer.appendChild(card);
     });
@@ -164,18 +167,17 @@ function handleSort(event) {
     renderRequests();
 }
 
-async function handleStatusChange(event, rowIndex) {
+async function handleStatusChange(event) {
     const newStatus = event.target.value;
+    const submissionId = event.target.dataset.submissionId;
     event.target.disabled = true;
     try {
-        const submissionId = allRequests.rows[rowIndex][allRequests.headers.indexOf('Submission ID')];
         await updateSheetRow('Submissions', 'Submission ID', submissionId, { 'Status': newStatus });
-        allRequests.rows[rowIndex][allRequests.headers.indexOf('Status')] = newStatus;
-        renderRequests();
+        // The data will be refreshed automatically by the updateSheetRow function's success handler.
     } catch (err) {
         alert('Could not update status.');
         console.error("Status Update Error:", err);
-        event.target.disabled = false;
+        event.target.disabled = false; // Re-enable on failure
     }
 }
 
@@ -197,6 +199,7 @@ export function showRequestDetailsModal(rowData, headers) {
     const title = modal.querySelector('#request-modal-title');
     const detailsPane = modal.querySelector('#request-details-pane');
     const actionsPane = modal.querySelector('#request-actions-pane');
+    const submissionId = rowData[headers.indexOf('Submission ID')];
 
     // Set Title
     title.textContent = `Request from ${rowData[headers.indexOf('Full Name')] || 'N/A'}`;
@@ -235,8 +238,7 @@ export function showRequestDetailsModal(rowData, headers) {
     actionsPane.innerHTML = actionsHtml;
     
     // Add Event Listeners
-    const originalIndex = allRequests.rows.indexOf(rowData);
-    document.getElementById('modal-save-note-btn').onclick = () => handleSaveNote(originalIndex);
+    document.getElementById('modal-save-note-btn').onclick = () => handleSaveNote(submissionId);
     
     const createClientBtn = document.getElementById('modal-create-client-btn');
     if (createClientBtn && !createClientBtn.disabled) {
@@ -255,14 +257,12 @@ export function showRequestDetailsModal(rowData, headers) {
     modal.style.display = 'block';
 }
 
-async function handleSaveNote(rowIndex) {
+async function handleSaveNote(submissionId) {
     const noteStatus = document.getElementById('modal-note-status');
     noteStatus.textContent = 'Saving...';
     const dataToUpdate = { 'Notes': document.getElementById('modal-notes-textarea').value };
     try {
-        const submissionId = allRequests.rows[rowIndex][allRequests.headers.indexOf('Submission ID')];
         await updateSheetRow('Submissions', 'Submission ID', submissionId, dataToUpdate);
-        allRequests.rows[rowIndex][allRequests.headers.indexOf('Notes')] = dataToUpdate.Notes;
         noteStatus.textContent = 'Saved successfully!';
     } catch (err) {
         noteStatus.textContent = 'Error saving note.';
@@ -288,12 +288,10 @@ async function handleCreateClient(submissionRow, submissionHeaders) {
     };
 
     try {
-        await writeData('Clients', clientData);
+        await writeData('Clients', clientData); // This will now trigger a full data refresh.
         actionStatus.textContent = 'Client created successfully!';
-        // Data will be reloaded on next tab switch or manually
         setTimeout(() => elements.detailsModal.style.display = 'none', 1500);
     } catch (err) {
         actionStatus.textContent = `Error: ${err.result.error.message}`;
     }
 }
-

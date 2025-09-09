@@ -28,9 +28,12 @@ let authLoadTimeout; // Variable to hold the timeout
 document.addEventListener('DOMContentLoaded', () => {
     cacheDOMElements();
     setupModalCloseButtons();
-    initRequestsTab();
-    initClientsTab();
-    initProjectsTab();
+    
+    // Pass the main data loading function to the init functions of each tab.
+    // This avoids circular dependencies by using dependency injection.
+    initRequestsTab(loadInitialData);
+    initClientsTab(loadInitialData);
+    initProjectsTab(loadInitialData);
 
     elements.authorizeButton.onclick = handleAuthClick;
     elements.signoutButton.onclick = handleSignoutClick;
@@ -166,8 +169,9 @@ async function onSignInSuccess() {
     
     showLoadingIndicator();
     try {
+        // Perform the first data load and render the initial view.
         await loadInitialData();
-        loadDataForActiveTab();
+        loadDataForActiveTab(); 
     } catch (err) {
         showMainError(`Failed to load initial data: ${err.message}. Please check sheet permissions and try again.`);
     } finally {
@@ -176,21 +180,28 @@ async function onSignInSuccess() {
 }
 
 /**
- * Fetches all necessary data from the spreadsheet on initial load and stores it.
+ * Fetches all necessary data from the spreadsheet and stores it in the state.
+ * This is the central data refresh function for the entire application.
+ * It also re-renders the currently active tab to show the new data.
  */
 async function loadInitialData() {
-    // This now correctly captures and stores the data from the API calls.
-    const [requests, clients, projects, tasks] = await Promise.all([
-        loadRequests(), 
-        loadClients(), 
-        loadProjects(), 
-        loadTasks()
-    ]);
-    
-    // The data is now correctly passed to the state management module.
-    // (This assumes you have setter functions in your state module, which is good practice.
-    // For now, we'll import and set them directly if they are exported.)
-    // Let's adjust this to directly call the setters from the api module for clarity.
+    console.log("Refreshing all application data...");
+    showLoadingIndicator();
+    try {
+        await Promise.all([
+            loadRequests(), 
+            loadClients(), 
+            loadProjects(), 
+            loadTasks()
+        ]);
+        console.log("All application data refreshed.");
+        // After fetching new data, always re-render the view for the active tab.
+        loadDataForActiveTab();
+    } catch (err) {
+        showMainError(`Failed to refresh data: ${err.message}`);
+    } finally {
+        hideLoadingIndicator();
+    }
 }
 
 
@@ -216,5 +227,4 @@ function handleSignoutClick() {
         silentAuthAttempted = false; // Allow silent sign-in on next visit
     }
 }
-
 
