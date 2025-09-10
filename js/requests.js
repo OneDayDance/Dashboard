@@ -3,7 +3,7 @@
 
 import { state, allRequests, allClients, sortableColumns, updateState, updateFilters } from './state.js';
 import { updateSheetRow, writeData } from './api.js';
-import { showColumnModal, elements, loadDataForActiveTab } from './ui.js';
+import { showColumnModal, elements } from './ui.js';
 import { showCreateProjectModal } from './projects.js';
 
 let refreshData; // This will hold the main data refresh function.
@@ -295,3 +295,4 @@ async function handleCreateClient(submissionRow, submissionHeaders) {
         actionStatus.textContent = `Error: ${err.result.error.message}`;
     }
 }
+
