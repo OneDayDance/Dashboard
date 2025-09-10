@@ -24,16 +24,31 @@ let gapiInited = false;
 let gisInited = false;
 let silentAuthAttempted = false;
 let authLoadTimeout;
+let uiInitialized = false; // Flag to prevent re-initializing listeners
 
-document.addEventListener('DOMContentLoaded', () => {
-    cacheDOMElements();
-    setupModalCloseButtons();
-    
+/**
+ * Sets up all the event listeners for the main application UI.
+ * This is called only after a successful sign-in.
+ */
+function initializeAppUI() {
+    if (uiInitialized) return; // Ensure this only runs once
+
+    console.log("Initializing application UI event listeners...");
     initRequestsTab(loadInitialData);
     initClientsTab(loadInitialData);
     initProjectsTab(loadInitialData);
     initCostumesTab(loadInitialData);
     initEquipmentTab(loadInitialData);
+    
+    uiInitialized = true;
+}
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    cacheDOMElements();
+    setupModalCloseButtons();
+    
+    // Note: Tab initialization is now deferred until after sign-in.
 
     elements.authorizeButton.onclick = handleAuthClick;
     elements.signoutButton.onclick = handleSignoutClick;
@@ -134,6 +149,10 @@ function attemptSilentSignIn() {
 async function onSignInSuccess() {
     elements.landingContainer.style.display = 'none';
     elements.appContainer.style.display = 'block';
+    
+    // Initialize UI listeners now that the app is visible and authenticated
+    initializeAppUI();
+    
     setupTabs();
     
     showLoadingIndicator();
