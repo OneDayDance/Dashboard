@@ -19,37 +19,18 @@ import { initProjectsTab } from './projects.js';
 import { initCostumesTab } from './costumes.js';
 import { initEquipmentTab } from './equipment.js';
 
+
+// --- STATE ---
 let tokenClient;
 let gapiInited = false;
 let gisInited = false;
 let silentAuthAttempted = false;
-let authLoadTimeout;
-let uiInitialized = false; // Flag to prevent re-initializing listeners
+let authLoadTimeout; // Variable to hold the timeout
 
-/**
- * Sets up all the event listeners for the main application UI.
- * This is called only after a successful sign-in.
- */
-function initializeAppUI() {
-    if (uiInitialized) return; // Ensure this only runs once
-
-    console.log("Initializing application UI event listeners...");
-    initRequestsTab(loadInitialData);
-    initClientsTab(loadInitialData);
-    initProjectsTab(loadInitialData);
-    initCostumesTab(loadInitialData);
-    initEquipmentTab(loadInitialData);
-    
-    uiInitialized = true;
-}
-
-
+// --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
-    cacheDOMElements();
-    setupModalCloseButtons();
+    cacheDOMElements(); // This should be first
     
-    // Note: Tab initialization is now deferred until after sign-in.
-
     elements.authorizeButton.onclick = handleAuthClick;
     elements.signoutButton.onclick = handleSignoutClick;
     
@@ -60,26 +41,46 @@ document.addEventListener('DOMContentLoaded', () => {
     loadGoogleScripts();
 });
 
+function initializeAppUI() {
+    setupTabs();
+    setupModalCloseButtons();
+    
+    initRequestsTab(loadInitialData);
+    initClientsTab(loadInitialData);
+    initProjectsTab(loadInitialData);
+    initCostumesTab(loadInitialData);
+    initEquipmentTab(loadInitialData);
+}
+
+
+/**
+ * Updates the UI to show an authentication error message.
+ * @param {string} errorMessage - The message to display to the user.
+ */
 function handleAuthError(errorMessage) {
     console.error(errorMessage);
-    clearTimeout(authLoadTimeout);
+    clearTimeout(authLoadTimeout); 
     if (elements.authorizeButton) {
         elements.authorizeButton.disabled = true;
         elements.authorizeButton.textContent = 'Authentication Error';
     }
     const landingBoxMessage = document.querySelector('.landing-box p');
     if (landingBoxMessage) {
-        landingBoxMessage.style.color = '#dc3545';
+        landingBoxMessage.style.color = '#dc3545'; 
         landingBoxMessage.innerHTML = errorMessage;
     }
 }
 
+/**
+ * Dynamically creates and loads the Google API and Identity scripts.
+ */
 function loadGoogleScripts() {
     const gisScript = document.createElement('script');
     gisScript.src = 'https://accounts.google.com/gsi/client';
     gisScript.async = true;
     gisScript.defer = true;
     gisScript.onload = () => {
+        console.log("Google Identity Services (GIS) script loaded.");
         try {
             tokenClient = google.accounts.oauth2.initTokenClient({
                 client_id: CLIENT_ID,
@@ -106,10 +107,11 @@ function loadGoogleScripts() {
     gapiScript.async = true;
     gapiScript.defer = true;
     gapiScript.onload = () => {
+        console.log("Google API (GAPI) script loaded.");
         gapi.load('client', {
             callback: initializeGapiClient,
             onerror: () => handleAuthError("Failed to load the GAPI client library."),
-            timeout: 10000,
+            timeout: 10000, 
             ontimeout: () => handleAuthError("Timed out while loading the GAPI client library."),
         });
     };
@@ -117,10 +119,19 @@ function loadGoogleScripts() {
     document.body.appendChild(gapiScript);
 }
 
+/**
+ * Initializes the GAPI client for Google Sheets and Google Drive.
+ */
 async function initializeGapiClient() {
+    console.log("Initializing GAPI client...");
     try {
         await gapi.client.init({});
-        await gapi.client.load('https://sheets.googleapis.com/$discovery/rest?version=v4');
+        // **FIX:** Load both Sheets and Drive APIs concurrently.
+        await Promise.all([
+            gapi.client.load('https://sheets.googleapis.com/$discovery/rest?version=v4'),
+            gapi.client.load('https://www.googleapis.com/discovery/v1/apis/drive/v3/rest')
+        ]);
+        console.log("GAPI client initialized successfully for Sheets and Drive.");
         gapiInited = true;
         checkLibsLoaded();
     } catch (err) {
@@ -128,15 +139,23 @@ async function initializeGapiClient() {
     }
 }
 
+
+/**
+ * Checks if both Google libraries are loaded and initialized.
+ */
 function checkLibsLoaded() {
     if (gapiInited && gisInited) {
-        clearTimeout(authLoadTimeout);
+        console.log("Both GAPI and GIS libraries are loaded and initialized.");
+        clearTimeout(authLoadTimeout); 
         elements.authorizeButton.disabled = false;
         elements.authorizeButton.textContent = 'Authorize';
         attemptSilentSignIn();
     }
 }
 
+/**
+ * Attempts to get an access token without user interaction.
+ */
 function attemptSilentSignIn() {
     if (!silentAuthAttempted) {
         silentAuthAttempted = true;
@@ -146,14 +165,14 @@ function attemptSilentSignIn() {
     }
 }
 
+// --- AUTH HANDLERS & DATA LOADING ---
+/**
+ * Main function to run after a successful sign-in.
+ */
 async function onSignInSuccess() {
     elements.landingContainer.style.display = 'none';
     elements.appContainer.style.display = 'block';
-    
-    // Initialize UI listeners now that the app is visible and authenticated
     initializeAppUI();
-    
-    setupTabs();
     
     showLoadingIndicator();
     try {
@@ -166,6 +185,9 @@ async function onSignInSuccess() {
     }
 }
 
+/**
+ * Fetches all necessary data from the spreadsheet and stores it in the state.
+ */
 async function loadInitialData() {
     console.log("Refreshing all application data...");
     showLoadingIndicator();
@@ -187,12 +209,19 @@ async function loadInitialData() {
     }
 }
 
+
+/**
+ * Handles the explicit click of the "Authorize" button.
+ */
 function handleAuthClick() {
     if (tokenClient) {
         tokenClient.requestAccessToken({ prompt: 'consent' });
     }
 }
 
+/**
+ * Signs the user out and returns to the landing page.
+ */
 function handleSignoutClick() {
     const token = gapi.client.getToken();
     if (token !== null) {
@@ -200,7 +229,7 @@ function handleSignoutClick() {
         gapi.client.setToken('');
         elements.appContainer.style.display = 'none';
         elements.landingContainer.style.display = 'flex';
-        silentAuthAttempted = false;
+        silentAuthAttempted = false; 
     }
 }
 

@@ -237,12 +237,14 @@ async function getInventoryFolderId() {
             includeItemsFromAllDrives: true,
             corpora: 'allDrives'
         });
-
-        if (response.result.files.length > 0) {
+        
+        // **FIX:** Add a check to ensure response.result is defined before accessing .files
+        if (response && response.result && response.result.files && response.result.files.length > 0) {
             inventoryFolderId = response.result.files[0].id;
             console.log('Found inventory folder with ID:', inventoryFolderId);
             return inventoryFolderId;
         } else {
+            console.error("API response for folder search was invalid or empty:", response);
             throw new Error('Inventory folder not found.');
         }
     } catch (err) {
@@ -263,7 +265,6 @@ export async function uploadImageToDrive(file) {
     form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
     form.append('file', file);
 
-    // Using gapi.client.request for multipart upload
     const response = await gapi.client.request({
         path: '/upload/drive/v3/files',
         method: 'POST',
@@ -271,7 +272,6 @@ export async function uploadImageToDrive(file) {
         body: form,
     });
 
-    // After uploading, make the file publicly readable
     await gapi.client.drive.permissions.create({
         fileId: response.result.id,
         resource: {
