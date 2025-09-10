@@ -1,61 +1,70 @@
 // js/ui.js
 // Description: Handles DOM manipulation, UI setup, and event listeners for UI components.
 
-import { state, allRequests, allClients, allCostumes } from './state.js';
-
 export const elements = {};
 
 /**
  * Caches frequently accessed DOM elements.
  */
 export function cacheDOMElements() {
+    // General App
     elements.authorizeButton = document.getElementById('authorize_button');
     elements.signoutButton = document.getElementById('signout_button');
     elements.appContainer = document.getElementById('app-container');
+    elements.landingContainer = document.getElementById('landing-container');
+    elements.loadingOverlay = document.getElementById('loading-overlay');
+    elements.mainContentArea = document.querySelector('#app-container > main');
+    elements.closeModalButtons = document.querySelectorAll('.close-button');
+
+    // Requests Tab
     elements.serviceFilter = document.getElementById('service-filter');
     elements.statusFilter = document.getElementById('status-filter');
     elements.searchBar = document.getElementById('search-bar');
+    elements.requestViewToggleBtn = document.getElementById('request-view-toggle-btn');
+    elements.columnSelectBtn = document.getElementById('column-select-btn');
+    elements.saveColumnsBtn = document.getElementById('save-columns-btn');
+
+    // Clients Tab
+    elements.clientSearchBar = document.getElementById('client-search-bar');
+    elements.clientTableContainer = document.getElementById('client-table-container');
+    elements.clientStatusFilter = document.getElementById('client-status-filter');
+    elements.clientAddBtn = document.getElementById('add-client-btn');
+    elements.addClientForm = document.getElementById('add-client-form');
+    elements.clientViewToggleBtn = document.getElementById('client-view-toggle-btn');
+    
+    // Projects Tab
+    elements.projectSearchBar = document.getElementById('project-search-bar');
+
+    // Costume Tab
+    elements.costumeAddBtn = document.getElementById('add-costume-btn');
+    elements.costumeSearchBar = document.getElementById('costume-search-bar');
+    elements.costumeStatusFilter = document.getElementById('costume-status-filter');
+    elements.costumeCategoryFilter = document.getElementById('costume-category-filter');
+    
+    // Equipment Tab
+    elements.equipmentAddBtn = document.getElementById('add-equipment-btn');
+    elements.equipmentSearchBar = document.getElementById('equipment-search-bar');
+    elements.equipmentStatusFilter = document.getElementById('equipment-status-filter');
+    elements.equipmentCategoryFilter = document.getElementById('equipment-category-filter');
+
+    // Modals
     elements.detailsModal = document.getElementById('details-modal');
     elements.columnModal = document.getElementById('column-modal');
     elements.clientDetailsModal = document.getElementById('client-details-modal');
+    elements.addClientModal = document.getElementById('add-client-modal');
     elements.createProjectModal = document.getElementById('create-project-modal');
     elements.taskDetailsModal = document.getElementById('task-details-modal');
     elements.deleteClientModal = document.getElementById('delete-client-modal');
     elements.deleteProjectModal = document.getElementById('delete-project-modal');
-    elements.clientColumnModal = document.getElementById('client-column-modal');
     elements.gdriveLinkModal = document.getElementById('gdrive-link-modal');
-    elements.closeModalButtons = document.querySelectorAll('.close-button');
-    elements.requestViewToggleBtn = document.getElementById('request-view-toggle-btn');
-    elements.archiveToggle = document.getElementById('archive-toggle');
-    elements.archiveContainer = document.getElementById('archived-requests-container');
-    elements.columnSelectBtn = document.getElementById('column-select-btn');
-    elements.saveColumnsBtn = document.getElementById('save-columns-btn');
-    elements.landingContainer = document.getElementById('landing-container');
-    elements.clientSearchBar = document.getElementById('client-search-bar');
-    elements.clientTableContainer = document.getElementById('client-table-container');
-    elements.clientStatusFilter = document.getElementById('client-status-filter');
-    elements.clientTypeFilter = document.getElementById('client-type-filter');
-    elements.clientViewToggleBtn = document.getElementById('client-view-toggle-btn');
-    elements.clientColumnSelectBtn = document.getElementById('client-column-select-btn');
-    elements.projectSearchBar = document.getElementById('project-search-bar');
-    elements.loadingOverlay = document.getElementById('loading-overlay');
-    elements.addClientModal = document.getElementById('add-client-modal');
-    elements.addClientBtn = document.getElementById('add-client-btn');
-    elements.addClientForm = document.getElementById('add-client-form'); // THIS LINE IS THE FIX
     
-    // Inventory Elements
+    // Inventory Modals
     elements.costumeModal = document.getElementById('costume-modal');
-    elements.equipmentModal = document.getElementById('equipment-modal');
-    elements.costumeAddBtn = document.getElementById('costume-add-btn');
-    elements.costumeSearchBar = document.getElementById('costume-search-bar');
-    elements.costumeStatusFilter = document.getElementById('costume-status-filter');
-    elements.costumeCategoryFilter = document.getElementById('costume-category-filter');
     elements.costumeModalForm = document.getElementById('costume-modal-form');
-    elements.equipmentAddBtn = document.getElementById('equipment-add-btn');
-    elements.equipmentSearchBar = document.getElementById('equipment-search-bar');
-    elements.equipmentStatusFilter = document.getElementById('equipment-status-filter');
-    elements.equipmentCategoryFilter = document.getElementById('equipment-category-filter');
+    elements.costumeImageUpload = document.getElementById('costume-image-upload'); // FIX: Cache this element
+    elements.equipmentModal = document.getElementById('equipment-modal');
     elements.equipmentModalForm = document.getElementById('equipment-modal-form');
+    elements.equipmentImageUpload = document.getElementById('equipment-image-upload'); // FIX: Cache this element
 }
 
 /**
@@ -65,14 +74,20 @@ export function setupTabs() {
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('.tab-content');
 
-    document.querySelector('.tab-button[data-tab="requests"]').classList.add('active');
-    document.querySelector('#tab-requests').style.display = 'block';
-
+    // Set initial state based on the 'active' class in HTML
+    const initiallyActiveTab = document.querySelector('.tab-button.active')?.dataset.tab || 'requests';
+    tabContents.forEach(content => {
+        content.style.display = (content.id === `tab-${initiallyActiveTab}`) ? 'block' : 'none';
+    });
+    
     tabButtons.forEach(button => {
         button.addEventListener('click', () => {
+            const tabId = button.dataset.tab;
+            if (button.classList.contains('active')) return; // Do nothing if already active
+
             tabButtons.forEach(btn => btn.classList.remove('active'));
             button.classList.add('active');
-            const tabId = button.dataset.tab;
+            
             tabContents.forEach(content => {
                 content.style.display = (content.id === `tab-${tabId}`) ? 'block' : 'none';
             });
@@ -81,6 +96,7 @@ export function setupTabs() {
     });
 }
 
+
 /**
  * Loads the appropriate data rendering function for the currently active tab.
  */
@@ -88,7 +104,7 @@ export function loadDataForActiveTab() {
     const activeTab = document.querySelector('.tab-button.active')?.dataset.tab;
     if (!activeTab) return;
 
-    // This structure prevents circular dependencies.
+    // Dynamically import and call the render function for the active tab
     if (activeTab === 'requests') {
         import('./requests.js').then(module => module.renderRequests());
     } else if (activeTab === 'analytics') {
@@ -104,6 +120,7 @@ export function loadDataForActiveTab() {
     }
 }
 
+
 /**
  * Sets up event listeners for all modal close buttons.
  */
@@ -113,6 +130,8 @@ export function setupModalCloseButtons() {
             btn.closest('.modal').style.display = 'none';
         };
     });
+
+    // Also close modals if the user clicks on the background overlay
     window.onclick = (event) => {
         if (event.target.classList.contains('modal')) {
             event.target.style.display = 'none';
@@ -122,14 +141,17 @@ export function setupModalCloseButtons() {
 
 /**
  * Populates a checkbox list for selecting visible columns.
+ * @param {string[]} headers - All available column headers.
+ * @param {string[]} visibleColumns - The headers that should be checked.
+ * @param {string} containerId - The ID of the container element for the checkboxes.
  */
 export function showColumnModal(headers, visibleColumns, containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
     
-    container.innerHTML = '';
+    container.innerHTML = ''; // Clear previous checkboxes
     headers.forEach(header => {
-        if (!header) return;
+        if (!header) return; // Skip empty headers
         const isChecked = visibleColumns.includes(header);
         const div = document.createElement('div');
         const label = document.createElement('label');
@@ -144,31 +166,42 @@ export function showColumnModal(headers, visibleColumns, containerId) {
         container.appendChild(div);
     });
     
+    // Show the parent modal
     container.closest('.modal').style.display = 'block';
 }
 
 // --- LOADING AND ERROR INDICATORS ---
 export function showLoadingIndicator() {
-    if (elements.loadingOverlay) elements.loadingOverlay.style.display = 'flex';
+    if (elements.loadingOverlay) {
+        elements.loadingOverlay.style.display = 'flex';
+    }
 }
 
 export function hideLoadingIndicator() {
-    if (elements.loadingOverlay) elements.loadingOverlay.style.display = 'none';
+    if (elements.loadingOverlay) {
+        elements.loadingOverlay.style.display = 'none';
+    }
 }
 
 export function showMainError(message) {
-    document.querySelectorAll('.tab-content').forEach(tab => tab.style.display = 'none');
+    // Hide all main tab content
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.display = 'none';
+    });
+
+    // Create a dedicated error display area if it doesn't exist
     let errorContainer = document.getElementById('main-error-container');
     if (!errorContainer) {
         errorContainer = document.createElement('div');
         errorContainer.id = 'main-error-container';
-        errorContainer.className = 'card';
+        errorContainer.className = 'card'; // Use existing card styling
         errorContainer.style.margin = '20px';
         errorContainer.style.padding = '20px';
-        errorContainer.style.color = '#721c24';
-        errorContainer.style.backgroundColor = '#f8d7da';
+        errorContainer.style.color = '#721c24'; // Error text color
+        errorContainer.style.backgroundColor = '#f8d7da'; // Error background color
         elements.appContainer.appendChild(errorContainer);
     }
+    
     errorContainer.innerHTML = `<h2>An Error Occurred</h2><p>${message}</p>`;
     errorContainer.style.display = 'block';
 }

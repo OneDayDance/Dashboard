@@ -139,6 +139,8 @@ function populateFilterOptions() {
 function showCostumeModal(rowData = null) {
     const modal = elements.costumeModal;
     const form = elements.costumeModalForm;
+    if (!modal || !form) return;
+
     form.reset();
     document.getElementById('costume-modal-status').textContent = '';
 
@@ -147,18 +149,25 @@ function showCostumeModal(rowData = null) {
     imagePreview.innerHTML = '<span>Click to upload image</span>';
     document.getElementById('costume-image-url').value = '';
     
-    document.getElementById('costume-image-upload').onchange = (event) => {
-        const file = event.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                imagePreview.style.backgroundImage = `url('${e.target.result}')`;
-                imagePreview.innerHTML = '';
-            };
-            reader.readAsDataURL(file);
+    // FIX: Use the cached element and add a guard clause
+    if (elements.costumeImageUpload) {
+        elements.costumeImageUpload.onchange = (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imagePreview.style.backgroundImage = `url('${e.target.result}')`;
+                    imagePreview.innerHTML = '';
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+    }
+    imagePreview.onclick = () => {
+        if (elements.costumeImageUpload) {
+            elements.costumeImageUpload.click();
         }
     };
-    imagePreview.onclick = () => document.getElementById('costume-image-upload').click();
 
     if (rowData) {
         modal.querySelector('#costume-modal-title').textContent = 'Edit Costume';
@@ -197,7 +206,7 @@ async function handleFormSubmit(event) {
     const statusSpan = document.getElementById('costume-modal-status');
     statusSpan.textContent = 'Saving...';
 
-    const imageFile = document.getElementById('costume-image-upload').files[0];
+    const imageFile = elements.costumeImageUpload ? elements.costumeImageUpload.files[0] : null;
     let imageUrl = document.getElementById('costume-image-url').value;
 
     try {

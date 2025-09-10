@@ -133,6 +133,8 @@ function populateFilterOptions() {
 function showEquipmentModal(rowData = null) {
     const modal = elements.equipmentModal;
     const form = elements.equipmentModalForm;
+    if (!modal || !form) return;
+
     form.reset();
     document.getElementById('equipment-modal-status').textContent = '';
 
@@ -141,18 +143,25 @@ function showEquipmentModal(rowData = null) {
     imagePreview.innerHTML = '<span>Click to upload image</span>';
     document.getElementById('equipment-image-url').value = '';
 
-    document.getElementById('equipment-image-upload').onchange = (event) => {
-        const file = event.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                imagePreview.style.backgroundImage = `url('${e.target.result}')`;
-                imagePreview.innerHTML = '';
-            };
-            reader.readAsDataURL(file);
+    // FIX: Use the cached element and add a guard clause
+    if (elements.equipmentImageUpload) {
+        elements.equipmentImageUpload.onchange = (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imagePreview.style.backgroundImage = `url('${e.target.result}')`;
+                    imagePreview.innerHTML = '';
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+    }
+    imagePreview.onclick = () => {
+        if (elements.equipmentImageUpload) {
+            elements.equipmentImageUpload.click();
         }
     };
-    imagePreview.onclick = () => document.getElementById('equipment-image-upload').click();
 
     if (rowData) {
         modal.querySelector('#equipment-modal-title').textContent = 'Edit Equipment';
@@ -188,7 +197,7 @@ async function handleFormSubmit(event) {
     const statusSpan = document.getElementById('equipment-modal-status');
     statusSpan.textContent = 'Saving...';
 
-    const imageFile = document.getElementById('equipment-image-upload').files[0];
+    const imageFile = elements.equipmentImageUpload ? elements.equipmentImageUpload.files[0] : null;
     let imageUrl = document.getElementById('equipment-image-url').value;
 
     try {
