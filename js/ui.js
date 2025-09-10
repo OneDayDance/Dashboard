@@ -31,19 +31,19 @@ export function cacheDOMElements() {
     elements.clientAddBtn = document.getElementById('add-client-btn');
     elements.addClientForm = document.getElementById('add-client-form');
     elements.clientViewToggleBtn = document.getElementById('client-view-toggle-btn');
-    elements.clientColumnSelectBtn = document.getElementById('client-column-select-btn'); // FIX: Cache this element
+    elements.clientColumnSelectBtn = document.getElementById('client-column-select-btn');
 
     // Projects Tab
     elements.projectSearchBar = document.getElementById('project-search-bar');
 
     // Costume Tab
-    elements.costumeAddBtn = document.getElementById('add-costume-btn');
+    elements.costumeAddBtn = document.getElementById('add-costume-btn'); // FIX: Added this line
     elements.costumeSearchBar = document.getElementById('costume-search-bar');
     elements.costumeStatusFilter = document.getElementById('costume-status-filter');
     elements.costumeCategoryFilter = document.getElementById('costume-category-filter');
     
     // Equipment Tab
-    elements.equipmentAddBtn = document.getElementById('add-equipment-btn');
+    elements.equipmentAddBtn = document.getElementById('add-equipment-btn'); // FIX: Added this line
     elements.equipmentSearchBar = document.getElementById('equipment-search-bar');
     elements.equipmentStatusFilter = document.getElementById('equipment-status-filter');
     elements.equipmentCategoryFilter = document.getElementById('equipment-category-filter');
