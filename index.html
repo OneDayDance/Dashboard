@@ -79,12 +79,12 @@
                     <p id="kpi-total-revenue">$0</p>
                     <span class="kpi-icon">&#128176;</span>
                 </div>
-                <div class="kpi-card info-card">
+                <div class="kpi-card info-card" id="kpi-card-projects">
                     <h3>Active Projects</h3>
                     <p id="kpi-active-projects">0</p>
                      <span class="kpi-icon">&#128188;</span>
                 </div>
-                 <div class="kpi-card info-card">
+                 <div class="kpi-card info-card" id="kpi-card-clients">
                     <h3>Total Clients</h3>
                     <p id="kpi-total-clients">0</p>
                      <span class="kpi-icon">&#128100;</span>
@@ -94,15 +94,15 @@
                     <p id="kpi-pending-requests">0</p>
                      <span class="kpi-icon">&#128221;</span>
                 </div>
-                <div class="kpi-card info-card">
+                <div class="kpi-card info-card" id="kpi-card-costumes">
                     <h3>Total Costumes</h3>
                     <p id="kpi-total-costumes">0</p>
-                    <span class="kpi-icon">&#128111;</span>
+                    <span class="kpi-icon">&#128088;</span>
                 </div>
-                <div class="kpi-card info-card">
+                <div class="kpi-card info-card" id="kpi-card-equipment">
                     <h3>Total Equipment</h3>
                     <p id="kpi-total-equipment">0</p>
-                    <span class="kpi-icon">&#127908;</span>
+                    <span class="kpi-icon">&#128295;</span>
                 </div>
             </div>
             <div class="analytics-grid chart-grid">
@@ -123,6 +123,18 @@
                     <ul id="activity-feed">
                         <li>Loading activity...</li>
                     </ul>
+                </div>
+                <div class="chart-container card">
+                    <h3>Lead Source Breakdown</h3>
+                    <canvas id="lead-source-chart"></canvas>
+                </div>
+                <div class="chart-container card">
+                    <h3>Costume Category Distribution</h3>
+                    <canvas id="costume-category-chart"></canvas>
+                </div>
+                <div class="chart-container card">
+                    <h3>Equipment Status Breakdown</h3>
+                    <canvas id="equipment-status-chart"></canvas>
                 </div>
             </div>
         </main>
