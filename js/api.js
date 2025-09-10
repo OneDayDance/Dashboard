@@ -1,11 +1,18 @@
 // js/api.js
-// Description: Handles all interactions with the Google Sheets API & Google Drive API.
+// Description: Handles all interactions with the Google Sheets API and Google Drive API.
 
 import { SPREADSHEET_ID } from './config.js';
 import { setAllRequests, setAllClients, setAllProjects, setAllTasks, setAllCostumes, setAllEquipment } from './state.js';
 
-let inventoryFolderId = null;
+// --- GOOGLE SHEETS API ---
 
+/**
+ * Fetches and processes data from a specific sheet.
+ * This function now pads rows to ensure data consistency.
+ * @param {string} range - The sheet name to fetch (e.g., 'Submissions').
+ * @param {Function} setter - The state setter function to store the data.
+ * @returns {Promise<object>} - The processed data.
+ */
 async function fetchData(range, setter) {
     try {
         const response = await gapi.client.sheets.spreadsheets.values.get({
@@ -14,10 +21,24 @@ async function fetchData(range, setter) {
         });
         const values = response.result.values;
         let data = { headers: [], rows: [] };
+
         if (values && values.length > 0) {
-            data = { headers: values[0], rows: values.slice(1).filter(row => row.length > 0 && row.some(cell => cell.trim() !== '')) };
+            const headers = values[0];
+            const headerCount = headers.length;
+            const rawRows = values.slice(1).filter(row => row.some(cell => cell !== '' && cell !== null)); // Filter truly empty rows
+
+            // **THE FIX**: Pad any truncated rows to match the header count
+            const paddedRows = rawRows.map(row => {
+                while (row.length < headerCount) {
+                    row.push('');
+                }
+                return row;
+            });
+
+            data = { headers: headers, rows: paddedRows };
         }
-        setter(data); 
+
+        setter(data);
         console.log(`Successfully loaded data from ${range}`);
         return data;
     } catch (err) {
@@ -27,13 +48,13 @@ async function fetchData(range, setter) {
     }
 }
 
+
 export const loadRequests = () => fetchData('Submissions', setAllRequests);
 export const loadClients = () => fetchData('Clients', setAllClients);
 export const loadProjects = () => fetchData('Projects', setAllProjects);
 export const loadTasks = () => fetchData('Tasks', setAllTasks);
 export const loadCostumes = () => fetchData('Costumes', setAllCostumes);
 export const loadEquipment = () => fetchData('Equipment', setAllEquipment);
-
 
 /**
  * Finds a row by a unique ID and updates specified columns.
@@ -55,7 +76,6 @@ export async function updateSheetRow(sheetName, idColumnName, idValue, dataToUpd
     
     const newHeaders = Object.keys(dataToUpdate).filter(h => !sheetHeaders.includes(h));
     if (newHeaders.length > 0) {
-        console.warn(`Attempting to add new headers to ${sheetName}:`, newHeaders);
         const firstEmptyColumn = columnToLetter(sheetHeaders.length + 1);
         await gapi.client.sheets.spreadsheets.values.update({
             spreadsheetId: SPREADSHEET_ID,
@@ -87,11 +107,11 @@ export async function updateSheetRow(sheetName, idColumnName, idValue, dataToUpd
             updatedRow[columnIndex] = dataToUpdate[columnName];
         }
     }
+    
+    console.log(`Prepared updated row for sheet '${sheetName}':`, updatedRow);
 
     const targetRowNumber = visualRowIndex + 1;
     const targetRange = `${sheetName}!A${targetRowNumber}`;
-
-    console.log(`Prepared updated row for sheet '${sheetName}':`, updatedRow);
 
     return gapi.client.sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
@@ -104,7 +124,7 @@ export async function updateSheetRow(sheetName, idColumnName, idValue, dataToUpd
 }
 
 /**
- * Appends or inserts a new row of data, dynamically matching columns and filling empty rows.
+ * Appends or inserts a new row of data.
  * @param {string} sheetName - The name of the sheet.
  * @param {object} dataObject - An object where keys are column headers and values are cell values.
  * @returns {Promise<object>} - The result from the Sheets API.
@@ -136,7 +156,6 @@ export async function writeData(sheetName, dataObject) {
     }
 
     if (newHeaders.length > 0) {
-        console.warn(`Attempting to add new headers to ${sheetName}:`, newHeaders);
         const firstEmptyColumn = columnToLetter(headers.length + 1);
         await gapi.client.sheets.spreadsheets.values.update({
             spreadsheetId: SPREADSHEET_ID,
@@ -152,42 +171,17 @@ export async function writeData(sheetName, dataObject) {
         const originalDataKey = dataKeyMap.get(normalizedHeader);
         return originalDataKey ? dataObject[originalDataKey] : '';
     });
-
     console.log(`Prepared new row for sheet '${sheetName}':`, newRow);
 
-    let targetRowNumber = -1;
-    for (let i = 1; i < sheetValues.length; i++) {
-        const row = sheetValues[i];
-        const isEmpty = row.length === 0 || row.every(cell => cell === null || cell === '');
-        if (isEmpty) {
-            targetRowNumber = i + 1;
-            break;
+    return gapi.client.sheets.spreadsheets.values.append({
+        spreadsheetId: SPREADSHEET_ID,
+        range: sheetName,
+        valueInputOption: 'USER_ENTERED',
+        insertDataOption: 'INSERT_ROWS',
+        resource: {
+            values: [newRow]
         }
-    }
-
-    if (targetRowNumber !== -1) {
-        console.log(`Found empty row at ${targetRowNumber}. Updating...`);
-        const targetRange = `${sheetName}!A${targetRowNumber}`;
-        return gapi.client.sheets.spreadsheets.values.update({
-            spreadsheetId: SPREADSHEET_ID,
-            range: targetRange,
-            valueInputOption: 'USER_ENTERED',
-            resource: {
-                values: [newRow]
-            }
-        });
-    } else {
-        console.log('No empty rows found. Appending to sheet...');
-        return gapi.client.sheets.spreadsheets.values.append({
-            spreadsheetId: SPREADSHEET_ID,
-            range: sheetName,
-            valueInputOption: 'USER_ENTERED',
-            insertDataOption: 'INSERT_ROWS',
-            resource: {
-                values: [newRow]
-            }
-        });
-    }
+    });
 }
 
 
@@ -223,72 +217,90 @@ export async function clearSheetRow(sheetName, idColumnName, idValue) {
     });
 }
 
-
 // --- GOOGLE DRIVE API ---
 
+let inventoryFolderId = null;
+
+/**
+ * Finds or creates the dedicated inventory folder in the user's Google Drive.
+ * @returns {Promise<string>} - The ID of the inventory folder.
+ */
 async function getInventoryFolderId() {
     if (inventoryFolderId) return inventoryFolderId;
 
+    const folderName = 'Dashboard_Inventory_Images';
     try {
         const response = await gapi.client.drive.files.list({
-            q: "name='Dashboard_Inventory_Images' and mimeType='application/vnd.google-apps.folder' and trashed=false",
+            q: `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
             fields: 'files(id, name)',
             supportsAllDrives: true,
             includeItemsFromAllDrives: true,
             corpora: 'allDrives'
         });
-        
-        // **FIX:** Add a check to ensure response.result is defined before accessing .files
-        if (response && response.result && response.result.files && response.result.files.length > 0) {
+
+        if (response.result.files && response.result.files.length > 0) {
+            console.log(`Found inventory folder with ID: ${response.result.files[0].id}`);
             inventoryFolderId = response.result.files[0].id;
-            console.log('Found inventory folder with ID:', inventoryFolderId);
             return inventoryFolderId;
         } else {
-            console.error("API response for folder search was invalid or empty:", response);
-            throw new Error('Inventory folder not found.');
+            throw new Error(`The '${folderName}' folder was not found in any accessible Drive. Please follow the setup instructions to create it in a Shared Drive.`);
         }
     } catch (err) {
-        console.error('Error finding inventory folder:', err);
-        throw new Error('Could not find the inventory folder. Please check setup instructions.');
+        console.error("Error finding inventory folder:", err);
+        throw new Error("Could not find the inventory folder. Please check setup instructions.");
     }
 }
 
+
+/**
+ * Uploads an image file to the dedicated Google Drive folder.
+ * @param {File} file - The image file to upload.
+ * @returns {Promise<{link: string, id: string}>} - An object with the direct view link and the file ID.
+ */
 export async function uploadImageToDrive(file) {
     const folderId = await getInventoryFolderId();
-
     const metadata = {
-        name: `${new Date().toISOString()}_${file.name}`,
-        parents: [folderId],
+        name: `${new Date().getTime()}_${file.name}`,
+        parents: [folderId]
     };
 
     const form = new FormData();
     form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
     form.append('file', file);
 
-    const response = await gapi.client.request({
-        path: '/upload/drive/v3/files',
+    const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true', {
         method: 'POST',
-        params: { uploadType: 'multipart', fields: 'id,webViewLink' },
-        body: form,
+        headers: new Headers({ 'Authorization': `Bearer ${gapi.client.getToken().access_token}` }),
+        body: form
     });
+    
+    if (!response.ok) {
+        const errorBody = await response.json();
+        console.error("Drive upload failed:", errorBody);
+        throw new Error(`Failed to upload image. Server responded with: ${errorBody.error.message}`);
+    }
 
+    const result = await response.json();
+    const fileId = result.id;
+    
+    // Make the file publicly readable
     await gapi.client.drive.permissions.create({
-        fileId: response.result.id,
+        fileId: fileId,
         resource: {
             role: 'reader',
             type: 'anyone'
-        }
+        },
+        supportsAllDrives: true,
     });
-
-    const fileId = response.result.id;
+    
+    // Construct a direct-view link that works in <img> tags
     const directLink = `https://drive.google.com/uc?export=view&id=${fileId}`;
-    return { id: fileId, link: directLink };
+    return { link: directLink, id: fileId };
 }
 
 
 /**
  * Converts a 1-based column index to its A1 notation letter.
- * e.g., 1 -> A, 27 -> AA
  * @param {number} column - The column number.
  * @returns {string} - The column letter.
  */
