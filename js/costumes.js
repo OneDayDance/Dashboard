@@ -45,13 +45,10 @@ function getDirectDriveImage(url) {
         return ''; 
     }
     
-    // If it's already a direct link, return it.
     if (url.includes('uc?export=view')) {
         return url;
     }
 
-    // A more robust regex to find the Drive file ID.
-    // It looks for a string of 28 or more letters, numbers, hyphens, and underscores.
     const match = url.match(/([a-zA-Z0-9_-]{28,})/);
     
     if (match && match[0]) {
@@ -60,24 +57,7 @@ function getDirectDriveImage(url) {
     }
     
     console.warn("getDirectDriveImage: Could not extract File ID from URL:", url);
-    return ''; // Return empty if no ID is found
-}
-
-
-/**
- * DEBUGGING FUNCTION: Tests if the browser can load an image from a given URL.
- * @param {string} url The image URL to test.
- */
-function testImageUrl(url) {
-    if (!url) return;
-    const img = new Image();
-    img.onload = function() {
-        console.log(`%cSUCCESS: Image loaded from ${url}`, 'color: green;');
-    };
-    img.onerror = function() {
-        console.error(`%cERROR: Failed to load image from ${url}`, 'color: red;');
-    };
-    img.src = url;
+    return '';
 }
 
 
@@ -122,9 +102,6 @@ function renderCostumesAsCards() {
         const rawImageUrl = row[imageIndex] || '';
         const imageUrl = getDirectDriveImage(rawImageUrl);
 
-        // --- NEW DIAGNOSTIC TEST ---
-        testImageUrl(imageUrl);
-
         const card = document.createElement('div');
         card.className = 'info-card inventory-card';
         card.onclick = () => showCostumeModal(row);
@@ -133,7 +110,16 @@ function renderCostumesAsCards() {
         imageDiv.className = 'inventory-card-image';
 
         if (imageUrl) {
-            imageDiv.style.backgroundImage = `url('${imageUrl}')`;
+            // **THE FIX**: Use an <img> tag instead of background-image for better cross-origin compatibility.
+            const img = document.createElement('img');
+            img.src = imageUrl;
+            img.alt = row[nameIndex] || 'Costume image';
+            img.crossOrigin = "anonymous"; // Important for preventing certain CORS errors
+            img.onerror = () => { 
+                imageDiv.classList.add('no-image');
+                imageDiv.textContent = 'Image Error';
+            };
+            imageDiv.appendChild(img);
         } else {
             imageDiv.classList.add('no-image');
             imageDiv.textContent = 'No Image';

@@ -212,15 +212,29 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 .inventory-card-image {
     width: 100%;
     height: 180px;
-    background-size: cover;
-    background-position: center;
     background-color: #e9ecef;
     display: flex;
     justify-content: center;
     align-items: center;
     color: #6c757d;
     font-weight: bold;
+    position: relative; /* Needed for the <img> tag */
+    overflow: hidden; /* Hide parts of image that don't fit */
 }
+/* Style the new <img> tag to behave like the old background-image */
+.inventory-card-image img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* This is the equivalent of background-size: cover */
+    transition: transform 0.3s ease;
+}
+.inventory-card:hover .inventory-card-image img {
+    transform: scale(1.05); /* Add a subtle zoom on hover */
+}
+
 .inventory-card-image.no-image {
     background-image: none;
 }
