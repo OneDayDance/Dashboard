@@ -73,6 +73,8 @@
     width: 100%;
     margin-bottom: 20px;
     break-inside: avoid;
+    padding: 15px; /* Added padding for breathing room */
+    box-sizing: border-box; /* Ensure padding is included in the element's total width and height */
 }
 .info-card:hover { 
     border-color: #FF9D76; 
@@ -233,7 +235,7 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 .inventory-card {
     display: flex;
     flex-direction: column;
-    padding: 0;
+    padding: 0; /* Override the .info-card padding for edge-to-edge images */
     overflow: hidden;
     cursor: pointer;
 }
