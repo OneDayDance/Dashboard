@@ -35,7 +35,6 @@ export function renderEquipment() {
 }
 
 /**
- * HELPER FUNCTION (Consistent with costumes.js)
  * Takes a Google Drive URL and converts it to a direct image link.
  */
 function getDirectDriveImage(url) {
@@ -130,6 +129,21 @@ function populateFilterOptions() {
 
 // --- MODAL & FORM HANDLING ---
 
+/**
+ * Helper function to safely set the value of a form element.
+ * @param {string} id - The ID of the element.
+ * @param {string} value - The value to set.
+ */
+function safeSetValue(id, value) {
+    const element = document.getElementById(id);
+    if (element) {
+        element.value = value;
+    } else {
+        console.warn(`Element with ID '${id}' not found.`);
+    }
+}
+
+
 function showEquipmentModal(rowData = null) {
     const modal = elements.equipmentModal;
     const form = elements.equipmentModalForm;
@@ -141,9 +155,8 @@ function showEquipmentModal(rowData = null) {
     const imagePreview = document.getElementById('equipment-image-preview');
     imagePreview.style.backgroundImage = 'none';
     imagePreview.innerHTML = '<span>Click to upload image</span>';
-    document.getElementById('equipment-image-url').value = '';
+    safeSetValue('equipment-image-url', '');
 
-    // FIX: Use the cached element and add a guard clause
     if (elements.equipmentImageUpload) {
         elements.equipmentImageUpload.onchange = (event) => {
             const file = event.target.files[0];
@@ -166,27 +179,28 @@ function showEquipmentModal(rowData = null) {
     if (rowData) {
         modal.querySelector('#equipment-modal-title').textContent = 'Edit Equipment';
         const { headers } = allEquipment;
-        document.getElementById('equipment-id-input').value = rowData[headers.indexOf('EquipmentID')] || '';
-        document.getElementById('equipment-name').value = rowData[headers.indexOf('Name')] || '';
-        document.getElementById('equipment-status').value = rowData[headers.indexOf('Status')] || 'Available';
-        document.getElementById('equipment-category').value = rowData[headers.indexOf('Category')] || '';
-        document.getElementById('equipment-manufacturer').value = rowData[headers.indexOf('Manufacturer')] || '';
-        document.getElementById('equipment-model').value = rowData[headers.indexOf('Model')] || '';
-        document.getElementById('equipment-serial').value = rowData[headers.indexOf('Serial Number')] || '';
-        document.getElementById('equipment-purchase-cost').value = rowData[headers.indexOf('Purchase Cost')] || '';
-        document.getElementById('equipment-purchase-date').value = rowData[headers.indexOf('Purchase Date')] || '';
-        document.getElementById('equipment-location').value = rowData[headers.indexOf('Storage Location')] || '';
-        document.getElementById('equipment-notes').value = rowData[headers.indexOf('Notes')] || '';
+
+        safeSetValue('equipment-id-input', rowData[headers.indexOf('EquipmentID')] || '');
+        safeSetValue('equipment-name', rowData[headers.indexOf('Name')] || '');
+        safeSetValue('equipment-status', rowData[headers.indexOf('Status')] || 'Available');
+        safeSetValue('equipment-category', rowData[headers.indexOf('Category')] || '');
+        safeSetValue('equipment-manufacturer', rowData[headers.indexOf('Manufacturer')] || '');
+        safeSetValue('equipment-model', rowData[headers.indexOf('Model')] || '');
+        safeSetValue('equipment-serial', rowData[headers.indexOf('Serial Number')] || '');
+        safeSetValue('equipment-purchase-cost', rowData[headers.indexOf('Purchase Cost')] || '');
+        safeSetValue('equipment-purchase-date', rowData[headers.indexOf('Purchase Date')] || '');
+        safeSetValue('equipment-location', rowData[headers.indexOf('Storage Location')] || '');
+        safeSetValue('equipment-notes', rowData[headers.indexOf('Notes')] || '');
         
         const imageUrl = getDirectDriveImage(rowData[headers.indexOf('Image URL')] || '');
-        document.getElementById('equipment-image-url').value = imageUrl;
+        safeSetValue('equipment-image-url', imageUrl);
         if (imageUrl) {
             imagePreview.style.backgroundImage = `url('${imageUrl}')`;
             imagePreview.innerHTML = '';
         }
     } else {
         modal.querySelector('#equipment-modal-title').textContent = 'Add New Equipment';
-        document.getElementById('equipment-id-input').value = '';
+        safeSetValue('equipment-id-input', '');
     }
 
     modal.style.display = 'block';

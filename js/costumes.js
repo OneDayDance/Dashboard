@@ -36,7 +36,6 @@ export function renderCostumes() {
 }
 
 /**
- * NEW HELPER FUNCTION
  * Takes a Google Drive URL and converts it to a direct image link.
  * @param {string} url - The original URL from Google Drive.
  * @returns {string} - A URL suitable for direct image display.
@@ -45,11 +44,9 @@ function getDirectDriveImage(url) {
     if (!url || !url.includes('drive.google.com')) {
         return url; // Return original if not a drive link or empty
     }
-    // If it's already the correct format, return it
     if (url.includes('uc?export=view')) {
         return url;
     }
-    // Try to extract the ID from common share link formats
     const match = url.match(/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
     if (match && match[1]) {
         return `https://drive.google.com/uc?export=view&id=${match[1]}`;
@@ -131,10 +128,23 @@ function getProcessedCostumes() {
 
 function populateFilterOptions() {
     // This function can be expanded to dynamically populate filters from sheet data
-    // For now, we'll keep it simple.
 }
 
 // --- MODAL & FORM HANDLING ---
+
+/**
+ * Helper function to safely set the value of a form element.
+ * @param {string} id - The ID of the element.
+ * @param {string} value - The value to set.
+ */
+function safeSetValue(id, value) {
+    const element = document.getElementById(id);
+    if (element) {
+        element.value = value;
+    } else {
+        console.warn(`Element with ID '${id}' not found.`);
+    }
+}
 
 function showCostumeModal(rowData = null) {
     const modal = elements.costumeModal;
@@ -147,9 +157,8 @@ function showCostumeModal(rowData = null) {
     const imagePreview = document.getElementById('costume-image-preview');
     imagePreview.style.backgroundImage = 'none';
     imagePreview.innerHTML = '<span>Click to upload image</span>';
-    document.getElementById('costume-image-url').value = '';
+    safeSetValue('costume-image-url', '');
     
-    // FIX: Use the cached element and add a guard clause
     if (elements.costumeImageUpload) {
         elements.costumeImageUpload.onchange = (event) => {
             const file = event.target.files[0];
@@ -172,30 +181,31 @@ function showCostumeModal(rowData = null) {
     if (rowData) {
         modal.querySelector('#costume-modal-title').textContent = 'Edit Costume';
         const { headers } = allCostumes;
-        // Populate form fields from rowData
-        document.getElementById('costume-id-input').value = rowData[headers.indexOf('CostumeID')] || '';
-        document.getElementById('costume-name').value = rowData[headers.indexOf('Name')] || '';
-        document.getElementById('costume-status').value = rowData[headers.indexOf('Status')] || 'Available';
-        document.getElementById('costume-category').value = rowData[headers.indexOf('Category')] || '';
-        document.getElementById('costume-size').value = rowData[headers.indexOf('Size')] || '';
-        document.getElementById('costume-color').value = rowData[headers.indexOf('Color')] || '';
-        document.getElementById('costume-material').value = rowData[headers.indexOf('Material')] || '';
-        document.getElementById('costume-era').value = rowData[headers.indexOf('Era/Style')] || '';
-        document.getElementById('costume-purchase-cost').value = rowData[headers.indexOf('Purchase Cost')] || '';
-        document.getElementById('costume-condition').value = rowData[headers.indexOf('Condition')] || 'New';
-        document.getElementById('costume-location').value = rowData[headers.indexOf('Storage Location')] || '';
-        document.getElementById('costume-notes').value = rowData[headers.indexOf('Notes')] || '';
+        
+        // Populate form fields using the safe helper
+        safeSetValue('costume-id-input', rowData[headers.indexOf('CostumeID')] || '');
+        safeSetValue('costume-name', rowData[headers.indexOf('Name')] || '');
+        safeSetValue('costume-status', rowData[headers.indexOf('Status')] || 'Available');
+        safeSetValue('costume-category', rowData[headers.indexOf('Category')] || '');
+        safeSetValue('costume-size', rowData[headers.indexOf('Size')] || '');
+        safeSetValue('costume-color', rowData[headers.indexOf('Color')] || '');
+        safeSetValue('costume-material', rowData[headers.indexOf('Material')] || '');
+        safeSetValue('costume-era', rowData[headers.indexOf('Era/Style')] || '');
+        safeSetValue('costume-purchase-cost', rowData[headers.indexOf('Purchase Cost')] || '');
+        safeSetValue('costume-condition', rowData[headers.indexOf('Condition')] || 'New');
+        safeSetValue('costume-location', rowData[headers.indexOf('Storage Location')] || '');
+        safeSetValue('costume-notes', rowData[headers.indexOf('Notes')] || '');
         
         const imageUrl = getDirectDriveImage(rowData[headers.indexOf('Image URL')] || '');
-        document.getElementById('costume-image-url').value = imageUrl;
+        safeSetValue('costume-image-url', imageUrl);
         if (imageUrl) {
             imagePreview.style.backgroundImage = `url('${imageUrl}')`;
             imagePreview.innerHTML = '';
         }
     } else {
         modal.querySelector('#costume-modal-title').textContent = 'Add New Costume';
-        document.getElementById('costume-id-input').value = '';
-        document.getElementById('costume-date-added').value = new Date().toLocaleDateString();
+        safeSetValue('costume-id-input', '');
+        safeSetValue('costume-date-added', new Date().toLocaleDateString());
     }
 
     modal.style.display = 'block';
