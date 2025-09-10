@@ -35,20 +35,32 @@ export function renderEquipment() {
 }
 
 /**
- * Takes a Google Drive URL and converts it to a direct image link.
+ * Takes any Google Drive URL and converts it to a direct, embeddable image link.
+ * This version is more robust and finds the file ID from various URL formats.
+ * @param {string} url - The original URL from Google Drive.
+ * @returns {string} - A URL suitable for direct image display, or an empty string.
  */
 function getDirectDriveImage(url) {
     if (!url || typeof url !== 'string' || !url.includes('drive.google.com')) {
-        return '';
+        return ''; 
     }
+    
+    // If it's already a direct link, return it.
     if (url.includes('uc?export=view')) {
         return url;
     }
-    const match = url.match(/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
-    if (match && match[1]) {
-        return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+
+    // A more robust regex to find the Drive file ID.
+    // It looks for a string of 28 or more letters, numbers, hyphens, and underscores.
+    const match = url.match(/([a-zA-Z0-9_-]{28,})/);
+    
+    if (match && match[0]) {
+        const fileId = match[0];
+        return `https://drive.google.com/uc?export=view&id=${fileId}`;
     }
-    return '';
+    
+    console.warn("getDirectDriveImage: Could not extract File ID from URL:", url);
+    return ''; // Return empty if no ID is found
 }
 
 function renderEquipmentAsCards() {
@@ -285,4 +297,3 @@ async function handleFormSubmit(event) {
         console.error('Equipment save error:', err);
     }
 }
-

@@ -264,4 +264,3 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 15px;
 }
-
