@@ -2,7 +2,7 @@
 // Description: Contains all logic for the 'Equipment' tab.
 
 import { state, allEquipment, updateState, updateEquipmentFilters } from './state.js';
-import { updateSheetRow, writeData, uploadImageToDrive, fetchDriveImageAsBlobUrl } from './api.js';
+import { updateSheetRow, writeData, uploadImageToDrive } from './api.js';
 import { elements } from './ui.js';
 
 let refreshData;
@@ -97,8 +97,7 @@ function renderEquipmentAsCards() {
         if (fileId) {
             const img = document.createElement('img');
             img.alt = row[nameIndex] || 'Equipment image';
-            // **THE NEW FIX**: Use the Google Drive thumbnail API endpoint. It's more reliable for embedding.
-            img.src = `https://drive.google.com/thumbnail?id=${fileId}&sz=w300`; // sz=w300 requests a 300px width thumbnail
+            img.src = `https://drive.google.com/thumbnail?id=${fileId}&sz=w300`;
             img.onerror = () => { 
                 imageDiv.classList.add('no-image');
                 imageDiv.textContent = 'Image Error';
@@ -175,28 +174,31 @@ function showEquipmentModal(rowData = null) {
     form.reset();
     document.getElementById('equipment-modal-status').textContent = '';
 
+    // --- NEW IMAGE HANDLING LOGIC ---
     const imagePreview = document.getElementById('equipment-image-preview');
-    imagePreview.style.backgroundImage = 'none';
-    imagePreview.innerHTML = '<span>Click to upload image</span>';
+    const imagePlaceholder = document.getElementById('equipment-image-placeholder');
+    const changeImageBtn = document.getElementById('equipment-change-image-btn');
+    const imageUploadInput = document.getElementById('equipment-image-upload');
+
+    // Reset UI
+    imagePreview.src = '';
+    imagePreview.style.display = 'none';
+    imagePlaceholder.style.display = 'block';
+    imageUploadInput.value = ''; // Clear file input
     safeSetValue('equipment-image-url', '');
 
-    if (elements.equipmentImageUpload) {
-        elements.equipmentImageUpload.value = ''; // Clear file input
-        elements.equipmentImageUpload.onchange = (event) => {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    imagePreview.style.backgroundImage = `url('${e.target.result}')`;
-                    imagePreview.innerHTML = '';
-                };
-                reader.readAsDataURL(file);
-            }
-        };
-    }
-    imagePreview.onclick = () => {
-        if (elements.equipmentImageUpload) {
-            elements.equipmentImageUpload.click();
+    // Event listeners for new image upload
+    changeImageBtn.onclick = () => imageUploadInput.click();
+    imageUploadInput.onchange = (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                imagePreview.src = e.target.result;
+                imagePreview.style.display = 'block';
+                imagePlaceholder.style.display = 'none';
+            };
+            reader.readAsDataURL(file);
         }
     };
 
@@ -219,11 +221,11 @@ function showEquipmentModal(rowData = null) {
         const imageUrlFromSheet = rowData[headers.indexOf('Image URL')] || '';
         safeSetValue('equipment-image-url', imageUrlFromSheet);
         const fileId = extractFileIdFromUrl(imageUrlFromSheet);
+        
         if (fileId) {
-            // Use the thumbnail URL for the modal preview as well.
-            const thumbnailUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w300`;
-            imagePreview.style.backgroundImage = `url('${thumbnailUrl}')`;
-            imagePreview.innerHTML = '';
+            imagePreview.src = `https://drive.google.com/thumbnail?id=${fileId}&sz=w300`;
+            imagePreview.style.display = 'block';
+            imagePlaceholder.style.display = 'none';
         }
     } else {
         modal.querySelector('#equipment-modal-title').textContent = 'Add New Equipment';
@@ -243,7 +245,7 @@ async function handleFormSubmit(event) {
     const statusSpan = document.getElementById('equipment-modal-status');
     statusSpan.textContent = 'Saving...';
 
-    const imageFile = elements.equipmentImageUpload ? elements.equipmentImageUpload.files[0] : null;
+    const imageFile = document.getElementById('equipment-image-upload').files[0];
     let imageUrl = document.getElementById('equipment-image-url').value;
 
     try {
