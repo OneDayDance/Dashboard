@@ -49,18 +49,36 @@ header, .card, main {
 }
 
 header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     text-align: center;
     margin-bottom: 20px;
     position: relative;
+}
+
+.header-logo {
+    position: absolute;
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 50px; /* Controls the size of the logo */
+}
+
+header h1 {
+    margin: 0;
+    flex-grow: 1;
 }
 
 main { padding: 20px; }
 
 #auth-container {
     position: absolute;
-    top: 20px;
+    top: 50%;
     right: 20px;
+    transform: translateY(-50%);
 }
+
 
 /* --- Modernized Form Fields --- */
 input[type="text"],
@@ -101,6 +119,12 @@ select:focus {
 .form-field { margin-bottom: 15px; }
 .form-field label { display: block; margin-bottom: 5px; font-weight: bold; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+hr {
+    border: none;
+    border-top: 1px solid #eee;
+    margin: 20px 0;
+}
+
 
 /* --- Responsive adjustments */
 @media (max-width: 900px) {
@@ -119,6 +143,12 @@ select:focus {
         position: static;
         height: auto;
         max-height: 50vh;
+    }
+    header h1 {
+        font-size: 1.2em; /* Shrink title on small screens */
+    }
+    .header-logo {
+        height: 40px; /* Make logo a bit smaller on mobile */
     }
 }
 
