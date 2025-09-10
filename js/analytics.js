@@ -1,7 +1,7 @@
 // js/analytics.js
 // Description: Handles all logic for the Analytics tab, including KPIs and charts.
 
-import { allProjects, allRequests, allClients } from './state.js';
+import { allProjects, allRequests, allClients, allCostumes, allEquipment } from './state.js';
 
 // This object holds the actual Chart.js instances.
 let charts = {
@@ -35,14 +35,21 @@ export function renderAnalytics() {
 function renderKpis() {
     const currentYear = new Date().getFullYear();
 
-    // KPI 1: Total Revenue (YTD)
+    // KPI 1: Total Revenue (YTD) from Project Cost Breakdowns
     if (allProjects?.rows) {
-        const [valIdx, dateIdx] = ['Value', 'Start Date'].map(h => allProjects.headers.indexOf(h));
+        const [costIdx, dateIdx] = ['Cost Breakdown', 'Start Date'].map(h => allProjects.headers.indexOf(h));
         let ytdIncome = 0;
-        if (valIdx > -1 && dateIdx > -1) {
+        if (costIdx > -1 && dateIdx > -1) {
             allProjects.rows.forEach(row => {
                 if (row[dateIdx] && new Date(row[dateIdx]).getFullYear() === currentYear) {
-                    ytdIncome += parseFloat(row[valIdx]) || 0;
+                    const costJSON = row[costIdx] || '[]';
+                    try {
+                        const lineItems = JSON.parse(costJSON);
+                        const projectTotal = lineItems.reduce((sum, item) => sum + (parseFloat(item.cost) || 0), 0);
+                        ytdIncome += projectTotal;
+                    } catch (e) {
+                        console.error("Could not parse cost breakdown for a project KPI", e);
+                    }
                 }
             });
         }
@@ -65,7 +72,6 @@ function renderKpis() {
         document.getElementById('kpi-total-clients').textContent = allClients.rows.length;
     }
 
-
     // KPI 4: Pending Requests
     if (allRequests?.rows) {
         const statusIdxReq = allRequests.headers.indexOf('Status');
@@ -75,6 +81,16 @@ function renderKpis() {
         }
         document.getElementById('kpi-pending-requests').textContent = pendingRequests;
     }
+
+    // KPI 5: Total Costumes
+    if (allCostumes?.rows) {
+        document.getElementById('kpi-total-costumes').textContent = allCostumes.rows.length;
+    }
+
+    // KPI 6: Total Equipment
+    if (allEquipment?.rows) {
+        document.getElementById('kpi-total-equipment').textContent = allEquipment.rows.length;
+    }
 }
 
 function renderRevenueChart() {
@@ -82,13 +98,22 @@ function renderRevenueChart() {
     if (!canvas || !allProjects?.rows) return; // Guard clause
 
     const revenueData = {};
-    const [valIdx, dateIdx] = ['Value', 'Start Date'].map(h => allProjects.headers.indexOf(h));
+    const [costIdx, dateIdx] = ['Cost Breakdown', 'Start Date'].map(h => allProjects.headers.indexOf(h));
 
-    if (valIdx === -1 || dateIdx === -1) return;
+    if (costIdx === -1 || dateIdx === -1) return;
 
     allProjects.rows.forEach(row => {
         const dateStr = row[dateIdx];
-        const value = parseFloat(row[valIdx]) || 0;
+        
+        let projectValue = 0;
+        const costJSON = row[costIdx] || '[]';
+        try {
+            const lineItems = JSON.parse(costJSON);
+            projectValue = lineItems.reduce((sum, item) => sum + (parseFloat(item.cost) || 0), 0);
+        } catch(e) { /* ignore parse error for chart */ }
+        
+        const value = projectValue;
+
         if (dateStr && value > 0) {
             try {
                 const date = new Date(dateStr);

@@ -94,6 +94,16 @@
                     <p id="kpi-pending-requests">0</p>
                      <span class="kpi-icon">&#128221;</span>
                 </div>
+                <div class="kpi-card info-card">
+                    <h3>Total Costumes</h3>
+                    <p id="kpi-total-costumes">0</p>
+                    <span class="kpi-icon">&#128111;</span>
+                </div>
+                <div class="kpi-card info-card">
+                    <h3>Total Equipment</h3>
+                    <p id="kpi-total-equipment">0</p>
+                    <span class="kpi-icon">&#127908;</span>
+                </div>
             </div>
             <div class="analytics-grid chart-grid">
                 <div class="chart-container card">
@@ -575,9 +585,9 @@
                 <span class="close-button">&times;</span>
             </div>
             <form id="costume-modal-form">
-                <div class="modal-body inventory-modal-body">
-                    <div class="inventory-image-section">
-                        <div class="image-preview-box">
+                <div class="modal-body inventory-modal-body-grid">
+                    <div class="inventory-image-upload-container">
+                        <div id="costume-image-preview-box" class="image-upload-preview">
                            <img id="costume-image-preview" src="" alt="Costume preview" style="display: none;">
                            <span id="costume-image-placeholder">No Image</span>
                         </div>
@@ -585,7 +595,7 @@
                         <input type="file" id="costume-image-upload" accept="image/*" style="display: none;">
                         <input type="hidden" id="costume-image-url">
                     </div>
-                    <div class="inventory-details-section form-grid">
+                    <div class="inventory-form-fields">
                         <input type="hidden" id="costume-id-input">
                         <div class="form-field">
                             <label for="costume-name">Name</label>
@@ -663,9 +673,9 @@
                 <span class="close-button">&times;</span>
             </div>
             <form id="equipment-modal-form">
-                <div class="modal-body inventory-modal-body">
-                     <div class="inventory-image-section">
-                        <div class="image-preview-box">
+                <div class="modal-body inventory-modal-body-grid">
+                     <div class="inventory-image-upload-container">
+                        <div id="equipment-image-preview-box" class="image-upload-preview">
                              <img id="equipment-image-preview" src="" alt="Equipment preview" style="display: none;">
                              <span id="equipment-image-placeholder">No Image</span>
                         </div>
@@ -673,7 +683,7 @@
                         <input type="file" id="equipment-image-upload" accept="image/*" style="display: none;">
                         <input type="hidden" id="equipment-image-url">
                     </div>
-                    <div class="inventory-details-section form-grid">
+                    <div class="inventory-form-fields">
                         <input type="hidden" id="equipment-id-input">
                         <div class="form-field">
                             <label for="equipment-name">Name</label>
@@ -735,5 +745,4 @@
     <script type="module" src="js/main.js"></script>
 </body>
 </html>
-
 
