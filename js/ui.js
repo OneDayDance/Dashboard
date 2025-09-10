@@ -31,7 +31,8 @@ export function cacheDOMElements() {
     elements.clientAddBtn = document.getElementById('add-client-btn');
     elements.addClientForm = document.getElementById('add-client-form');
     elements.clientViewToggleBtn = document.getElementById('client-view-toggle-btn');
-    
+    elements.clientColumnSelectBtn = document.getElementById('client-column-select-btn'); // FIX: Cache this element
+
     // Projects Tab
     elements.projectSearchBar = document.getElementById('project-search-bar');
 
@@ -50,6 +51,7 @@ export function cacheDOMElements() {
     // Modals
     elements.detailsModal = document.getElementById('details-modal');
     elements.columnModal = document.getElementById('column-modal');
+    elements.clientColumnModal = document.getElementById('client-column-modal');
     elements.clientDetailsModal = document.getElementById('client-details-modal');
     elements.addClientModal = document.getElementById('add-client-modal');
     elements.createProjectModal = document.getElementById('create-project-modal');
@@ -61,10 +63,10 @@ export function cacheDOMElements() {
     // Inventory Modals
     elements.costumeModal = document.getElementById('costume-modal');
     elements.costumeModalForm = document.getElementById('costume-modal-form');
-    elements.costumeImageUpload = document.getElementById('costume-image-upload'); // FIX: Cache this element
+    elements.costumeImageUpload = document.getElementById('costume-image-upload');
     elements.equipmentModal = document.getElementById('equipment-modal');
     elements.equipmentModalForm = document.getElementById('equipment-modal-form');
-    elements.equipmentImageUpload = document.getElementById('equipment-image-upload'); // FIX: Cache this element
+    elements.equipmentImageUpload = document.getElementById('equipment-image-upload');
 }
 
 /**
@@ -143,9 +145,10 @@ export function setupModalCloseButtons() {
  * Populates a checkbox list for selecting visible columns.
  * @param {string[]} headers - All available column headers.
  * @param {string[]} visibleColumns - The headers that should be checked.
+ * @param {string} modalId - The ID of the modal to show.
  * @param {string} containerId - The ID of the container element for the checkboxes.
  */
-export function showColumnModal(headers, visibleColumns, containerId) {
+export function showColumnModal(headers, visibleColumns, modalId, containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
     
@@ -166,8 +169,10 @@ export function showColumnModal(headers, visibleColumns, containerId) {
         container.appendChild(div);
     });
     
-    // Show the parent modal
-    container.closest('.modal').style.display = 'block';
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'block';
+    }
 }
 
 // --- LOADING AND ERROR INDICATORS ---
