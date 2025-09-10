@@ -112,6 +112,13 @@
 .client-layout-container { display: grid; grid-template-columns: 1fr; gap: 20px; align-items: start; }
 .client-list-container { grid-column: 1 / -1; } /* Take full width */
 
+/* --- Requests View Fixes --- */
+#requests-container .card-container, #archived-requests-container .card-container {
+    /* Add a small amount of padding to prevent the hover animation on cards
+       from being clipped by the container's boundaries. */
+    padding-block: 5px; /* Adds 5px to top and bottom */
+}
+
 /* --- Rebuilt Client & Request Modal Views --- */
 .modal-nav { border-right: 1px solid #eee; padding-right: 20px; }
 .modal-nav .nav-link { display: block; padding: 10px 15px; text-decoration: none; color: #333; border-radius: 6px; margin-bottom: 5px; font-weight: 500; }
