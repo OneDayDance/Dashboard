@@ -114,10 +114,10 @@
 
 /* --- Requests View Fixes --- */
 #requests-container .card-container, #archived-requests-container .card-container {
-    /* Add a small amount of padding to prevent the hover animation on cards
+    /* Add padding to prevent the hover animation on cards
        from being clipped by the container's boundaries. */
-    padding-block: 5px; /* Adds 5px to top and bottom */
-    padding-inline: 5px; /* Adds 5px to left and right */
+    padding: 10px;
+    box-sizing: border-box; /* Ensure padding is calculated correctly. */
 }
 
 /* --- Rebuilt Client & Request Modal Views --- */
@@ -415,5 +415,4 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 .form-field.full-width {
     grid-column: 1 / -1;
 }
-
 
