@@ -27,6 +27,7 @@ async function fetchData(range, setter) {
             const headerCount = headers.length;
             const rawRows = values.slice(1).filter(row => row.some(cell => cell !== '' && cell !== null)); // Filter truly empty rows
 
+            // **THE FIX**: Pad any truncated rows to match the header count
             const paddedRows = rawRows.map(row => {
                 while (row.length < headerCount) {
                     row.push('');
@@ -123,7 +124,7 @@ export async function updateSheetRow(sheetName, idColumnName, idValue, dataToUpd
 }
 
 /**
- * Appends or inserts a new row of data.
+ * Appends or inserts a new row of data. This function is now robust against empty columns in the sheet.
  * @param {string} sheetName - The name of the sheet.
  * @param {object} dataObject - An object where keys are column headers and values are cell values.
  * @returns {Promise<object>} - The result from the Sheets API.
@@ -132,29 +133,33 @@ export async function writeData(sheetName, dataObject) {
     console.log(`Attempting to write new row to '${sheetName}'`);
     console.log("Data to write:", dataObject);
 
-    const fullSheetResponse = await gapi.client.sheets.spreadsheets.values.get({
+    // 1. Get current headers from the sheet.
+    const headerResponse = await gapi.client.sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
-        range: sheetName
+        range: `${sheetName}!1:1` // Read only the first row
     });
-    const sheetValues = fullSheetResponse.result.values || [];
-    let headers = sheetValues.length > 0 ? sheetValues[0] : [];
+    let headers = (headerResponse.result.values ? headerResponse.result.values[0] : []) || [];
     console.log(`Found headers in '${sheetName}':`, headers);
 
     const normalize = str => (str || '').toLowerCase().trim();
-    const headerMap = new Map();
-    headers.forEach((h, i) => { if (h) headerMap.set(normalize(h), { original: h, index: i }); });
     
-    const dataKeyMap = new Map();
-    Object.keys(dataObject).forEach(k => dataKeyMap.set(normalize(k), k));
+    // Function to build a map of header names to their column index.
+    const buildHeaderMap = (hdrs) => {
+        const map = new Map();
+        hdrs.forEach((h, i) => { 
+            if (h) map.set(normalize(h), { original: h, index: i }); 
+        });
+        return map;
+    };
 
-    const newHeaders = [];
-    for (const normalizedKey of dataKeyMap.keys()) {
-        if (!headerMap.has(normalizedKey)) {
-            newHeaders.push(dataKeyMap.get(normalizedKey));
-        }
-    }
+    let headerMap = buildHeaderMap(headers);
+    
+    // 2. Identify any new headers from the data object that don't exist in the sheet.
+    const newHeaders = Object.keys(dataObject).filter(k => !headerMap.has(normalize(k)));
 
+    // 3. If there are new headers, append them to the sheet and update our local headers list/map.
     if (newHeaders.length > 0) {
+        console.log("Adding new headers:", newHeaders);
         const firstEmptyColumn = columnToLetter(headers.length + 1);
         await gapi.client.sheets.spreadsheets.values.update({
             spreadsheetId: SPREADSHEET_ID,
@@ -162,16 +167,24 @@ export async function writeData(sheetName, dataObject) {
             valueInputOption: 'RAW',
             resource: { values: [newHeaders] }
         });
+        // Update local variables to reflect the new state
         headers = headers.concat(newHeaders);
+        headerMap = buildHeaderMap(headers);
     }
     
-    const newRow = headers.map(header => {
-        const normalizedHeader = normalize(header);
-        const originalDataKey = dataKeyMap.get(normalizedHeader);
-        return originalDataKey ? dataObject[originalDataKey] : '';
-    });
+    // 4. Construct the new row array, ensuring values are placed at the correct index based on the header map.
+    // This correctly handles sheets with empty or out-of-order columns.
+    const newRow = Array(headers.length).fill(''); // Initialize row with empty strings
+    for (const dataKey in dataObject) {
+        const normalizedKey = normalize(dataKey);
+        if (headerMap.has(normalizedKey)) {
+            const { index } = headerMap.get(normalizedKey);
+            newRow[index] = dataObject[dataKey];
+        }
+    }
     console.log(`Prepared new row for sheet '${sheetName}':`, newRow);
 
+    // 5. Append the fully constructed row to the sheet.
     return gapi.client.sheets.spreadsheets.values.append({
         spreadsheetId: SPREADSHEET_ID,
         range: sheetName,
@@ -292,43 +305,10 @@ export async function uploadImageToDrive(file) {
         supportsAllDrives: true,
     });
     
+    // Construct a direct-view link that works in <img> tags
     const directLink = `https://drive.google.com/uc?export=view&id=${fileId}`;
     return { link: directLink, id: fileId };
 }
-
-/**
- * **THE FIX for CORS**
- * Fetches a Google Drive image using the authenticated API and returns a local Blob URL.
- * This avoids direct linking and the associated CORS errors.
- * @param {string} fileId - The ID of the file in Google Drive.
- * @returns {Promise<string|null>} A local Blob URL for the image, or null on error.
- */
-export async function fetchDriveImageAsBlobUrl(fileId) {
-    if (!fileId) return null;
-    const accessToken = gapi.client.getToken().access_token;
-    const fetchUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
-
-    try {
-        const response = await fetch(fetchUrl, {
-            headers: {
-                'Authorization': `Bearer ${accessToken}`
-            }
-        });
-
-        if (!response.ok) {
-            const errorBody = await response.json().catch(() => response.text());
-            console.error(`Google Drive API responded with ${response.status} for fileId "${fileId}":`, errorBody);
-            throw new Error(`Failed to fetch image data. Status: ${response.status}`);
-        }
-
-        const imageBlob = await response.blob();
-        return URL.createObjectURL(imageBlob);
-    } catch (err) {
-        console.error(`Error fetching Drive image via fetch for fileId "${fileId}":`, err);
-        return null;
-    }
-}
-
 
 /**
  * Converts a 1-based column index to its A1 notation letter.
