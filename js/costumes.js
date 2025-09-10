@@ -30,8 +30,6 @@ export function initCostumesTab(refreshDataFn) {
 
 // --- RENDERING ---
 export function renderCostumes() {
-    // FINAL DIAGNOSTIC LOG
-    console.log("Rendering costumes with data received from sheet:", JSON.parse(JSON.stringify(allCostumes)));
     renderCostumesAsCards();
     populateFilterOptions();
 }
@@ -42,7 +40,6 @@ export function renderCostumes() {
  * @returns {string} - A URL suitable for direct image display.
  */
 function getDirectDriveImage(url) {
-    // Make this function more robust to handle null or undefined inputs
     if (!url || typeof url !== 'string' || !url.includes('drive.google.com')) {
         return ''; 
     }
@@ -53,22 +50,33 @@ function getDirectDriveImage(url) {
     if (match && match[1]) {
         return `https://drive.google.com/uc?export=view&id=${match[1]}`;
     }
-    return ''; // Return empty if we can't parse it
+    return '';
 }
 
 function renderCostumesAsCards() {
     const container = document.getElementById('costumes-container');
     if (!container) return;
     container.innerHTML = '';
+
+    if (!allCostumes || !allCostumes.rows) {
+        container.innerHTML = '<p>Costume data is not available.</p>';
+        return;
+    }
+    
     const processedRows = getProcessedCostumes();
 
     if (processedRows.length === 0) {
-        container.innerHTML = '<p>No costumes found.</p>';
+        container.innerHTML = `
+            <div class="empty-state-container">
+                <h3>No Costumes Found</h3>
+                <p>To get started, add a new costume using the button above. If you have data in your sheet that isn't appearing, check the filter settings.</p>
+            </div>`;
         return;
     }
-
+    
     if (!allCostumes.headers || allCostumes.headers.length === 0) {
         console.warn("Costume headers not available yet, skipping render.");
+        container.innerHTML = `<p>Loading costume headers...</p>`;
         return;
     }
     
@@ -198,7 +206,6 @@ function showCostumeModal(rowData = null) {
         modal.querySelector('#costume-modal-title').textContent = 'Edit Costume';
         const { headers } = allCostumes;
         
-        // Populate form fields using the safe helper
         safeSetValue('costume-id-input', rowData[headers.indexOf('CostumeID')] || '');
         safeSetValue('costume-name', rowData[headers.indexOf('Name')] || '');
         safeSetValue('costume-status', rowData[headers.indexOf('Status')] || 'Available');
@@ -222,7 +229,6 @@ function showCostumeModal(rowData = null) {
     } else {
         modal.querySelector('#costume-modal-title').textContent = 'Add New Costume';
         safeSetValue('costume-id-input', '');
-        // Set date added only for new items
         const today = new Date();
         const year = today.getFullYear();
         const month = String(today.getMonth() + 1).padStart(2, '0');
@@ -268,31 +274,12 @@ async function handleFormSubmit(event) {
         const sheetPromise = costumeId 
             ? updateSheetRow('Costumes', 'CostumeID', costumeId, costumeData)
             : writeData('Costumes', { ...costumeData, CostumeID: `COS-${Date.now()}` });
-
-        // Optimistically update the local state for immediate UI feedback
-        if (costumeId) {
-            const rowIndex = allCostumes.rows.findIndex(r => r[allCostumes.headers.indexOf('CostumeID')] === costumeId);
-            if (rowIndex > -1) {
-                const updatedRow = [...allCostumes.rows[rowIndex]];
-                Object.keys(costumeData).forEach(key => {
-                    const headerIndex = allCostumes.headers.indexOf(key);
-                    if (headerIndex > -1) updatedRow[headerIndex] = costumeData[key];
-                });
-                allCostumes.rows[rowIndex] = updatedRow;
-            }
-        } else {
-            const newRow = allCostumes.headers.map(header => costumeData[header] || '');
-            const idIndex = allCostumes.headers.indexOf('CostumeID');
-            if (idIndex > -1) newRow[idIndex] = `COS-${Date.now()}`; // Approximate ID for UI
-            allCostumes.rows.push(newRow);
-        }
         
-        renderCostumes(); // Re-render with the optimistic update
-        
-        await sheetPromise; // Wait for the sheet operation to complete
+        await sheetPromise; 
         console.log("Google Sheet update successful.");
-
         statusSpan.textContent = 'Costume saved successfully!';
+
+        await refreshData(); // Explicitly call refreshData AFTER sheet update completes.
 
         setTimeout(() => {
             elements.costumeModal.style.display = 'none';
@@ -301,8 +288,6 @@ async function handleFormSubmit(event) {
     } catch (err) {
         statusSpan.textContent = `Error: ${err.message}`;
         console.error('Costume save error:', err);
-        // If the save fails, refresh data to revert optimistic changes
-        refreshData();
     }
 }
 

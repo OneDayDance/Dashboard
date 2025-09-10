@@ -21,29 +21,30 @@ export function cacheDOMElements() {
     elements.statusFilter = document.getElementById('status-filter');
     elements.searchBar = document.getElementById('search-bar');
     elements.requestViewToggleBtn = document.getElementById('request-view-toggle-btn');
+    elements.archiveToggle = document.getElementById('archive-toggle');
+    elements.archiveContainer = document.getElementById('archived-requests-container');
     elements.columnSelectBtn = document.getElementById('column-select-btn');
-    elements.saveColumnsBtn = document.getElementById('save-columns-btn');
-
+    
     // Clients Tab
+    elements.addClientBtn = document.getElementById('add-client-btn');
     elements.clientSearchBar = document.getElementById('client-search-bar');
     elements.clientTableContainer = document.getElementById('client-table-container');
     elements.clientStatusFilter = document.getElementById('client-status-filter');
-    elements.clientAddBtn = document.getElementById('add-client-btn');
-    elements.addClientForm = document.getElementById('add-client-form');
-    elements.clientViewToggleBtn = document.getElementById('client-view-toggle-btn');
+    elements.clientListViewBtn = document.getElementById('client-list-view-btn');
+    elements.clientCardViewBtn = document.getElementById('client-card-view-btn');
     elements.clientColumnSelectBtn = document.getElementById('client-column-select-btn');
 
     // Projects Tab
     elements.projectSearchBar = document.getElementById('project-search-bar');
 
-    // Costume Tab
-    elements.costumeAddBtn = document.getElementById('add-costume-btn'); // FIX: Added this line
+    // Costumes Tab
+    elements.costumeAddBtn = document.getElementById('add-costume-btn');
     elements.costumeSearchBar = document.getElementById('costume-search-bar');
     elements.costumeStatusFilter = document.getElementById('costume-status-filter');
     elements.costumeCategoryFilter = document.getElementById('costume-category-filter');
     
     // Equipment Tab
-    elements.equipmentAddBtn = document.getElementById('add-equipment-btn'); // FIX: Added this line
+    elements.equipmentAddBtn = document.getElementById('add-equipment-btn');
     elements.equipmentSearchBar = document.getElementById('equipment-search-bar');
     elements.equipmentStatusFilter = document.getElementById('equipment-status-filter');
     elements.equipmentCategoryFilter = document.getElementById('equipment-category-filter');
@@ -51,75 +52,57 @@ export function cacheDOMElements() {
     // Modals
     elements.detailsModal = document.getElementById('details-modal');
     elements.columnModal = document.getElementById('column-modal');
-    elements.clientColumnModal = document.getElementById('client-column-modal');
     elements.clientDetailsModal = document.getElementById('client-details-modal');
-    elements.addClientModal = document.getElementById('add-client-modal');
     elements.createProjectModal = document.getElementById('create-project-modal');
     elements.taskDetailsModal = document.getElementById('task-details-modal');
     elements.deleteClientModal = document.getElementById('delete-client-modal');
     elements.deleteProjectModal = document.getElementById('delete-project-modal');
+    elements.clientColumnModal = document.getElementById('client-column-modal');
     elements.gdriveLinkModal = document.getElementById('gdrive-link-modal');
-    
-    // Inventory Modals
+    elements.addClientModal = document.getElementById('add-client-modal');
     elements.costumeModal = document.getElementById('costume-modal');
+    elements.equipmentModal = document.getElementById('equipment-modal');
+
+    // Modal Forms & Inputs
+    elements.addClientForm = document.getElementById('add-client-form');
     elements.costumeModalForm = document.getElementById('costume-modal-form');
     elements.costumeImageUpload = document.getElementById('costume-image-upload');
-    elements.equipmentModal = document.getElementById('equipment-modal');
     elements.equipmentModalForm = document.getElementById('equipment-modal-form');
     elements.equipmentImageUpload = document.getElementById('equipment-image-upload');
+
 }
 
 /**
  * Sets up the main tab navigation.
+ * @param {Function} onTabClick - The function to call when a tab is clicked to render its content.
  */
-export function setupTabs() {
+export function setupTabs(onTabClick) {
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('.tab-content');
 
-    // Set initial state based on the 'active' class in HTML
-    const initiallyActiveTab = document.querySelector('.tab-button.active')?.dataset.tab || 'requests';
-    tabContents.forEach(content => {
-        content.style.display = (content.id === `tab-${initiallyActiveTab}`) ? 'block' : 'none';
-    });
-    
+    // Set initial state
+    const initialTab = document.querySelector('.tab-button[data-tab="requests"]');
+    if (initialTab) {
+        initialTab.classList.add('active');
+    }
+    const initialContent = document.querySelector('#tab-requests');
+    if (initialContent) {
+        initialContent.style.display = 'block';
+    }
+
     tabButtons.forEach(button => {
         button.addEventListener('click', () => {
-            const tabId = button.dataset.tab;
-            if (button.classList.contains('active')) return; // Do nothing if already active
-
             tabButtons.forEach(btn => btn.classList.remove('active'));
             button.classList.add('active');
-            
+            const tabId = button.dataset.tab;
             tabContents.forEach(content => {
                 content.style.display = (content.id === `tab-${tabId}`) ? 'block' : 'none';
             });
-            loadDataForActiveTab();
+            if (onTabClick) {
+                onTabClick(); // Call the central render function
+            }
         });
     });
-}
-
-
-/**
- * Loads the appropriate data rendering function for the currently active tab.
- */
-export function loadDataForActiveTab() {
-    const activeTab = document.querySelector('.tab-button.active')?.dataset.tab;
-    if (!activeTab) return;
-
-    // Dynamically import and call the render function for the active tab
-    if (activeTab === 'requests') {
-        import('./requests.js').then(module => module.renderRequests());
-    } else if (activeTab === 'analytics') {
-        import('./analytics.js').then(module => module.renderAnalytics());
-    } else if (activeTab === 'clients') {
-        import('./clients.js').then(module => module.renderClients());
-    } else if (activeTab === 'projects') {
-        import('./projects.js').then(module => module.renderProjectsTab());
-    } else if (activeTab === 'costumes') {
-        import('./costumes.js').then(module => module.renderCostumes());
-    } else if (activeTab === 'equipment') {
-        import('./equipment.js').then(module => module.renderEquipment());
-    }
 }
 
 
@@ -145,10 +128,9 @@ export function setupModalCloseButtons() {
  * Populates a checkbox list for selecting visible columns.
  * @param {string[]} headers - All available column headers.
  * @param {string[]} visibleColumns - The headers that should be checked.
- * @param {string} modalId - The ID of the modal to show.
  * @param {string} containerId - The ID of the container element for the checkboxes.
  */
-export function showColumnModal(headers, visibleColumns, modalId, containerId) {
+export function showColumnModal(headers, visibleColumns, containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
     
@@ -169,10 +151,8 @@ export function showColumnModal(headers, visibleColumns, modalId, containerId) {
         container.appendChild(div);
     });
     
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.display = 'block';
-    }
+    // Show the parent modal
+    container.closest('.modal').style.display = 'block';
 }
 
 // --- LOADING AND ERROR INDICATORS ---

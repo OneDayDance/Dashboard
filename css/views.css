@@ -38,7 +38,23 @@
 .collapsible-content.collapsed { max-height: 0; padding-top: 0; padding-bottom: 0; margin-top: 0; border-top: none; }
 .collapsible-header.collapsed .toggle-arrow { transform: rotate(-90deg); }
 .content-section { background: #fdfdff; border: 1px solid #eee; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-
+.empty-state-container {
+    text-align: center;
+    padding: 40px 20px;
+    background-color: rgba(240, 240, 240, 0.5);
+    border-radius: 8px;
+    margin: 20px;
+}
+.empty-state-container h3 {
+    margin-top: 0;
+    font-size: 1.5em;
+    color: #555;
+}
+.empty-state-container p {
+    color: #777;
+    max-width: 500px;
+    margin: 10px auto;
+}
 
 /* --- Standardized Cards --- */
 .card-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
@@ -68,7 +84,8 @@
 #activity-feed li .activity-date { display: block; font-size: 12px; color: #888; margin-top: 4px; }
 
 /* --- Clients View --- */
-.client-layout-container { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; align-items: start; }
+.client-layout-container { display: grid; grid-template-columns: 1fr; gap: 20px; align-items: start; }
+.client-list-container { grid-column: 1 / -1; } /* Take full width */
 
 /* --- Rebuilt Client & Request Modal Views --- */
 .modal-nav { border-right: 1px solid #eee; padding-right: 20px; }
@@ -185,53 +202,66 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 #task-details-modal .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 #task-details-modal .add-item-form .btn { flex-shrink: 0; } /* Prevent add button from shrinking */
 
-/* --- Inventory Section --- */
+/* --- Inventory Styles --- */
 .inventory-card {
     display: flex;
     flex-direction: column;
     padding: 0;
     overflow: hidden;
-    cursor: pointer;
 }
 .inventory-card-image {
     width: 100%;
-    height: 200px;
+    height: 180px;
     background-size: cover;
     background-position: center;
-    background-color: #f0f0f0;
+    background-color: #e9ecef;
     display: flex;
     justify-content: center;
     align-items: center;
-    color: #888;
+    color: #6c757d;
+    font-weight: bold;
+}
+.inventory-card-image.no-image {
+    background-image: none;
 }
 .inventory-card-content {
     padding: 15px;
     flex-grow: 1;
 }
-.inventory-modal-body {
+.inventory-modal-body-grid {
     display: grid;
-    grid-template-columns: 250px 1fr;
+    grid-template-columns: 200px 1fr;
     gap: 20px;
+    align-items: start;
 }
-.inventory-image-section .image-preview-box {
-    width: 100%;
-    height: 250px;
+.inventory-image-upload-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+}
+.image-upload-preview {
+    width: 200px;
+    height: 200px;
     border: 2px dashed #ccc;
     border-radius: 8px;
+    background-size: cover;
+    background-position: center;
     display: flex;
     justify-content: center;
     align-items: center;
-    background-size: cover;
-    background-position: center;
-    cursor: pointer;
-    color: #888;
     text-align: center;
-    transition: border-color 0.2s ease;
+    color: #888;
+    cursor: pointer;
+    background-color: #f8f9fa;
 }
-.inventory-image-section .image-preview-box:hover {
+.image-upload-preview:hover {
     border-color: #76F1FF;
+    color: #333;
 }
-.form-field.full-width {
-    grid-column: 1 / -1;
+.inventory-form-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
 }
 

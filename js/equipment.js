@@ -30,8 +30,6 @@ export function initEquipmentTab(refreshDataFn) {
 
 // --- RENDERING ---
 export function renderEquipment() {
-    // FINAL DIAGNOSTIC LOG
-    console.log("Rendering equipment with data received from sheet:", JSON.parse(JSON.stringify(allEquipment)));
     renderEquipmentAsCards();
     populateFilterOptions();
 }
@@ -57,15 +55,26 @@ function renderEquipmentAsCards() {
     const container = document.getElementById('equipment-container');
     if (!container) return;
     container.innerHTML = '';
+
+    if (!allEquipment || !allEquipment.rows) {
+        container.innerHTML = '<p>Equipment data is not available.</p>';
+        return;
+    }
+
     const processedRows = getProcessedEquipment();
 
     if (processedRows.length === 0) {
-        container.innerHTML = '<p>No equipment found.</p>';
+        container.innerHTML = `
+            <div class="empty-state-container">
+                <h3>No Equipment Found</h3>
+                <p>To get started, add new equipment using the button above. If you have data in your sheet that isn't appearing, check the filter settings.</p>
+            </div>`;
         return;
     }
 
     if (!allEquipment.headers || allEquipment.headers.length === 0) {
         console.warn("Equipment headers not available yet, skipping render.");
+        container.innerHTML = `<p>Loading equipment headers...</p>`;
         return;
     }
 
@@ -261,30 +270,11 @@ async function handleFormSubmit(event) {
             ? updateSheetRow('Equipment', 'EquipmentID', equipmentId, equipmentData)
             : writeData('Equipment', { ...equipmentData, EquipmentID: `EQP-${Date.now()}` });
         
-        // Optimistically update the local state for immediate UI feedback
-        if (equipmentId) {
-            const rowIndex = allEquipment.rows.findIndex(r => r[allEquipment.headers.indexOf('EquipmentID')] === equipmentId);
-            if (rowIndex > -1) {
-                const updatedRow = [...allEquipment.rows[rowIndex]];
-                 Object.keys(equipmentData).forEach(key => {
-                    const headerIndex = allEquipment.headers.indexOf(key);
-                    if (headerIndex > -1) updatedRow[headerIndex] = equipmentData[key];
-                });
-                allEquipment.rows[rowIndex] = updatedRow;
-            }
-        } else {
-            const newRow = allEquipment.headers.map(header => equipmentData[header] || '');
-            const idIndex = allEquipment.headers.indexOf('EquipmentID');
-            if (idIndex > -1) newRow[idIndex] = `EQP-${Date.now()}`; // Approximate ID for UI
-            allEquipment.rows.push(newRow);
-        }
-
-        renderEquipment(); // Re-render with the optimistic update
-        
-        await sheetPromise; // Wait for the sheet operation to complete
+        await sheetPromise;
         console.log("Google Sheet update successful.");
-
         statusSpan.textContent = 'Equipment saved successfully!';
+        
+        await refreshData(); // Explicitly call refreshData AFTER sheet update completes.
 
         setTimeout(() => {
             elements.equipmentModal.style.display = 'none';
@@ -293,8 +283,6 @@ async function handleFormSubmit(event) {
     } catch (err) {
         statusSpan.textContent = `Error: ${err.message}`;
         console.error('Equipment save error:', err);
-        // If the save fails, refresh data to revert optimistic changes
-        refreshData();
     }
 }
 

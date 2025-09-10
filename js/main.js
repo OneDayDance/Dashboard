@@ -8,16 +8,16 @@ import {
     cacheDOMElements, 
     setupTabs, 
     setupModalCloseButtons, 
-    loadDataForActiveTab,
     showLoadingIndicator,
     hideLoadingIndicator,
     showMainError
 } from './ui.js';
-import { initRequestsTab } from './requests.js';
-import { initClientsTab } from './clients.js';
-import { initProjectsTab } from './projects.js';
-import { initCostumesTab } from './costumes.js';
-import { initEquipmentTab } from './equipment.js';
+import { initRequestsTab, renderRequests } from './requests.js';
+import { initClientsTab, renderClients } from './clients.js';
+import { initProjectsTab, renderProjectsTab } from './projects.js';
+import { initCostumesTab, renderCostumes } from './costumes.js';
+import { initEquipmentTab, renderEquipment } from './equipment.js';
+import { renderAnalytics } from './analytics.js';
 
 
 // --- STATE ---
@@ -41,8 +41,38 @@ document.addEventListener('DOMContentLoaded', () => {
     loadGoogleScripts();
 });
 
+// This function is now the single source of truth for rendering tab content.
+function renderContentForActiveTab() {
+    const activeTab = document.querySelector('.tab-button.active')?.dataset.tab;
+    if (!activeTab) return;
+
+    switch (activeTab) {
+        case 'requests':
+            renderRequests();
+            break;
+        case 'analytics':
+            renderAnalytics();
+            break;
+        case 'clients':
+            renderClients();
+            break;
+        case 'projects':
+            renderProjectsTab();
+            break;
+        case 'costumes':
+            renderCostumes();
+            break;
+        case 'equipment':
+            renderEquipment();
+            break;
+        default:
+            console.warn(`No render function found for tab: ${activeTab}`);
+    }
+}
+
+
 function initializeAppUI() {
-    setupTabs();
+    setupTabs(renderContentForActiveTab); // Pass the central render function to the tab setup.
     setupModalCloseButtons();
     
     initRequestsTab(loadInitialData);
@@ -126,7 +156,6 @@ async function initializeGapiClient() {
     console.log("Initializing GAPI client...");
     try {
         await gapi.client.init({});
-        // **FIX:** Load both Sheets and Drive APIs concurrently.
         await Promise.all([
             gapi.client.load('https://sheets.googleapis.com/$discovery/rest?version=v4'),
             gapi.client.load('https://www.googleapis.com/discovery/v1/apis/drive/v3/rest')
@@ -177,7 +206,7 @@ async function onSignInSuccess() {
     showLoadingIndicator();
     try {
         await loadInitialData();
-        loadDataForActiveTab(); 
+        renderContentForActiveTab(); // Use the new central function for the initial render
     } catch (err) {
         showMainError(`Failed to load initial data: ${err.message}. Please check sheet permissions and try again.`);
     } finally {
@@ -201,7 +230,7 @@ async function loadInitialData() {
             loadEquipment()
         ]);
         console.log("All application data refreshed.");
-        loadDataForActiveTab();
+        renderContentForActiveTab(); // Use the new central function to refresh the current view
     } catch (err) {
         showMainError(`Failed to refresh data: ${err.message}`);
     } finally {
