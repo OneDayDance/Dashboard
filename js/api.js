@@ -300,6 +300,43 @@ export async function uploadImageToDrive(file) {
 
 
 /**
+ * Extracts the Google Drive file ID from various URL formats.
+ * @param {string} url - The Google Drive URL.
+ * @returns {string|null} - The extracted file ID or null.
+ */
+function extractFileIdFromUrl(url) {
+    if (!url || typeof url !== 'string') return null;
+    const match = url.match(/([a-zA-Z0-9_-]{28,})/);
+    return match ? match[0] : null;
+}
+
+/**
+ * **THE FIX for CORS**
+ * Fetches a Google Drive image using the authenticated API and returns a local Blob URL.
+ * This avoids direct linking and the associated CORS errors.
+ * @param {string} fileId - The ID of the file in Google Drive.
+ * @returns {Promise<string|null>} A local Blob URL for the image, or null on error.
+ */
+export async function fetchDriveImageAsBlobUrl(fileId) {
+    if (!fileId) return null;
+    try {
+        const response = await gapi.client.drive.files.get({
+            fileId: fileId,
+            alt: 'media',
+            supportsAllDrives: true
+        });
+
+        // The body of the response is the raw image data.
+        const blob = new Blob([response.body], { type: response.headers['Content-Type'] });
+        return URL.createObjectURL(blob);
+    } catch (err) {
+        console.error(`Error fetching Drive image blob for fileId "${fileId}":`, err);
+        return null;
+    }
+}
+
+
+/**
  * Converts a 1-based column index to its A1 notation letter.
  * @param {number} column - The column number.
  * @returns {string} - The column letter.
@@ -313,4 +350,3 @@ function columnToLetter(column) {
     }
     return letter;
 }
-

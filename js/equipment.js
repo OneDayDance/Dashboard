@@ -2,7 +2,7 @@
 // Description: Contains all logic for the 'Equipment' tab.
 
 import { state, allEquipment, updateState, updateEquipmentFilters } from './state.js';
-import { updateSheetRow, writeData, uploadImageToDrive } from './api.js';
+import { updateSheetRow, writeData, uploadImageToDrive, fetchDriveImageAsBlobUrl } from './api.js';
 import { elements } from './ui.js';
 
 let refreshData;
@@ -35,30 +35,16 @@ export function renderEquipment() {
 }
 
 /**
- * Takes any Google Drive URL and converts it to a direct, embeddable image link.
- * This version is more robust and finds the file ID from various URL formats.
- * @param {string} url - The original URL from Google Drive.
- * @returns {string} - A URL suitable for direct image display, or an empty string.
+ * Extracts the Google Drive file ID from various URL formats.
+ * @param {string} url - The Google Drive URL.
+ * @returns {string|null} - The extracted file ID or null.
  */
-function getDirectDriveImage(url) {
-    if (!url || typeof url !== 'string' || !url.includes('drive.google.com')) {
-        return ''; 
-    }
-    
-    if (url.includes('uc?export=view')) {
-        return url;
-    }
-
+function extractFileIdFromUrl(url) {
+    if (!url || typeof url !== 'string') return null;
     const match = url.match(/([a-zA-Z0-9_-]{28,})/);
-    
-    if (match && match[0]) {
-        const fileId = match[0];
-        return `https://drive.google.com/uc?export=view&id=${fileId}`;
-    }
-    
-    console.warn("getDirectDriveImage: Could not extract File ID from URL:", url);
-    return '';
+    return match ? match[0] : null;
 }
+
 
 function renderEquipmentAsCards() {
     const container = document.getElementById('equipment-container');
@@ -98,9 +84,6 @@ function renderEquipmentAsCards() {
     }
 
     processedRows.forEach(row => {
-        const rawImageUrl = row[imageIndex] || '';
-        const imageUrl = getDirectDriveImage(rawImageUrl);
-
         const card = document.createElement('div');
         card.className = 'info-card inventory-card';
         card.onclick = () => showEquipmentModal(row);
@@ -108,17 +91,25 @@ function renderEquipmentAsCards() {
         const imageDiv = document.createElement('div');
         imageDiv.className = 'inventory-card-image';
 
-        if (imageUrl) {
-            // **THE FIX**: Use an <img> tag instead of background-image for better cross-origin compatibility.
+        // **THE FIX**: Asynchronously fetch the image as a Blob to bypass CORS.
+        const rawImageUrl = row[imageIndex] || '';
+        const fileId = extractFileIdFromUrl(rawImageUrl);
+        
+        if (fileId) {
             const img = document.createElement('img');
-            img.src = imageUrl;
             img.alt = row[nameIndex] || 'Equipment image';
-            img.crossOrigin = "anonymous"; // Important for preventing certain CORS errors
-            img.onerror = () => { 
-                imageDiv.classList.add('no-image');
-                imageDiv.textContent = 'Image Error';
-            };
+            img.crossOrigin = "anonymous";
             imageDiv.appendChild(img);
+            
+            fetchDriveImageAsBlobUrl(fileId).then(blobUrl => {
+                if (blobUrl) {
+                    img.src = blobUrl;
+                } else {
+                    imageDiv.classList.add('no-image');
+                    imageDiv.textContent = 'Image Error';
+                    img.remove();
+                }
+            });
         } else {
             imageDiv.classList.add('no-image');
             imageDiv.textContent = 'No Image';
@@ -167,11 +158,6 @@ function populateFilterOptions() {
 
 // --- MODAL & FORM HANDLING ---
 
-/**
- * Helper function to safely set the value of a form element.
- * @param {string} id - The ID of the element.
- * @param {string} value - The value to set.
- */
 function safeSetValue(id, value) {
     const element = document.getElementById(id);
     if (element) {
@@ -235,11 +221,16 @@ function showEquipmentModal(rowData = null) {
         safeSetValue('equipment-location', rowData[headers.indexOf('Storage Location')] || '');
         safeSetValue('equipment-notes', rowData[headers.indexOf('Notes')] || '');
         
-        const imageUrl = getDirectDriveImage(rowData[headers.indexOf('Image URL')] || '');
-        safeSetValue('equipment-image-url', imageUrl);
-        if (imageUrl) {
-            imagePreview.style.backgroundImage = `url('${imageUrl}')`;
-            imagePreview.innerHTML = '';
+        const imageUrlFromSheet = rowData[headers.indexOf('Image URL')] || '';
+        safeSetValue('equipment-image-url', imageUrlFromSheet);
+        const fileId = extractFileIdFromUrl(imageUrlFromSheet);
+        if (fileId) {
+             fetchDriveImageAsBlobUrl(fileId).then(blobUrl => {
+                if(blobUrl) {
+                    imagePreview.style.backgroundImage = `url('${blobUrl}')`;
+                    imagePreview.innerHTML = '';
+                }
+            });
         }
     } else {
         modal.querySelector('#equipment-modal-title').textContent = 'Add New Equipment';
@@ -292,7 +283,7 @@ async function handleFormSubmit(event) {
         console.log("Google Sheet update successful.");
         statusSpan.textContent = 'Equipment saved successfully!';
         
-        await refreshData(); // Explicitly call refreshData AFTER sheet update completes.
+        await refreshData();
 
         setTimeout(() => {
             elements.equipmentModal.style.display = 'none';
