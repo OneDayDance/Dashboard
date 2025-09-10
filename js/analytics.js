@@ -4,7 +4,6 @@
 import { allProjects, allRequests, allClients } from './state.js';
 
 // This object holds the actual Chart.js instances.
-// It's declared here locally instead of being imported.
 let charts = {
     revenue: null,
     services: null,
@@ -12,15 +11,16 @@ let charts = {
 };
 
 export function renderAnalytics() {
-    // Destroy previous charts to prevent memory leaks
+    // Destroy previous charts to prevent memory leaks and redraw issues
     Object.keys(charts).forEach(key => {
         if (charts[key]) {
             charts[key].destroy();
+            charts[key] = null; // Ensure it's cleared
         }
     });
 
-    // Ensure data is available
-    if (!allProjects.rows.length && !allRequests.rows.length && !allClients.rows.length) {
+    // General check - if no data at all, show a message.
+    if (!allProjects?.rows && !allRequests?.rows && !allClients?.rows) {
         document.getElementById('tab-analytics').innerHTML = '<h2>Analytics</h2><p>No data available to display analytics. Please check your data sources.</p>';
         return;
     }
@@ -35,57 +35,52 @@ export function renderAnalytics() {
 function renderKpis() {
     const currentYear = new Date().getFullYear();
 
-    // KPI: Total Clients
-    document.getElementById('kpi-total-clients').textContent = allClients.rows.length;
-
     // KPI 1: Total Revenue (YTD)
-    const [valIdx, dateIdx] = ['Value', 'Start Date'].map(h => allProjects.headers.indexOf(h));
-    let ytdIncome = 0;
-    if (valIdx > -1 && dateIdx > -1) {
-        allProjects.rows.forEach(row => {
-            if (row[dateIdx] && new Date(row[dateIdx]).getFullYear() === currentYear) {
-                ytdIncome += parseFloat(row[valIdx]) || 0;
-            }
-        });
+    if (allProjects?.rows) {
+        const [valIdx, dateIdx] = ['Value', 'Start Date'].map(h => allProjects.headers.indexOf(h));
+        let ytdIncome = 0;
+        if (valIdx > -1 && dateIdx > -1) {
+            allProjects.rows.forEach(row => {
+                if (row[dateIdx] && new Date(row[dateIdx]).getFullYear() === currentYear) {
+                    ytdIncome += parseFloat(row[valIdx]) || 0;
+                }
+            });
+        }
+        document.getElementById('kpi-total-revenue').textContent = `$${ytdIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
-    document.getElementById('kpi-total-revenue').textContent = `$${ytdIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
     // KPI 2: Active Projects
-    const statusIdxProj = allProjects.headers.indexOf('Status');
-    const inactiveStatuses = ['Completed', 'Cancelled', 'Archived'];
-    let activeProjects = 0;
-    if (statusIdxProj > -1) {
-        activeProjects = allProjects.rows.filter(row => !inactiveStatuses.includes(row[statusIdxProj])).length;
+    if (allProjects?.rows) {
+        const statusIdxProj = allProjects.headers.indexOf('Status');
+        const inactiveStatuses = ['Completed', 'Cancelled', 'Archived'];
+        let activeProjects = 0;
+        if (statusIdxProj > -1) {
+            activeProjects = allProjects.rows.filter(row => !inactiveStatuses.includes(row[statusIdxProj])).length;
+        }
+        document.getElementById('kpi-active-projects').textContent = activeProjects;
     }
-    document.getElementById('kpi-active-projects').textContent = activeProjects;
 
-    // KPI 3: New Clients (YTD)
-    const clientIdIdx = allClients.headers.indexOf('ClientID');
-    let newClients = 0;
-    if (clientIdIdx > -1) {
-        newClients = allClients.rows.filter(row => {
-            const id = row[clientIdIdx];
-            if (id && id.startsWith('C-')) {
-                const timestamp = parseInt(id.split('-')[1]);
-                if (!isNaN(timestamp)) {
-                    return new Date(timestamp).getFullYear() === currentYear;
-                }
-            }
-            return false;
-        }).length;
+    // KPI 3: Total Clients
+    if (allClients?.rows) {
+        document.getElementById('kpi-total-clients').textContent = allClients.rows.length;
     }
-    document.getElementById('kpi-new-clients').textContent = newClients;
+
 
     // KPI 4: Pending Requests
-    const statusIdxReq = allRequests.headers.indexOf('Status');
-    let pendingRequests = 0;
-    if (statusIdxReq > -1) {
-        pendingRequests = allRequests.rows.filter(row => (row[statusIdxReq] || 'New') === 'New' || row[statusIdxReq] === 'Contacted').length;
+    if (allRequests?.rows) {
+        const statusIdxReq = allRequests.headers.indexOf('Status');
+        let pendingRequests = 0;
+        if (statusIdxReq > -1) {
+            pendingRequests = allRequests.rows.filter(row => (row[statusIdxReq] || 'New') === 'New' || row[statusIdxReq] === 'Contacted').length;
+        }
+        document.getElementById('kpi-pending-requests').textContent = pendingRequests;
     }
-    document.getElementById('kpi-pending-requests').textContent = pendingRequests;
 }
 
 function renderRevenueChart() {
+    const canvas = document.getElementById('revenue-chart');
+    if (!canvas || !allProjects?.rows) return; // Guard clause
+
     const revenueData = {};
     const [valIdx, dateIdx] = ['Value', 'Start Date'].map(h => allProjects.headers.indexOf(h));
 
@@ -119,7 +114,7 @@ function renderRevenueChart() {
     const labels = sortedKeys;
     const dataPoints = sortedKeys.map(key => revenueData[key]);
 
-    const ctx = document.getElementById('revenue-chart').getContext('2d');
+    const ctx = canvas.getContext('2d');
     charts.revenue = new Chart(ctx, {
         type: 'line',
         data: {
@@ -147,17 +142,16 @@ function renderRevenueChart() {
 }
 
 function renderServicesChart() {
+    const canvas = document.getElementById('services-chart');
+    if (!canvas || !allRequests?.rows) return; // Guard clause
+
     const servicesCount = {};
     const serviceIdx = allRequests.headers.indexOf('Primary Service Category');
     if (serviceIdx === -1) return;
     
     allRequests.rows.forEach(row => {
         const service = row[serviceIdx] || 'Uncategorized';
-        if (servicesCount[service]) {
-            servicesCount[service]++;
-        } else {
-            servicesCount[service] = 1;
-        }
+        servicesCount[service] = (servicesCount[service] || 0) + 1;
     });
 
     const labels = Object.keys(servicesCount);
@@ -167,7 +161,7 @@ function renderServicesChart() {
         '#FF9D76', '#76F1FF', '#C176FF', '#FFE176', '#8BFF76', '#FF76B7'
     ];
 
-    const ctx = document.getElementById('services-chart').getContext('2d');
+    const ctx = canvas.getContext('2d');
     charts.services = new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -187,23 +181,22 @@ function renderServicesChart() {
 }
 
 function renderProjectsChart() {
+    const canvas = document.getElementById('projects-chart');
+    if (!canvas || !allProjects?.rows) return; // Guard clause
+
     const statusCount = {};
     const statusIdx = allProjects.headers.indexOf('Status');
     if (statusIdx === -1) return;
     
     allProjects.rows.forEach(row => {
         const status = row[statusIdx] || 'Not Started';
-        if (statusCount[status]) {
-            statusCount[status]++;
-        } else {
-            statusCount[status] = 1;
-        }
+        statusCount[status] = (statusCount[status] || 0) + 1;
     });
 
     const labels = Object.keys(statusCount);
     const dataPoints = Object.values(statusCount);
 
-    const ctx = document.getElementById('projects-chart').getContext('2d');
+    const ctx = canvas.getContext('2d');
     charts.projects = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -239,35 +232,40 @@ function renderProjectsChart() {
 
 function renderActivityFeed() {
     const activityFeed = document.getElementById('activity-feed');
+    if (!activityFeed) return;
     activityFeed.innerHTML = '';
     let combinedActivity = [];
 
     // New Requests
-    const [subDateIdx, nameIdx, serviceIdx] = ['Submission Date', 'Full Name', 'Primary Service Category'].map(h => allRequests.headers.indexOf(h));
-    if (subDateIdx > -1 && nameIdx > -1 && serviceIdx > -1) {
-        allRequests.rows.forEach(row => {
-            const date = new Date(row[subDateIdx]);
-            if (!isNaN(date.getTime())) {
-                combinedActivity.push({
-                    date: date,
-                    text: `New request from <strong>${row[nameIdx]}</strong> for <em>${row[serviceIdx]}</em>.`
-                });
-            }
-        });
+    if (allRequests?.rows) {
+        const [subDateIdx, nameIdx, serviceIdx] = ['Submission Date', 'Full Name', 'Primary Service Category'].map(h => allRequests.headers.indexOf(h));
+        if (subDateIdx > -1 && nameIdx > -1 && serviceIdx > -1) {
+            allRequests.rows.forEach(row => {
+                const date = new Date(row[subDateIdx]);
+                if (!isNaN(date.getTime())) {
+                    combinedActivity.push({
+                        date: date,
+                        text: `New request from <strong>${row[nameIdx]}</strong> for <em>${row[serviceIdx]}</em>.`
+                    });
+                }
+            });
+        }
     }
 
     // New Projects
-    const [projNameIdx, projDateIdx] = ['Project Name', 'Start Date'].map(h => allProjects.headers.indexOf(h));
-    if(projNameIdx > -1 && projDateIdx > -1) {
-        allProjects.rows.forEach(row => {
-            const date = new Date(row[projDateIdx]);
-            if (!isNaN(date.getTime())) {
-                 combinedActivity.push({
-                    date: date,
-                    text: `Project started: <strong>${row[projNameIdx]}</strong>.`
-                });
-            }
-        });
+    if (allProjects?.rows) {
+        const [projNameIdx, projDateIdx] = ['Project Name', 'Start Date'].map(h => allProjects.headers.indexOf(h));
+        if(projNameIdx > -1 && projDateIdx > -1) {
+            allProjects.rows.forEach(row => {
+                const date = new Date(row[projDateIdx]);
+                if (!isNaN(date.getTime())) {
+                     combinedActivity.push({
+                        date: date,
+                        text: `Project started: <strong>${row[projNameIdx]}</strong>.`
+                    });
+                }
+            });
+        }
     }
     
     // Sort by most recent
@@ -286,3 +284,4 @@ function renderActivityFeed() {
         activityFeed.appendChild(li);
     });
 }
+
