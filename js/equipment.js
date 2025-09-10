@@ -147,7 +147,13 @@ function safeSetValue(id, value) {
 function showEquipmentModal(rowData = null) {
     const modal = elements.equipmentModal;
     const form = elements.equipmentModalForm;
-    if (!modal || !form) return;
+    
+    console.log("Attempting to show equipment modal...", { modal, form });
+
+    if (!modal || !form) {
+        console.error("Equipment modal or form element not found in cache! Check `ui.js` and `index.html`.");
+        return;
+    }
 
     form.reset();
     document.getElementById('equipment-modal-status').textContent = '';

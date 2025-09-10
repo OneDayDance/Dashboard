@@ -149,7 +149,14 @@ function safeSetValue(id, value) {
 function showCostumeModal(rowData = null) {
     const modal = elements.costumeModal;
     const form = elements.costumeModalForm;
-    if (!modal || !form) return;
+    
+    // Add logging to see if the elements are found
+    console.log("Attempting to show costume modal...", { modal, form });
+
+    if (!modal || !form) {
+        console.error("Costume modal or form element not found in cache! Check `ui.js` and `index.html`.");
+        return;
+    }
 
     form.reset();
     document.getElementById('costume-modal-status').textContent = '';
@@ -194,6 +201,7 @@ function showCostumeModal(rowData = null) {
         safeSetValue('costume-purchase-cost', rowData[headers.indexOf('Purchase Cost')] || '');
         safeSetValue('costume-condition', rowData[headers.indexOf('Condition')] || 'New');
         safeSetValue('costume-location', rowData[headers.indexOf('Storage Location')] || '');
+        safeSetValue('costume-date-added', rowData[headers.indexOf('Date Added')] || '');
         safeSetValue('costume-notes', rowData[headers.indexOf('Notes')] || '');
         
         const imageUrl = getDirectDriveImage(rowData[headers.indexOf('Image URL')] || '');
@@ -205,7 +213,12 @@ function showCostumeModal(rowData = null) {
     } else {
         modal.querySelector('#costume-modal-title').textContent = 'Add New Costume';
         safeSetValue('costume-id-input', '');
-        safeSetValue('costume-date-added', new Date().toLocaleDateString());
+        // Set date added only for new items
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        safeSetValue('costume-date-added', `${year}-${month}-${day}`);
     }
 
     modal.style.display = 'block';
