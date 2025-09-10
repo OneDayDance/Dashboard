@@ -64,6 +64,23 @@ function getDirectDriveImage(url) {
 }
 
 
+/**
+ * DEBUGGING FUNCTION: Tests if the browser can load an image from a given URL.
+ * @param {string} url The image URL to test.
+ */
+function testImageUrl(url) {
+    if (!url) return;
+    const img = new Image();
+    img.onload = function() {
+        console.log(`%cSUCCESS: Image loaded from ${url}`, 'color: green;');
+    };
+    img.onerror = function() {
+        console.error(`%cERROR: Failed to load image from ${url}`, 'color: red;');
+    };
+    img.src = url;
+}
+
+
 function renderCostumesAsCards() {
     const container = document.getElementById('costumes-container');
     if (!container) return;
@@ -103,18 +120,10 @@ function renderCostumesAsCards() {
 
     processedRows.forEach(row => {
         const rawImageUrl = row[imageIndex] || '';
-
-        // --- DEBUGGING LOGS START ---
-        console.log("--- Processing Costume Item ---");
-        console.log("Full Row Data:", row);
-        console.log("Raw Image URL from Sheet:", rawImageUrl, "(Type: " + typeof rawImageUrl + ")");
-        // --- DEBUGGING LOGS END ---
-
         const imageUrl = getDirectDriveImage(rawImageUrl);
 
-        // --- DEBUGGING LOGS START ---
-        console.log("Transformed Image URL for display:", imageUrl);
-        // --- DEBUGGING LOGS END ---
+        // --- NEW DIAGNOSTIC TEST ---
+        testImageUrl(imageUrl);
 
         const card = document.createElement('div');
         card.className = 'info-card inventory-card';
