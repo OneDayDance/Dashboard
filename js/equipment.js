@@ -30,6 +30,8 @@ export function initEquipmentTab(refreshDataFn) {
 
 // --- RENDERING ---
 export function renderEquipment() {
+    // FINAL DIAGNOSTIC LOG
+    console.log("Rendering equipment with data received from sheet:", JSON.parse(JSON.stringify(allEquipment)));
     renderEquipmentAsCards();
     populateFilterOptions();
 }
@@ -38,8 +40,8 @@ export function renderEquipment() {
  * Takes a Google Drive URL and converts it to a direct image link.
  */
 function getDirectDriveImage(url) {
-    if (!url || !url.includes('drive.google.com')) {
-        return url;
+    if (!url || typeof url !== 'string' || !url.includes('drive.google.com')) {
+        return '';
     }
     if (url.includes('uc?export=view')) {
         return url;
@@ -62,11 +64,20 @@ function renderEquipmentAsCards() {
         return;
     }
 
+    if (!allEquipment.headers || allEquipment.headers.length === 0) {
+        console.warn("Equipment headers not available yet, skipping render.");
+        return;
+    }
+
     const { headers } = allEquipment;
     const cardContainer = document.createElement('div');
     cardContainer.className = 'card-container';
 
     const [nameIndex, statusIndex, categoryIndex, imageIndex] = ['Name', 'Status', 'Category', 'Image URL'].map(h => headers.indexOf(h));
+
+    if (imageIndex === -1) {
+        console.error("Critical Error: 'Image URL' header not found in fetched data for Equipment.");
+    }
 
     processedRows.forEach(row => {
         const rawImageUrl = row[imageIndex] || '';
@@ -162,6 +173,7 @@ function showEquipmentModal(rowData = null) {
     safeSetValue('equipment-image-url', '');
 
     if (elements.equipmentImageUpload) {
+        elements.equipmentImageUpload.value = ''; // Clear file input
         elements.equipmentImageUpload.onchange = (event) => {
             const file = event.target.files[0];
             if (file) {

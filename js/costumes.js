@@ -30,6 +30,8 @@ export function initCostumesTab(refreshDataFn) {
 
 // --- RENDERING ---
 export function renderCostumes() {
+    // FINAL DIAGNOSTIC LOG
+    console.log("Rendering costumes with data received from sheet:", JSON.parse(JSON.stringify(allCostumes)));
     renderCostumesAsCards();
     populateFilterOptions();
 }
@@ -40,8 +42,9 @@ export function renderCostumes() {
  * @returns {string} - A URL suitable for direct image display.
  */
 function getDirectDriveImage(url) {
-    if (!url || !url.includes('drive.google.com')) {
-        return url; // Return original if not a drive link or empty
+    // Make this function more robust to handle null or undefined inputs
+    if (!url || typeof url !== 'string' || !url.includes('drive.google.com')) {
+        return ''; 
     }
     if (url.includes('uc?export=view')) {
         return url;
@@ -64,11 +67,20 @@ function renderCostumesAsCards() {
         return;
     }
 
+    if (!allCostumes.headers || allCostumes.headers.length === 0) {
+        console.warn("Costume headers not available yet, skipping render.");
+        return;
+    }
+    
     const { headers } = allCostumes;
     const cardContainer = document.createElement('div');
     cardContainer.className = 'card-container';
 
     const [nameIndex, statusIndex, categoryIndex, imageIndex] = ['Name', 'Status', 'Category', 'Image URL'].map(h => headers.indexOf(h));
+
+    if (imageIndex === -1) {
+        console.error("Critical Error: 'Image URL' header not found in fetched data for Costumes.");
+    }
 
     processedRows.forEach(row => {
         const rawImageUrl = row[imageIndex] || '';
@@ -163,6 +175,7 @@ function showCostumeModal(rowData = null) {
     safeSetValue('costume-image-url', '');
     
     if (elements.costumeImageUpload) {
+        elements.costumeImageUpload.value = ''; // Clear file input
         elements.costumeImageUpload.onchange = (event) => {
             const file = event.target.files[0];
             if (file) {
