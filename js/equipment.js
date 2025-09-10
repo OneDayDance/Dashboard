@@ -1,141 +1,183 @@
 // js/equipment.js
 // Description: Contains all logic for the 'Equipment' tab.
 
-import { state, allEquipment, updateEquipmentFilters } from './state.js';
-import { writeData, updateSheetRow, uploadImageToDrive } from './api.js';
+import { state, allEquipment, updateState, updateEquipmentFilters } from './state.js';
+import { updateSheetRow, writeData, uploadImageToDrive } from './api.js';
 import { elements } from './ui.js';
 
 let refreshData;
 
+// --- INITIALIZATION ---
 export function initEquipmentTab(refreshDataFn) {
     refreshData = refreshDataFn;
-    elements.equipmentAddBtn.onclick = () => showEquipmentModal(null);
-    elements.equipmentSearchBar.oninput = (e) => { updateEquipmentFilters('searchTerm', e.target.value.toLowerCase()); renderEquipment(); };
-    elements.equipmentStatusFilter.onchange = (e) => { updateEquipmentFilters('status', e.target.value); renderEquipment(); };
-    elements.equipmentCategoryFilter.onchange = (e) => { updateEquipmentFilters('category', e.target.value); renderEquipment(); };
-    elements.equipmentModalForm.onsubmit = handleFormSubmit;
+    
+    if (elements.equipmentAddBtn) {
+        elements.equipmentAddBtn.onclick = () => showEquipmentModal(null);
+    }
+    if (elements.equipmentSearchBar) {
+        elements.equipmentSearchBar.oninput = (e) => { updateEquipmentFilters('searchTerm', e.target.value.toLowerCase()); renderEquipment(); };
+    }
+    if (elements.equipmentStatusFilter) {
+        elements.equipmentStatusFilter.onchange = (e) => { updateEquipmentFilters('status', e.target.value); renderEquipment(); };
+    }
+    if (elements.equipmentCategoryFilter) {
+        elements.equipmentCategoryFilter.onchange = (e) => { updateEquipmentFilters('category', e.target.value); renderEquipment(); };
+    }
+    if (elements.equipmentModalForm) {
+        elements.equipmentModalForm.addEventListener('submit', handleFormSubmit);
+    }
 }
 
+// --- RENDERING ---
 export function renderEquipment() {
+    renderEquipmentAsCards();
+    populateFilterOptions();
+}
+
+/**
+ * HELPER FUNCTION (Consistent with costumes.js)
+ * Takes a Google Drive URL and converts it to a direct image link.
+ */
+function getDirectDriveImage(url) {
+    if (!url || !url.includes('drive.google.com')) {
+        return url;
+    }
+    if (url.includes('uc?export=view')) {
+        return url;
+    }
+    const match = url.match(/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+        return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+    }
+    return '';
+}
+
+function renderEquipmentAsCards() {
     const container = document.getElementById('equipment-container');
+    if (!container) return;
     container.innerHTML = '';
     const processedRows = getProcessedEquipment();
 
     if (processedRows.length === 0) {
-        container.innerHTML = '<p>No equipment found. Click "Add Equipment" to get started.</p>';
+        container.innerHTML = '<p>No equipment found.</p>';
         return;
     }
 
-    processedRows.forEach(item => {
+    const { headers } = allEquipment;
+    const cardContainer = document.createElement('div');
+    cardContainer.className = 'card-container';
+
+    const [nameIndex, statusIndex, categoryIndex, imageIndex] = ['Name', 'Status', 'Category', 'Image URL'].map(h => headers.indexOf(h));
+
+    processedRows.forEach(row => {
+        const rawImageUrl = row[imageIndex] || '';
+        const imageUrl = getDirectDriveImage(rawImageUrl);
+
         const card = document.createElement('div');
         card.className = 'info-card inventory-card';
-        card.onclick = () => showEquipmentModal(item);
+        card.onclick = () => showEquipmentModal(row);
 
-        const imageUrl = item.row[allEquipment.headers.indexOf('Image URL')] || 'https://placehold.co/300x300?text=No+Image';
-        const name = item.row[allEquipment.headers.indexOf('Name')] || 'Unnamed Equipment';
-        const status = item.row[allEquipment.headers.indexOf('Status')] || 'N/A';
-        const category = item.row[allEquipment.headers.indexOf('Category')] || 'N/A';
-        const model = item.row[allEquipment.headers.indexOf('Model')] || 'N/A';
+        const imageDiv = document.createElement('div');
+        imageDiv.className = 'inventory-card-image';
 
-        card.innerHTML = `
-            <div class="inventory-card-image" style="background-image: url('${imageUrl}')"></div>
-            <div class="inventory-card-content">
-                <h3>${name}</h3>
-                <p><strong>Status:</strong> <span class="status-${status.toLowerCase().replace(/\s+/g, '-')}">${status}</span></p>
-                <p><strong>Category:</strong> ${category}</p>
-                <p><strong>Model:</strong> ${model}</p>
-            </div>
+        if (imageUrl) {
+            imageDiv.style.backgroundImage = `url('${imageUrl}')`;
+        } else {
+            imageDiv.classList.add('no-image');
+            imageDiv.textContent = 'No Image';
+        }
+
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'inventory-card-content';
+        contentDiv.innerHTML = `
+            <h4>${row[nameIndex] || 'Unnamed Equipment'}</h4>
+            <p><strong>Status:</strong> ${row[statusIndex] || 'N/A'}</p>
+            <p><strong>Category:</strong> ${row[categoryIndex] || 'N/A'}</p>
         `;
-        container.appendChild(card);
+
+        card.appendChild(imageDiv);
+        card.appendChild(contentDiv);
+        cardContainer.appendChild(card);
     });
 
-    populateFilterOptions();
+    container.appendChild(cardContainer);
 }
 
 function getProcessedEquipment() {
-    if (!allEquipment.rows || allEquipment.rows.length === 0) return [];
+    if (!allEquipment || !allEquipment.rows) return [];
+    let { headers, rows } = allEquipment;
+    let processedRows = [...rows];
 
-    let processedRows = allEquipment.rows.map(row => ({ row }));
     const { searchTerm, status, category } = state.equipmentFilters;
 
     if (searchTerm) {
-        processedRows = processedRows.filter(({ row }) =>
-            row.some(cell => String(cell).toLowerCase().includes(searchTerm))
-        );
+        processedRows = processedRows.filter(row => row.some(cell => String(cell).toLowerCase().includes(searchTerm)));
     }
     if (status !== 'all') {
-        const statusIndex = allEquipment.headers.indexOf('Status');
-        if (statusIndex > -1) processedRows = processedRows.filter(({ row }) => row[statusIndex] === status);
+        const statusIndex = headers.indexOf('Status');
+        if (statusIndex > -1) processedRows = processedRows.filter(row => row[statusIndex] === status);
     }
     if (category !== 'all') {
-        const categoryIndex = allEquipment.headers.indexOf('Category');
-        if (categoryIndex > -1) processedRows = processedRows.filter(({ row }) => row[categoryIndex] === category);
+        const categoryIndex = headers.indexOf('Category');
+        if (categoryIndex > -1) processedRows = processedRows.filter(row => row[categoryIndex] === category);
     }
-
     return processedRows;
 }
 
 function populateFilterOptions() {
-    const categoryFilter = elements.equipmentCategoryFilter;
-    const statusFilter = elements.equipmentStatusFilter;
-    const categoryIndex = allEquipment.headers.indexOf('Category');
-    const statusIndex = allEquipment.headers.indexOf('Status');
-
-    if (categoryIndex > -1) {
-        const categories = [...new Set(allEquipment.rows.map(row => row[categoryIndex]).filter(Boolean))];
-        const currentCategory = categoryFilter.value;
-        categoryFilter.innerHTML = '<option value="all">All Categories</option>';
-        categories.sort().forEach(cat => categoryFilter.add(new Option(cat, cat)));
-        categoryFilter.value = currentCategory;
-    }
-    if (statusIndex > -1) {
-        const statuses = [...new Set(allEquipment.rows.map(row => row[statusIndex]).filter(Boolean))];
-        const currentStatus = statusFilter.value;
-        statusFilter.innerHTML = '<option value="all">All Statuses</option>';
-        statuses.sort().forEach(stat => statusFilter.add(new Option(stat, stat)));
-        statusFilter.value = currentStatus;
-    }
+    // Placeholder for future dynamic filter population
 }
 
-function showEquipmentModal(equipmentData) {
+// --- MODAL & FORM HANDLING ---
+
+function showEquipmentModal(rowData = null) {
     const modal = elements.equipmentModal;
     const form = elements.equipmentModalForm;
     form.reset();
     document.getElementById('equipment-modal-status').textContent = '';
+
     const imagePreview = document.getElementById('equipment-image-preview');
     imagePreview.style.backgroundImage = 'none';
-    document.getElementById('equipment-image-preview-text').style.display = 'block';
+    imagePreview.innerHTML = '<span>Click to upload image</span>';
+    document.getElementById('equipment-image-url').value = '';
 
-    const modalTitle = modal.querySelector('#equipment-modal-title');
-    const equipmentIdInput = document.getElementById('equipment-id');
+    document.getElementById('equipment-image-upload').onchange = (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                imagePreview.style.backgroundImage = `url('${e.target.result}')`;
+                imagePreview.innerHTML = '';
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+    imagePreview.onclick = () => document.getElementById('equipment-image-upload').click();
 
-    if (equipmentData) {
-        modalTitle.textContent = 'Edit Equipment';
+    if (rowData) {
+        modal.querySelector('#equipment-modal-title').textContent = 'Edit Equipment';
         const { headers } = allEquipment;
-        const row = equipmentData.row;
+        document.getElementById('equipment-id-input').value = rowData[headers.indexOf('EquipmentID')] || '';
+        document.getElementById('equipment-name').value = rowData[headers.indexOf('Name')] || '';
+        document.getElementById('equipment-status').value = rowData[headers.indexOf('Status')] || 'Available';
+        document.getElementById('equipment-category').value = rowData[headers.indexOf('Category')] || '';
+        document.getElementById('equipment-manufacturer').value = rowData[headers.indexOf('Manufacturer')] || '';
+        document.getElementById('equipment-model').value = rowData[headers.indexOf('Model')] || '';
+        document.getElementById('equipment-serial').value = rowData[headers.indexOf('Serial Number')] || '';
+        document.getElementById('equipment-purchase-cost').value = rowData[headers.indexOf('Purchase Cost')] || '';
+        document.getElementById('equipment-purchase-date').value = rowData[headers.indexOf('Purchase Date')] || '';
+        document.getElementById('equipment-location').value = rowData[headers.indexOf('Storage Location')] || '';
+        document.getElementById('equipment-notes').value = rowData[headers.indexOf('Notes')] || '';
         
-        equipmentIdInput.value = row[headers.indexOf('EquipmentID')];
-        document.getElementById('equipment-name').value = row[headers.indexOf('Name')] || '';
-        document.getElementById('equipment-image-url').value = row[headers.indexOf('Image URL')] || '';
-        document.getElementById('equipment-status').value = row[headers.indexOf('Status')] || 'Available';
-        document.getElementById('equipment-category').value = row[headers.indexOf('Category')] || '';
-        document.getElementById('equipment-manufacturer').value = row[headers.indexOf('Manufacturer')] || '';
-        document.getElementById('equipment-model').value = row[headers.indexOf('Model')] || '';
-        document.getElementById('equipment-serial').value = row[headers.indexOf('Serial Number')] || '';
-        document.getElementById('equipment-cost').value = row[headers.indexOf('Purchase Cost')] || '';
-        document.getElementById('equipment-purchase-date').value = row[headers.indexOf('Purchase Date')] || '';
-        document.getElementById('equipment-location').value = row[headers.indexOf('Storage Location')] || '';
-        document.getElementById('equipment-last-maintenance').value = row[headers.indexOf('Last Maintenance')] || '';
-        document.getElementById('equipment-notes').value = row[headers.indexOf('Notes')] || '';
-
-        const imageUrl = row[headers.indexOf('Image URL')];
+        const imageUrl = getDirectDriveImage(rowData[headers.indexOf('Image URL')] || '');
+        document.getElementById('equipment-image-url').value = imageUrl;
         if (imageUrl) {
             imagePreview.style.backgroundImage = `url('${imageUrl}')`;
-            document.getElementById('equipment-image-preview-text').style.display = 'none';
+            imagePreview.innerHTML = '';
         }
     } else {
-        modalTitle.textContent = 'Add New Equipment';
-        equipmentIdInput.value = '';
+        modal.querySelector('#equipment-modal-title').textContent = 'Add New Equipment';
+        document.getElementById('equipment-id-input').value = '';
     }
 
     modal.style.display = 'block';
@@ -146,44 +188,40 @@ async function handleFormSubmit(event) {
     const statusSpan = document.getElementById('equipment-modal-status');
     statusSpan.textContent = 'Saving...';
 
-    const form = event.target;
-    const equipmentId = form['equipment-id'].value;
-    const imageFile = form['equipment-image-file'].files[0];
-    let imageUrl = form['equipment-image-url'].value;
+    const imageFile = document.getElementById('equipment-image-upload').files[0];
+    let imageUrl = document.getElementById('equipment-image-url').value;
 
     try {
         if (imageFile) {
             statusSpan.textContent = 'Uploading image...';
-            imageUrl = await uploadImageToDrive(imageFile);
+            const uploadResult = await uploadImageToDrive(imageFile);
+            imageUrl = uploadResult.link;
         }
 
+        const equipmentId = document.getElementById('equipment-id-input').value;
         const equipmentData = {
-            'Name': form['equipment-name'].value,
+            'Name': document.getElementById('equipment-name').value,
             'Image URL': imageUrl,
-            'Status': form['equipment-status'].value,
-            'Category': form['equipment-category'].value,
-            'Manufacturer': form['equipment-manufacturer'].value,
-            'Model': form['equipment-model'].value,
-            'Serial Number': form['equipment-serial'].value,
-            'Purchase Cost': form['equipment-cost'].value,
-            'Purchase Date': form['equipment-purchase-date'].value,
-            'Storage Location': form['equipment-location'].value,
-            'Last Maintenance': form['equipment-last-maintenance'].value,
-            'Notes': form['equipment-notes'].value
+            'Status': document.getElementById('equipment-status').value,
+            'Category': document.getElementById('equipment-category').value,
+            'Manufacturer': document.getElementById('equipment-manufacturer').value,
+            'Model': document.getElementById('equipment-model').value,
+            'Serial Number': document.getElementById('equipment-serial').value,
+            'Purchase Cost': document.getElementById('equipment-purchase-cost').value,
+            'Purchase Date': document.getElementById('equipment-purchase-date').value,
+            'Storage Location': document.getElementById('equipment-location').value,
+            'Notes': document.getElementById('equipment-notes').value,
         };
 
         if (equipmentId) {
-            statusSpan.textContent = 'Updating equipment...';
             await updateSheetRow('Equipment', 'EquipmentID', equipmentId, equipmentData);
         } else {
-            statusSpan.textContent = 'Adding new equipment...';
             equipmentData['EquipmentID'] = `EQP-${Date.now()}`;
             await writeData('Equipment', equipmentData);
         }
 
-        statusSpan.textContent = 'Saved successfully!';
+        statusSpan.textContent = 'Equipment saved successfully!';
         await refreshData();
-        
         setTimeout(() => {
             elements.equipmentModal.style.display = 'none';
         }, 1500);
