@@ -2,7 +2,7 @@
 // Description: The main entry point for the application. Handles initialization, authentication, and orchestrates the different modules.
 
 import { CLIENT_ID, SCOPES } from './config.js';
-import { loadRequests, loadClients, loadProjects, loadTasks } from './api.js';
+import { loadRequests, loadClients, loadProjects, loadTasks, loadCostumes, loadEquipment } from './api.js';
 import { 
     elements, 
     cacheDOMElements, 
@@ -16,6 +16,8 @@ import {
 import { initRequestsTab } from './requests.js';
 import { initClientsTab } from './clients.js';
 import { initProjectsTab } from './projects.js';
+import { initCostumesTab } from './costumes.js';
+import { initEquipmentTab } from './equipment.js';
 
 // --- STATE ---
 let tokenClient;
@@ -34,6 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initRequestsTab(loadInitialData);
     initClientsTab(loadInitialData);
     initProjectsTab(loadInitialData);
+    initCostumesTab(loadInitialData);
+    initEquipmentTab(loadInitialData);
 
     elements.authorizeButton.onclick = handleAuthClick;
     elements.signoutButton.onclick = handleSignoutClick;
@@ -123,8 +127,10 @@ async function initializeGapiClient() {
     console.log("Initializing GAPI client...");
     try {
         await gapi.client.init({});
+        // Load both Sheets and Drive APIs
         await gapi.client.load('https://sheets.googleapis.com/$discovery/rest?version=v4');
-        console.log("GAPI client initialized successfully.");
+        await gapi.client.load('https://www.googleapis.com/discovery/v1/apis/drive/v3/rest');
+        console.log("GAPI client initialized successfully for Sheets and Drive.");
         gapiInited = true;
         checkLibsLoaded();
     } catch (err) {
@@ -184,7 +190,7 @@ async function onSignInSuccess() {
  * This is the central data refresh function for the entire application.
  * It also re-renders the currently active tab to show the new data.
  */
-async function loadInitialData() {
+export async function loadInitialData() {
     console.log("Refreshing all application data...");
     showLoadingIndicator();
     try {
@@ -192,7 +198,9 @@ async function loadInitialData() {
             loadRequests(), 
             loadClients(), 
             loadProjects(), 
-            loadTasks()
+            loadTasks(),
+            loadCostumes(),
+            loadEquipment()
         ]);
         console.log("All application data refreshed.");
         // After fetching new data, always re-render the view for the active tab.
@@ -227,4 +235,3 @@ function handleSignoutClick() {
         silentAuthAttempted = false; // Allow silent sign-in on next visit
     }
 }
-

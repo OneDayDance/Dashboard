@@ -32,6 +32,8 @@ export let allRequests = { headers: [], rows: [] };
 export let allClients = { headers: [], rows: [] };
 export let allProjects = { headers: [], rows: [] };
 export let allTasks = { headers: [], rows: [] };
+export let allCostumes = { headers: [], rows: [] };
+export let allEquipment = { headers: [], rows: [] };
 
 
 // --- STATE SETTERS ---
@@ -39,6 +41,8 @@ export function setAllRequests(data) { allRequests = data; }
 export function setAllClients(data) { allClients = data; }
 export function setAllProjects(data) { allProjects = data; }
 export function setAllTasks(data) { allTasks = data; }
+export function setAllCostumes(data) { allCostumes = data; }
+export function setAllEquipment(data) { allEquipment = data; }
 
 // --- STATE UPDATERS ---
 export function updateState(newState) {
@@ -52,4 +56,3 @@ export function updateFilters(key, value) {
 export function updateClientFilters(key, value) {
     state.clientFilters[key] = value;
 }
-

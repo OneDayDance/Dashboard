@@ -2,7 +2,7 @@
 // Description: Handles all interactions with the Google Sheets API.
 
 import { SPREADSHEET_ID } from './config.js';
-import { setAllRequests, setAllClients, setAllProjects, setAllTasks } from './state.js';
+import { setAllRequests, setAllClients, setAllProjects, setAllTasks, setAllCostumes, setAllEquipment } from './state.js';
 
 // Removed the import from main.js to break the circular dependency.
 // The refresh logic will now be handled by the module that calls the API function.
@@ -34,6 +34,8 @@ export const loadRequests = () => fetchData('Submissions', setAllRequests);
 export const loadClients = () => fetchData('Clients', setAllClients);
 export const loadProjects = () => fetchData('Projects', setAllProjects);
 export const loadTasks = () => fetchData('Tasks', setAllTasks);
+export const loadCostumes = () => fetchData('Costumes', setAllCostumes);
+export const loadEquipment = () => fetchData('Equipment', setAllEquipment);
 
 
 /**
@@ -242,4 +244,3 @@ function columnToLetter(column) {
     }
     return letter;
 }
-

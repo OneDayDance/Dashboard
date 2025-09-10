@@ -19,6 +19,7 @@
 
     <div id="app-container" style="display: none;">
         <header>
+            <img src="img/ODD Logo_(Vertical).svg" alt="ODD Logo" class="header-logo">
             <h1>Client Management Dashboard</h1>
             <div id="auth-container">
                 <button id="signout_button" class="btn btn-primary">Sign Out</button>
@@ -170,8 +171,21 @@
                 </div>
             </div>
         </main>
-        <main id="tab-costumes" class="tab-content" style="display: none;"><h2>Costumes</h2><p>Costume inventory management will go here.</p></main>
-        <main id="tab-equipment" class="tab-content" style="display: none;"><h2>Equipment</h2><p>Equipment tracking will go here.</p></main>
+
+        <main id="tab-costumes" class="tab-content" style="display: none;">
+            <div class="main-header-controls">
+                <h2>Costume Inventory</h2>
+            </div>
+            <div id="costumes-container"></div>
+        </main>
+        
+        <main id="tab-equipment" class="tab-content" style="display: none;">
+            <div class="main-header-controls">
+                <h2>Equipment Inventory</h2>
+            </div>
+            <div id="equipment-container"></div>
+        </main>
+
     </div>
 
     <!-- LOADING OVERLAY -->
@@ -328,6 +342,54 @@
                 <div class="modal-footer">
                     <button type="submit" class="btn btn-primary">Save Client</button>
                     <span id="add-client-modal-status"></span>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Costume Add/Edit Modal -->
+    <div id="costume-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="costume-modal-title">Add Costume</h2>
+                <span class="close-button">&times;</span>
+            </div>
+            <form id="costume-form">
+                <div class="modal-body">
+                    <!-- Image preview and upload -->
+                    <div class="image-upload-container">
+                        <img src="https://placehold.co/400x400/EEE/31343C?text=No+Image" id="costume-image-preview" class="item-image-preview">
+                        <input type="file" id="costume-image-upload" accept="image/*" style="display: none;">
+                        <button type="button" id="costume-upload-btn" class="btn btn-secondary">Upload Image</button>
+                    </div>
+                    <!-- Form fields -->
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Save Costume</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Equipment Add/Edit Modal -->
+    <div id="equipment-modal" class="modal">
+        <div class="modal-content">
+             <div class="modal-header">
+                <h2 id="equipment-modal-title">Add Equipment</h2>
+                <span class="close-button">&times;</span>
+            </div>
+            <form id="equipment-form">
+                <div class="modal-body">
+                    <!-- Image preview and upload -->
+                    <div class="image-upload-container">
+                        <img src="https://placehold.co/400x400/EEE/31343C?text=No+Image" id="equipment-image-preview" class="item-image-preview">
+                        <input type="file" id="equipment-image-upload" accept="image/*" style="display: none;">
+                        <button type="button" id="equipment-upload-btn" class="btn btn-secondary">Upload Image</button>
+                    </div>
+                    <!-- Form fields -->
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Save Equipment</button>
                 </div>
             </form>
         </div>

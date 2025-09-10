@@ -39,6 +39,10 @@ export function cacheDOMElements() {
     elements.projectSearchBar = document.getElementById('project-search-bar');
     elements.loadingOverlay = document.getElementById('loading-overlay');
     elements.mainContentArea = document.querySelector('#app-container > main'); // A bit generic, might need refinement
+    
+    // Inventory elements
+    elements.costumeModal = document.getElementById('costume-modal');
+    elements.equipmentModal = document.getElementById('equipment-modal');
 }
 
 /**
@@ -85,6 +89,12 @@ export function loadDataForActiveTab() {
     });
     import('../js/projects.js').then(module => {
         if (activeTab === 'projects') module.renderProjectsTab();
+    });
+    import('../js/costumes.js').then(module => {
+        if (activeTab === 'costumes') module.renderCostumes();
+    });
+    import('../js/equipment.js').then(module => {
+        if (activeTab === 'equipment') module.renderEquipment();
     });
 }
 
