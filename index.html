@@ -537,6 +537,35 @@
         </div>
     </div>
     
+    <!-- ASSIGN EQUIPMENT MODAL -->
+    <div id="assign-equipment-modal" class="modal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2 id="assign-equipment-modal-title">Assign Equipment to Project</h2>
+                <span class="close-button">&times;</span>
+            </div>
+            <div class="modal-body assign-equipment-body">
+                <div class="equipment-selection-pane">
+                    <input type="text" id="equipment-search-input" placeholder="Search available equipment...">
+                    <div id="equipment-search-results" class="equipment-list">
+                        <!-- JS will populate this -->
+                    </div>
+                </div>
+                <div class="equipment-selected-pane">
+                    <h4>Selected Equipment</h4>
+                    <div id="selected-equipment-list" class="equipment-list">
+                        <!-- JS will populate this -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="save-assigned-equipment-btn" class="btn btn-primary">Save Assignments</button>
+                <span id="assign-equipment-status"></span>
+            </div>
+        </div>
+    </div>
+
+
     <!-- INVENTORY MODALS -->
     <!-- Add/Edit Costume Modal -->
     <div id="costume-modal" class="modal">
@@ -706,4 +735,5 @@
     <script type="module" src="js/main.js"></script>
 </body>
 </html>
+
 

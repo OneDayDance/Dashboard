@@ -30,8 +30,7 @@ export function cacheDOMElements() {
     elements.clientSearchBar = document.getElementById('client-search-bar');
     elements.clientTableContainer = document.getElementById('client-table-container');
     elements.clientStatusFilter = document.getElementById('client-status-filter');
-    elements.clientListViewBtn = document.getElementById('client-list-view-btn');
-    elements.clientCardViewBtn = document.getElementById('client-card-view-btn');
+    elements.clientViewToggleBtn = document.getElementById('client-view-toggle-btn');
     elements.clientColumnSelectBtn = document.getElementById('client-column-select-btn');
 
     // Projects Tab
@@ -62,6 +61,7 @@ export function cacheDOMElements() {
     elements.addClientModal = document.getElementById('add-client-modal');
     elements.costumeModal = document.getElementById('costume-modal');
     elements.equipmentModal = document.getElementById('equipment-modal');
+    elements.assignEquipmentModal = document.getElementById('assign-equipment-modal');
 
     // Modal Forms & Inputs
     elements.addClientForm = document.getElementById('add-client-form');
@@ -69,6 +69,10 @@ export function cacheDOMElements() {
     elements.costumeImageUpload = document.getElementById('costume-image-upload');
     elements.equipmentModalForm = document.getElementById('equipment-modal-form');
     elements.equipmentImageUpload = document.getElementById('equipment-image-upload');
+    elements.equipmentSearchInput = document.getElementById('equipment-search-input');
+    elements.equipmentSearchResults = document.getElementById('equipment-search-results');
+    elements.selectedEquipmentList = document.getElementById('selected-equipment-list');
+    elements.saveAssignedEquipmentBtn = document.getElementById('save-assigned-equipment-btn');
 
 }
 
@@ -198,3 +202,4 @@ export function showMainError(message) {
 export function loadDataForActiveTab() {
     console.warn("loadDataForActiveTab() is deprecated and should be removed from imports.");
 }
+

@@ -13,8 +13,8 @@ let refreshData; // This will hold the main data refresh function.
 export function initClientsTab(refreshDataFn) {
     refreshData = refreshDataFn;
     
-    if (elements.clientAddBtn) {
-        elements.clientAddBtn.onclick = () => showAddClientModal();
+    if (elements.addClientBtn) {
+        elements.addClientBtn.onclick = () => showAddClientModal();
     }
     if (elements.clientSearchBar) {
         elements.clientSearchBar.oninput = (e) => { updateState({ clientSearchTerm: e.target.value.toLowerCase() }); renderClients(); };
@@ -25,7 +25,6 @@ export function initClientsTab(refreshDataFn) {
     if (elements.clientViewToggleBtn) {
         elements.clientViewToggleBtn.onclick = () => setClientView(state.clientCurrentView === 'list' ? 'card' : 'list');
     }
-    // FIX: Corrected event listener logic
     if (elements.clientColumnSelectBtn) {
         elements.clientColumnSelectBtn.onclick = () => showColumnModal(allClients.headers, state.visibleClientColumns, 'client-column-checkboxes');
     }
@@ -496,3 +495,4 @@ function showDeleteClientModal(rowData, headers) {
         } catch (err) { statusSpan.textContent = 'Error deleting client.'; console.error('Delete client error:', err); confirmBtn.disabled = false; }
     };
 }
+
