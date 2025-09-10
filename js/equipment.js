@@ -102,7 +102,18 @@ function renderEquipmentAsCards() {
 
     processedRows.forEach(row => {
         const rawImageUrl = row[imageIndex] || '';
+
+        // --- DEBUGGING LOGS START ---
+        console.log("--- Processing Equipment Item ---");
+        console.log("Full Row Data:", row);
+        console.log("Raw Image URL from Sheet:", rawImageUrl, "(Type: " + typeof rawImageUrl + ")");
+        // --- DEBUGGING LOGS END ---
+
         const imageUrl = getDirectDriveImage(rawImageUrl);
+
+        // --- DEBUGGING LOGS START ---
+        console.log("Transformed Image URL for display:", imageUrl);
+        // --- DEBUGGING LOGS END ---
 
         const card = document.createElement('div');
         card.className = 'info-card inventory-card';
@@ -297,3 +308,4 @@ async function handleFormSubmit(event) {
         console.error('Equipment save error:', err);
     }
 }
+
