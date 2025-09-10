@@ -90,25 +90,20 @@ function renderCostumesAsCards() {
         const imageDiv = document.createElement('div');
         imageDiv.className = 'inventory-card-image';
         
-        // **THE FIX**: Asynchronously fetch the image as a Blob to bypass CORS.
         const rawImageUrl = row[imageIndex] || '';
         const fileId = extractFileIdFromUrl(rawImageUrl);
 
         if (fileId) {
             const img = document.createElement('img');
             img.alt = row[nameIndex] || 'Costume image';
-            img.crossOrigin = "anonymous";
+            // **THE NEW FIX**: Use the Google Drive thumbnail API endpoint. It's more reliable for embedding.
+            img.src = `https://drive.google.com/thumbnail?id=${fileId}&sz=w300`; // sz=w300 requests a 300px width thumbnail
+            img.onerror = () => { 
+                imageDiv.classList.add('no-image');
+                imageDiv.textContent = 'Image Error';
+                img.remove();
+            };
             imageDiv.appendChild(img);
-
-            fetchDriveImageAsBlobUrl(fileId).then(blobUrl => {
-                if (blobUrl) {
-                    img.src = blobUrl;
-                } else {
-                    imageDiv.classList.add('no-image');
-                    imageDiv.textContent = 'Image Error';
-                    img.remove();
-                }
-            });
         } else {
             imageDiv.classList.add('no-image');
             imageDiv.textContent = 'No Image';
@@ -226,12 +221,10 @@ function showCostumeModal(rowData = null) {
         safeSetValue('costume-image-url', imageUrlFromSheet);
         const fileId = extractFileIdFromUrl(imageUrlFromSheet);
         if (fileId) {
-            fetchDriveImageAsBlobUrl(fileId).then(blobUrl => {
-                if(blobUrl) {
-                    imagePreview.style.backgroundImage = `url('${blobUrl}')`;
-                    imagePreview.innerHTML = '';
-                }
-            });
+             // Use the thumbnail URL for the modal preview as well.
+            const thumbnailUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w300`;
+            imagePreview.style.backgroundImage = `url('${thumbnailUrl}')`;
+            imagePreview.innerHTML = '';
         }
     } else {
         modal.querySelector('#costume-modal-title').textContent = 'Add New Costume';
