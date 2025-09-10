@@ -19,12 +19,16 @@ export let state = {
     clientSortColumn: 'First Name',
     clientSortDirection: 'asc',
     clientCurrentView: 'list',
-    visibleClientColumns: ['First Name', 'Last Name', 'Email', 'Organization', 'Status'],
-    clientFilters: { status: 'all' },
+    visibleClientColumns: ['First Name', 'Last Name', 'Email', 'Status', 'Client Type'],
+    clientFilters: { status: 'all', type: 'all' },
     // projects tab state
     selectedProjectId: null,
-    projectTaskView: 'list', // 'list' or 'board'
-    projectSearchTerm: ''
+    projectTaskView: 'list',
+    projectSearchTerm: '',
+    // costumes tab state
+    costumeFilters: { searchTerm: '', status: 'all', category: 'all' },
+    // equipment tab state
+    equipmentFilters: { searchTerm: '', status: 'all', category: 'all' },
 };
 
 // Data stores for spreadsheet content
@@ -34,7 +38,6 @@ export let allProjects = { headers: [], rows: [] };
 export let allTasks = { headers: [], rows: [] };
 export let allCostumes = { headers: [], rows: [] };
 export let allEquipment = { headers: [], rows: [] };
-
 
 // --- STATE SETTERS ---
 export function setAllRequests(data) { allRequests = data; }
@@ -56,3 +59,12 @@ export function updateFilters(key, value) {
 export function updateClientFilters(key, value) {
     state.clientFilters[key] = value;
 }
+
+export function updateCostumeFilters(key, value) {
+    state.costumeFilters[key] = value;
+}
+
+export function updateEquipmentFilters(key, value) {
+    state.equipmentFilters[key] = value;
+}
+
