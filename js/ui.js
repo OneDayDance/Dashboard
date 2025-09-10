@@ -191,3 +191,10 @@ export function showMainError(message) {
     errorContainer.style.display = 'block';
 }
 
+/**
+ * @deprecated This function is no longer in use and is kept for backward compatibility to avoid import errors.
+ * The data loading and rendering logic has been moved to main.js and individual tab modules.
+ */
+export function loadDataForActiveTab() {
+    console.warn("loadDataForActiveTab() is deprecated and should be removed from imports.");
+}

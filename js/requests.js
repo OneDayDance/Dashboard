@@ -3,7 +3,7 @@
 
 import { state, allRequests, allClients, sortableColumns, updateState, updateFilters } from './state.js';
 import { updateSheetRow, writeData } from './api.js';
-import { showColumnModal, elements } from './ui.js';
+import { showColumnModal, elements, loadDataForActiveTab } from './ui.js';
 import { showCreateProjectModal } from './projects.js';
 
 let refreshData; // This will hold the main data refresh function.
@@ -15,7 +15,7 @@ export function initRequestsTab(refreshDataFn) {
     document.getElementById('status-filter').onchange = (e) => { updateFilters('status', e.target.value); renderRequests(); };
     document.getElementById('search-bar').oninput = (e) => { updateState({ searchTerm: e.target.value.toLowerCase() }); renderRequests(); };
     document.getElementById('request-view-toggle-btn').onclick = toggleRequestView;
-    document.getElementById('column-select-btn').onclick = () => showColumnModal('requests');
+    document.getElementById('column-select-btn').onclick = () => showColumnModal(allRequests.headers, state.visibleColumns, 'column-checkboxes');
     document.getElementById('save-columns-btn').onclick = handleSaveColumns;
     document.getElementById('archive-toggle').onclick = (e) => {
         e.currentTarget.classList.toggle('collapsed');
@@ -295,4 +295,3 @@ async function handleCreateClient(submissionRow, submissionHeaders) {
         actionStatus.textContent = `Error: ${err.result.error.message}`;
     }
 }
-

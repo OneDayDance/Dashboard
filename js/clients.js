@@ -27,7 +27,7 @@ export function initClientsTab(refreshDataFn) {
     }
     // FIX: Corrected event listener logic
     if (elements.clientColumnSelectBtn) {
-        elements.clientColumnSelectBtn.onclick = () => showColumnModal(allClients.headers, state.visibleClientColumns, 'client-column-modal', 'client-column-checkboxes');
+        elements.clientColumnSelectBtn.onclick = () => showColumnModal(allClients.headers, state.visibleClientColumns, 'client-column-checkboxes');
     }
     if (elements.addClientForm) {
         elements.addClientForm.addEventListener('submit', handleAddClientSubmit);
@@ -496,4 +496,3 @@ function showDeleteClientModal(rowData, headers) {
         } catch (err) { statusSpan.textContent = 'Error deleting client.'; console.error('Delete client error:', err); confirmBtn.disabled = false; }
     };
 }
-
