@@ -73,11 +73,6 @@
             </div>
             <div class="analytics-grid kpi-grid">
                 <div class="kpi-card info-card">
-                    <h3>Total Clients</h3>
-                    <p id="kpi-total-clients">0</p>
-                    <span class="kpi-icon">&#128101;</span>
-                </div>
-                <div class="kpi-card info-card">
                     <h3>Total Revenue (YTD)</h3>
                     <p id="kpi-total-revenue">$0</p>
                     <span class="kpi-icon">&#128176;</span>
@@ -88,8 +83,8 @@
                      <span class="kpi-icon">&#128188;</span>
                 </div>
                 <div class="kpi-card info-card">
-                    <h3>New Clients (YTD)</h3>
-                    <p id="kpi-new-clients">0</p>
+                    <h3>Total Clients</h3>
+                    <p id="kpi-total-clients">0</p>
                      <span class="kpi-icon">&#128100;</span>
                 </div>
                 <div class="kpi-card info-card">
@@ -121,32 +116,26 @@
         </main>
         
         <main id="tab-clients" class="tab-content" style="display: none;">
-            <div class="client-layout-container">
-                <div class="client-list-container card">
-                    <div class="main-header-controls">
-                        <h2>Current Clients</h2>
-                        <div class="controls-container">
-                            <div class="filter-controls">
-                                <input type="text" id="client-search-bar" placeholder="Search clients...">
-                                <select id="client-status-filter">
-                                    <option value="all">All Statuses</option>
-                                    <option value="Lead">Lead</option>
-                                    <option value="Active">Active</option>
-                                    <option value="On Hold">On Hold</option>
-                                    <option value="Past Client">Past Client</option>
-                                    <option value="Do Not Contact">Do Not Contact</option>
-                                </select>
-                            </div>
-                             <div class="view-controls">
-                                <button id="add-client-btn" class="btn btn-primary">Add Client</button>
-                                <button id="client-view-toggle-btn" class="btn btn-subtle">Card View</button>
-                                <button id="client-column-select-btn" class="btn btn-subtle">Display Options</button>
-                            </div>
-                        </div>
+            <div class="main-header-controls">
+                <h2>Current Clients</h2>
+                <div class="controls-container">
+                    <div class="filter-controls">
+                        <input type="text" id="client-search-bar" placeholder="Search clients...">
+                        <select id="client-status-filter">
+                             <option value="all">All Statuses</option>
+                        </select>
+                         <select id="client-type-filter">
+                            <option value="all">All Types</option>
+                        </select>
                     </div>
-                    <div id="client-table-container"></div>
+                     <div class="view-controls">
+                        <button id="client-view-toggle-btn" class="btn btn-subtle">Card View</button>
+                        <button id="client-column-select-btn" class="btn btn-subtle">Display Options</button>
+                        <button id="add-client-btn" class="btn btn-primary">Add Client</button>
+                    </div>
                 </div>
             </div>
+            <div id="client-table-container"></div>
         </main>
 
         <main id="tab-projects" class="tab-content" style="display: none;">
@@ -171,21 +160,52 @@
                 </div>
             </div>
         </main>
-
+        
         <main id="tab-costumes" class="tab-content" style="display: none;">
             <div class="main-header-controls">
                 <h2>Costume Inventory</h2>
+                <div class="controls-container">
+                    <div class="filter-controls">
+                        <input type="text" id="costume-search-bar" placeholder="Search costumes...">
+                        <select id="costume-status-filter">
+                            <option value="all">All Statuses</option>
+                        </select>
+                        <select id="costume-category-filter">
+                            <option value="all">All Categories</option>
+                        </select>
+                    </div>
+                    <div class="view-controls">
+                        <button id="costume-add-btn" class="btn btn-primary">Add Costume</button>
+                    </div>
+                </div>
             </div>
-            <div id="costumes-container"></div>
-        </main>
-        
-        <main id="tab-equipment" class="tab-content" style="display: none;">
-            <div class="main-header-controls">
-                <h2>Equipment Inventory</h2>
+            <div id="costumes-container" class="inventory-container">
+                <!-- Costumes will be rendered here -->
             </div>
-            <div id="equipment-container"></div>
         </main>
 
+        <main id="tab-equipment" class="tab-content" style="display: none;">
+             <div class="main-header-controls">
+                <h2>Equipment Inventory</h2>
+                <div class="controls-container">
+                    <div class="filter-controls">
+                        <input type="text" id="equipment-search-bar" placeholder="Search equipment...">
+                        <select id="equipment-status-filter">
+                            <option value="all">All Statuses</option>
+                        </select>
+                        <select id="equipment-category-filter">
+                            <option value="all">All Categories</option>
+                        </select>
+                    </div>
+                    <div class="view-controls">
+                        <button id="equipment-add-btn" class="btn btn-primary">Add Equipment</button>
+                    </div>
+                </div>
+            </div>
+            <div id="equipment-container" class="inventory-container">
+                <!-- Equipment will be rendered here -->
+            </div>
+        </main>
     </div>
 
     <!-- LOADING OVERLAY -->
@@ -195,7 +215,6 @@
     </div>
 
     <!-- MODALS -->
-    <!-- Request Details Modal (Rebuilt) -->
     <div id="details-modal" class="modal">
         <div class="modal-content large">
             <div class="modal-header">
@@ -209,7 +228,6 @@
         </div>
     </div>
 
-    <!-- Client Details Modal -->
     <div id="client-details-modal" class="modal">
         <div class="modal-content large">
             <div class="modal-header">
@@ -225,177 +243,14 @@
                     <a href="#" class="nav-link" data-tab="actions">Actions</a>
                 </nav>
                 <div class="modal-pane-content">
-                    <!-- JS will render content here -->
                 </div>
             </div>
             <div class="modal-footer">
-                <!-- JS will render buttons here -->
                 <span id="client-modal-status"></span>
             </div>
         </div>
     </div>
     
-    <!-- Add Client Modal -->
-    <div id="add-client-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Add New Client</h2>
-                <span class="close-button">&times;</span>
-            </div>
-            <form id="add-client-form-modal">
-                <div class="modal-body">
-                    <div class="form-grid">
-                        <div class="form-field">
-                            <label for="new-client-first-name">First Name</label>
-                            <input type="text" id="new-client-first-name" required>
-                        </div>
-                        <div class="form-field">
-                            <label for="new-client-last-name">Last Name</label>
-                            <input type="text" id="new-client-last-name" required>
-                        </div>
-                    </div>
-                     <div class="form-grid">
-                        <div class="form-field">
-                            <label for="new-client-email">Email</label>
-                            <input type="email" id="new-client-email" required>
-                        </div>
-                        <div class="form-field">
-                            <label for="new-client-phone">Phone</label>
-                            <input type="text" id="new-client-phone">
-                        </div>
-                    </div>
-                    <div class="form-field">
-                        <label for="new-client-address">Address</label>
-                        <input type="text" id="new-client-address">
-                    </div>
-                    <div class="form-grid">
-                        <div class="form-field">
-                            <label for="new-client-birthday">Birthday</label>
-                            <input type="date" id="new-client-birthday">
-                        </div>
-                        <div class="form-field">
-                            <label for="new-client-type">Client Type</label>
-                            <select id="new-client-type">
-                                <option>Individual</option>
-                                <option>Company</option>
-                                <option>Non-Profit</option>
-                                <option>Educational</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-field">
-                        <label for="new-client-organization">Organization</label>
-                        <input type="text" id="new-client-organization">
-                    </div>
-                     <div class="form-field">
-                        <label for="new-client-social">Social Media</label>
-                        <input type="text" id="new-client-social" placeholder="e.g., Instagram handle, LinkedIn URL">
-                    </div>
-                    <hr>
-                    <div class="form-grid">
-                        <div class="form-field">
-                            <label for="new-client-source">Source</label>
-                            <select id="new-client-source">
-                                <option selected disabled>Select a source</option>
-                                <option>Referral</option>
-                                <option>Social Media</option>
-                                <option>Google</option>
-                                <option>Advertisement</option>
-                                <option>Event</option>
-                                <option>Other</option>
-                            </select>
-                        </div>
-                        <div class="form-field">
-                            <label for="new-client-referral-source">Referral Source</label>
-                            <input type="text" id="new-client-referral-source" placeholder="Name of referrer">
-                        </div>
-                    </div>
-                    <div class="form-grid">
-                        <div class="form-field">
-                            <label for="new-client-temperature">Client Temperature</label>
-                            <select id="new-client-temperature">
-                                <option>Hot</option>
-                                <option selected>Warm</option>
-                                <option>Cold</option>
-                            </select>
-                        </div>
-                        <div class="form-field">
-                            <label for="new-client-comms-pref">Communication Preference</label>
-                            <select id="new-client-comms-pref">
-                                <option>Email</option>
-                                <option>Phone</option>
-                                <option>Text</option>
-                            </select>
-                        </div>
-                    </div>
-                     <div class="form-grid">
-                        <div class="form-field">
-                            <label for="new-client-assigned-to">Assigned To</label>
-                            <input type="text" id="new-client-assigned-to">
-                        </div>
-                        <div class="form-field">
-                            <label for="new-client-follow-up">Next Follow-up Date</label>
-                            <input type="date" id="new-client-follow-up">
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Save Client</button>
-                    <span id="add-client-modal-status"></span>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Costume Add/Edit Modal -->
-    <div id="costume-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="costume-modal-title">Add Costume</h2>
-                <span class="close-button">&times;</span>
-            </div>
-            <form id="costume-form">
-                <div class="modal-body">
-                    <!-- Image preview and upload -->
-                    <div class="image-upload-container">
-                        <img src="https://placehold.co/400x400/EEE/31343C?text=No+Image" id="costume-image-preview" class="item-image-preview">
-                        <input type="file" id="costume-image-upload" accept="image/*" style="display: none;">
-                        <button type="button" id="costume-upload-btn" class="btn btn-secondary">Upload Image</button>
-                    </div>
-                    <!-- Form fields -->
-                </div>
-                <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Save Costume</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Equipment Add/Edit Modal -->
-    <div id="equipment-modal" class="modal">
-        <div class="modal-content">
-             <div class="modal-header">
-                <h2 id="equipment-modal-title">Add Equipment</h2>
-                <span class="close-button">&times;</span>
-            </div>
-            <form id="equipment-form">
-                <div class="modal-body">
-                    <!-- Image preview and upload -->
-                    <div class="image-upload-container">
-                        <img src="https://placehold.co/400x400/EEE/31343C?text=No+Image" id="equipment-image-preview" class="item-image-preview">
-                        <input type="file" id="equipment-image-upload" accept="image/*" style="display: none;">
-                        <button type="button" id="equipment-upload-btn" class="btn btn-secondary">Upload Image</button>
-                    </div>
-                    <!-- Form fields -->
-                </div>
-                <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Save Equipment</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Create Project Modal (Standardized) -->
     <div id="create-project-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -453,7 +308,6 @@
         </div>
     </div>
 
-    <!-- Task Details Modal (Standardized) -->
     <div id="task-details-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -519,7 +373,6 @@
         </div>
     </div>
 
-    <!-- GDrive Link Modal (Standardized) -->
     <div id="gdrive-link-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -543,7 +396,6 @@
     </div>
 
 
-    <!-- Delete Confirmation Modals (Standardized) -->
     <div id="delete-client-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -584,7 +436,6 @@
     </div>
 
 
-    <!-- Column Selector Modals (Standardized) -->
     <div id="column-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -613,7 +464,257 @@
             </div>
         </div>
     </div>
+    <div id="add-client-modal" class="modal">
+        <div class="modal-content large">
+             <div class="modal-header">
+                <h2 id="add-client-modal-title">Add New Client</h2>
+                <span class="close-button">&times;</span>
+            </div>
+            <form id="add-client-form">
+                <div class="modal-body">
+                    <input type="hidden" id="client-id-input">
+                    <input type="hidden" id="client-intake-date-input">
+                     <div class="form-grid">
+                        <div class="form-field">
+                            <label for="client-first-name">First Name</label>
+                            <input type="text" id="client-first-name" required>
+                        </div>
+                        <div class="form-field">
+                            <label for="client-last-name">Last Name</label>
+                            <input type="text" id="client-last-name" required>
+                        </div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label for="client-email">Email</label>
+                            <input type="email" id="client-email" required>
+                        </div>
+                        <div class="form-field">
+                            <label for="client-phone">Phone</label>
+                            <input type="tel" id="client-phone">
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label for="client-type">Client Type</label>
+                            <select id="client-type">
+                                <option>Individual</option>
+                                <option>Organization</option>
+                                <option>Educational</option>
+                                <option>Internal</option>
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label for="client-organization">Organization Name</label>
+                            <input type="text" id="client-organization">
+                        </div>
+                    </div>
+                    <div class="form-field">
+                        <label for="client-social-media">Social Media</label>
+                        <input type="text" id="client-social-media" placeholder="@handle or URL">
+                    </div>
+                    <hr>
+                    <div class="form-field">
+                        <label for="client-address">Address</label>
+                        <input type="text" id="client-address">
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label for="client-city">City</label>
+                            <input type="text" id="client-city">
+                        </div>
+                        <div class="form-field">
+                            <label for="client-state">State / Province</label>
+                            <input type="text" id="client-state">
+                        </div>
+                        <div class="form-field">
+                            <label for="client-zip">Zip / Postal Code</label>
+                            <input type="text" id="client-zip">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Save Client</button>
+                    <span id="add-client-status"></span>
+                </div>
+            </form>
+        </div>
+    </div>
     
+    <!-- INVENTORY MODALS -->
+    <div id="costume-modal" class="modal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2 id="costume-modal-title">Add New Costume</h2>
+                <span class="close-button">&times;</span>
+            </div>
+            <form id="costume-modal-form">
+                <div class="modal-body">
+                    <input type="hidden" id="costume-id">
+                    <input type="hidden" id="costume-image-url">
+                    <div class="image-uploader">
+                        <label>Image</label>
+                        <div class="image-preview" id="costume-image-preview" onclick="this.querySelector('input').click()">
+                            <span id="costume-image-preview-text">Click to upload</span>
+                            <input type="file" id="costume-image-file" accept="image/*">
+                        </div>
+                    </div>
+                    <div class="form-field">
+                        <label for="costume-name">Costume Name</label>
+                        <input type="text" id="costume-name" required>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label for="costume-status">Status</label>
+                            <select id="costume-status">
+                                <option>Available</option>
+                                <option>Rented</option>
+                                <option>In Maintenance</option>
+                                <option>Retired</option>
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label for="costume-category">Category</label>
+                            <input type="text" id="costume-category" placeholder="e.g., Gown, Fantasy">
+                        </div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label for="costume-size">Size</label>
+                            <input type="text" id="costume-size">
+                        </div>
+                        <div class="form-field">
+                            <label for="costume-color">Color</label>
+                            <input type="text" id="costume-color">
+                        </div>
+                    </div>
+                     <div class="form-grid">
+                        <div class="form-field">
+                            <label for="costume-material">Material</label>
+                            <input type="text" id="costume-material">
+                        </div>
+                        <div class="form-field">
+                            <label for="costume-era">Era/Style</label>
+                            <input type="text" id="costume-era">
+                        </div>
+                    </div>
+                    <hr>
+                     <div class="form-grid">
+                        <div class="form-field">
+                            <label for="costume-cost">Purchase Cost ($)</label>
+                            <input type="number" id="costume-cost" step="0.01">
+                        </div>
+                        <div class="form-field">
+                            <label for="costume-condition">Condition</label>
+                            <select id="costume-condition">
+                                <option>New</option>
+                                <option>Good</option>
+                                <option>Fair</option>
+                                <option>Poor</option>
+                            </select>
+                        </div>
+                    </div>
+                     <div class="form-field">
+                        <label for="costume-location">Storage Location</label>
+                        <input type="text" id="costume-location" placeholder="e.g., Bin 27-A">
+                    </div>
+                    <div class="form-field">
+                        <label for="costume-notes">Notes</label>
+                        <textarea id="costume-notes"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Save Costume</button>
+                    <span id="costume-modal-status"></span>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="equipment-modal" class="modal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2 id="equipment-modal-title">Add New Equipment</h2>
+                <span class="close-button">&times;</span>
+            </div>
+            <form id="equipment-modal-form">
+                <div class="modal-body">
+                    <input type="hidden" id="equipment-id">
+                    <input type="hidden" id="equipment-image-url">
+                    <div class="image-uploader">
+                        <label>Image</label>
+                        <div class="image-preview" id="equipment-image-preview" onclick="this.querySelector('input').click()">
+                             <span id="equipment-image-preview-text">Click to upload</span>
+                            <input type="file" id="equipment-image-file" accept="image/*">
+                        </div>
+                    </div>
+                    <div class="form-field">
+                        <label for="equipment-name">Equipment Name</label>
+                        <input type="text" id="equipment-name" required>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label for="equipment-status">Status</label>
+                            <select id="equipment-status">
+                                <option>Available</option>
+                                <option>Rented</option>
+                                <option>In Maintenance</option>
+                                <option>Retired</option>
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label for="equipment-category">Category</label>
+                            <input type="text" id="equipment-category" placeholder="e.g., Camera, Lighting">
+                        </div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label for="equipment-manufacturer">Manufacturer</label>
+                            <input type="text" id="equipment-manufacturer">
+                        </div>
+                        <div class="form-field">
+                            <label for="equipment-model">Model</label>
+                            <input type="text" id="equipment-model">
+                        </div>
+                    </div>
+                    <div class="form-field">
+                        <label for="equipment-serial">Serial Number</label>
+                        <input type="text" id="equipment-serial">
+                    </div>
+                    <hr>
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label for="equipment-cost">Purchase Cost ($)</label>
+                            <input type="number" id="equipment-cost" step="0.01">
+                        </div>
+                        <div class="form-field">
+                            <label for="equipment-purchase-date">Purchase Date</label>
+                            <input type="date" id="equipment-purchase-date">
+                        </div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label for="equipment-location">Storage Location</label>
+                            <input type="text" id="equipment-location">
+                        </div>
+                         <div class="form-field">
+                            <label for="equipment-last-maintenance">Last Maintenance</label>
+                            <input type="date" id="equipment-last-maintenance">
+                        </div>
+                    </div>
+                    <div class="form-field">
+                        <label for="equipment-notes">Notes</label>
+                        <textarea id="equipment-notes"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Save Equipment</button>
+                    <span id="equipment-modal-status"></span>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="module" src="js/main.js"></script>
 </body>

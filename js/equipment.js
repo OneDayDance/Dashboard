@@ -9,11 +9,11 @@ let refreshData;
 
 export function initEquipmentTab(refreshDataFn) {
     refreshData = refreshDataFn;
-    document.getElementById('equipment-add-btn').onclick = () => showEquipmentModal(null);
-    document.getElementById('equipment-search-bar').oninput = (e) => { updateEquipmentFilters('searchTerm', e.target.value.toLowerCase()); renderEquipment(); };
-    document.getElementById('equipment-status-filter').onchange = (e) => { updateEquipmentFilters('status', e.target.value); renderEquipment(); };
-    document.getElementById('equipment-category-filter').onchange = (e) => { updateEquipmentFilters('category', e.target.value); renderEquipment(); };
-    document.getElementById('equipment-modal-form').onsubmit = handleFormSubmit;
+    elements.equipmentAddBtn.onclick = () => showEquipmentModal(null);
+    elements.equipmentSearchBar.oninput = (e) => { updateEquipmentFilters('searchTerm', e.target.value.toLowerCase()); renderEquipment(); };
+    elements.equipmentStatusFilter.onchange = (e) => { updateEquipmentFilters('status', e.target.value); renderEquipment(); };
+    elements.equipmentCategoryFilter.onchange = (e) => { updateEquipmentFilters('category', e.target.value); renderEquipment(); };
+    elements.equipmentModalForm.onsubmit = handleFormSubmit;
 }
 
 export function renderEquipment() {
@@ -41,7 +41,7 @@ export function renderEquipment() {
             <div class="inventory-card-image" style="background-image: url('${imageUrl}')"></div>
             <div class="inventory-card-content">
                 <h3>${name}</h3>
-                <p><strong>Status:</strong> <span class="status-${status.toLowerCase()}">${status}</span></p>
+                <p><strong>Status:</strong> <span class="status-${status.toLowerCase().replace(/\s+/g, '-')}">${status}</span></p>
                 <p><strong>Category:</strong> ${category}</p>
                 <p><strong>Model:</strong> ${model}</p>
             </div>
@@ -76,8 +76,8 @@ function getProcessedEquipment() {
 }
 
 function populateFilterOptions() {
-    const categoryFilter = document.getElementById('equipment-category-filter');
-    const statusFilter = document.getElementById('equipment-status-filter');
+    const categoryFilter = elements.equipmentCategoryFilter;
+    const statusFilter = elements.equipmentStatusFilter;
     const categoryIndex = allEquipment.headers.indexOf('Category');
     const statusIndex = allEquipment.headers.indexOf('Status');
 
@@ -99,10 +99,11 @@ function populateFilterOptions() {
 
 function showEquipmentModal(equipmentData) {
     const modal = elements.equipmentModal;
-    const form = document.getElementById('equipment-modal-form');
+    const form = elements.equipmentModalForm;
     form.reset();
     document.getElementById('equipment-modal-status').textContent = '';
-    document.getElementById('equipment-image-preview').style.backgroundImage = 'none';
+    const imagePreview = document.getElementById('equipment-image-preview');
+    imagePreview.style.backgroundImage = 'none';
     document.getElementById('equipment-image-preview-text').style.display = 'block';
 
     const modalTitle = modal.querySelector('#equipment-modal-title');
@@ -129,7 +130,7 @@ function showEquipmentModal(equipmentData) {
 
         const imageUrl = row[headers.indexOf('Image URL')];
         if (imageUrl) {
-            document.getElementById('equipment-image-preview').style.backgroundImage = `url('${imageUrl}')`;
+            imagePreview.style.backgroundImage = `url('${imageUrl}')`;
             document.getElementById('equipment-image-preview-text').style.display = 'none';
         }
     } else {

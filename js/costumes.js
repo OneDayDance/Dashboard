@@ -9,11 +9,11 @@ let refreshData;
 
 export function initCostumesTab(refreshDataFn) {
     refreshData = refreshDataFn;
-    document.getElementById('costume-add-btn').onclick = () => showCostumeModal(null);
-    document.getElementById('costume-search-bar').oninput = (e) => { updateCostumeFilters('searchTerm', e.target.value.toLowerCase()); renderCostumes(); };
-    document.getElementById('costume-status-filter').onchange = (e) => { updateCostumeFilters('status', e.target.value); renderCostumes(); };
-    document.getElementById('costume-category-filter').onchange = (e) => { updateCostumeFilters('category', e.target.value); renderCostumes(); };
-    document.getElementById('costume-modal-form').onsubmit = handleFormSubmit;
+    elements.costumeAddBtn.onclick = () => showCostumeModal(null);
+    elements.costumeSearchBar.oninput = (e) => { updateCostumeFilters('searchTerm', e.target.value.toLowerCase()); renderCostumes(); };
+    elements.costumeStatusFilter.onchange = (e) => { updateCostumeFilters('status', e.target.value); renderCostumes(); };
+    elements.costumeCategoryFilter.onchange = (e) => { updateCostumeFilters('category', e.target.value); renderCostumes(); };
+    elements.costumeModalForm.onsubmit = handleFormSubmit;
 }
 
 export function renderCostumes() {
@@ -41,7 +41,7 @@ export function renderCostumes() {
             <div class="inventory-card-image" style="background-image: url('${imageUrl}')"></div>
             <div class="inventory-card-content">
                 <h3>${name}</h3>
-                <p><strong>Status:</strong> <span class="status-${status.toLowerCase()}">${status}</span></p>
+                <p><strong>Status:</strong> <span class="status-${status.toLowerCase().replace(/\s+/g, '-')}">${status}</span></p>
                 <p><strong>Category:</strong> ${category}</p>
                 <p><strong>Size:</strong> ${size}</p>
             </div>
@@ -76,8 +76,8 @@ function getProcessedCostumes() {
 }
 
 function populateFilterOptions() {
-    const categoryFilter = document.getElementById('costume-category-filter');
-    const statusFilter = document.getElementById('costume-status-filter');
+    const categoryFilter = elements.costumeCategoryFilter;
+    const statusFilter = elements.costumeStatusFilter;
     const categoryIndex = allCostumes.headers.indexOf('Category');
     const statusIndex = allCostumes.headers.indexOf('Status');
 
@@ -100,10 +100,11 @@ function populateFilterOptions() {
 
 function showCostumeModal(costumeData) {
     const modal = elements.costumeModal;
-    const form = document.getElementById('costume-modal-form');
+    const form = elements.costumeModalForm;
     form.reset();
     document.getElementById('costume-modal-status').textContent = '';
-    document.getElementById('costume-image-preview').style.backgroundImage = 'none';
+    const imagePreview = document.getElementById('costume-image-preview');
+    imagePreview.style.backgroundImage = 'none';
     document.getElementById('costume-image-preview-text').style.display = 'block';
 
     const modalTitle = modal.querySelector('#costume-modal-title');
@@ -130,7 +131,7 @@ function showCostumeModal(costumeData) {
 
         const imageUrl = row[headers.indexOf('Image URL')];
         if (imageUrl) {
-            document.getElementById('costume-image-preview').style.backgroundImage = `url('${imageUrl}')`;
+            imagePreview.style.backgroundImage = `url('${imageUrl}')`;
             document.getElementById('costume-image-preview-text').style.display = 'none';
         }
     } else {

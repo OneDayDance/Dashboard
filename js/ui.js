@@ -40,8 +40,21 @@ export function cacheDOMElements() {
     elements.projectSearchBar = document.getElementById('project-search-bar');
     elements.loadingOverlay = document.getElementById('loading-overlay');
     elements.addClientModal = document.getElementById('add-client-modal');
+    elements.addClientBtn = document.getElementById('add-client-btn');
+    
+    // Inventory Elements
     elements.costumeModal = document.getElementById('costume-modal');
     elements.equipmentModal = document.getElementById('equipment-modal');
+    elements.costumeAddBtn = document.getElementById('costume-add-btn');
+    elements.costumeSearchBar = document.getElementById('costume-search-bar');
+    elements.costumeStatusFilter = document.getElementById('costume-status-filter');
+    elements.costumeCategoryFilter = document.getElementById('costume-category-filter');
+    elements.costumeModalForm = document.getElementById('costume-modal-form');
+    elements.equipmentAddBtn = document.getElementById('equipment-add-btn');
+    elements.equipmentSearchBar = document.getElementById('equipment-search-bar');
+    elements.equipmentStatusFilter = document.getElementById('equipment-status-filter');
+    elements.equipmentCategoryFilter = document.getElementById('equipment-category-filter');
+    elements.equipmentModalForm = document.getElementById('equipment-modal-form');
 }
 
 /**
