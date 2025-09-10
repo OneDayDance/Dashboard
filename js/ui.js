@@ -41,6 +41,7 @@ export function cacheDOMElements() {
     elements.loadingOverlay = document.getElementById('loading-overlay');
     elements.addClientModal = document.getElementById('add-client-modal');
     elements.addClientBtn = document.getElementById('add-client-btn');
+    elements.addClientForm = document.getElementById('add-client-form'); // THIS LINE IS THE FIX
     
     // Inventory Elements
     elements.costumeModal = document.getElementById('costume-modal');
