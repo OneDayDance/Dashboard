@@ -149,8 +149,6 @@ function showCostumeModal(rowData = null) {
     const modal = elements.costumeModal;
     const form = elements.costumeModalForm;
     
-    console.log("Attempting to show costume modal...", { modal, form });
-
     if (!modal || !form) {
         console.error("Costume modal or form element not found in cache! Check `ui.js` and `index.html`.");
         return;
@@ -254,15 +252,35 @@ async function handleFormSubmit(event) {
             'Notes': document.getElementById('costume-notes').value,
         };
 
+        const sheetPromise = costumeId 
+            ? updateSheetRow('Costumes', 'CostumeID', costumeId, costumeData)
+            : writeData('Costumes', { ...costumeData, CostumeID: `COS-${Date.now()}` });
+
+        // Optimistically update the local state for immediate UI feedback
         if (costumeId) {
-            await updateSheetRow('Costumes', 'CostumeID', costumeId, costumeData);
+            const rowIndex = allCostumes.rows.findIndex(r => r[allCostumes.headers.indexOf('CostumeID')] === costumeId);
+            if (rowIndex > -1) {
+                const updatedRow = [...allCostumes.rows[rowIndex]];
+                Object.keys(costumeData).forEach(key => {
+                    const headerIndex = allCostumes.headers.indexOf(key);
+                    if (headerIndex > -1) updatedRow[headerIndex] = costumeData[key];
+                });
+                allCostumes.rows[rowIndex] = updatedRow;
+            }
         } else {
-            costumeData['CostumeID'] = `COS-${Date.now()}`;
-            await writeData('Costumes', costumeData);
+            const newRow = allCostumes.headers.map(header => costumeData[header] || '');
+            const idIndex = allCostumes.headers.indexOf('CostumeID');
+            if (idIndex > -1) newRow[idIndex] = `COS-${Date.now()}`; // Approximate ID for UI
+            allCostumes.rows.push(newRow);
         }
+        
+        renderCostumes(); // Re-render with the optimistic update
+        
+        await sheetPromise; // Wait for the sheet operation to complete
+        console.log("Google Sheet update successful.");
 
         statusSpan.textContent = 'Costume saved successfully!';
-        await refreshData();
+
         setTimeout(() => {
             elements.costumeModal.style.display = 'none';
         }, 1500);
@@ -270,6 +288,8 @@ async function handleFormSubmit(event) {
     } catch (err) {
         statusSpan.textContent = `Error: ${err.message}`;
         console.error('Costume save error:', err);
+        // If the save fails, refresh data to revert optimistic changes
+        refreshData();
     }
 }
 

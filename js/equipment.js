@@ -148,8 +148,6 @@ function showEquipmentModal(rowData = null) {
     const modal = elements.equipmentModal;
     const form = elements.equipmentModalForm;
     
-    console.log("Attempting to show equipment modal...", { modal, form });
-
     if (!modal || !form) {
         console.error("Equipment modal or form element not found in cache! Check `ui.js` and `index.html`.");
         return;
@@ -247,15 +245,35 @@ async function handleFormSubmit(event) {
             'Notes': document.getElementById('equipment-notes').value,
         };
 
+        const sheetPromise = equipmentId
+            ? updateSheetRow('Equipment', 'EquipmentID', equipmentId, equipmentData)
+            : writeData('Equipment', { ...equipmentData, EquipmentID: `EQP-${Date.now()}` });
+        
+        // Optimistically update the local state for immediate UI feedback
         if (equipmentId) {
-            await updateSheetRow('Equipment', 'EquipmentID', equipmentId, equipmentData);
+            const rowIndex = allEquipment.rows.findIndex(r => r[allEquipment.headers.indexOf('EquipmentID')] === equipmentId);
+            if (rowIndex > -1) {
+                const updatedRow = [...allEquipment.rows[rowIndex]];
+                 Object.keys(equipmentData).forEach(key => {
+                    const headerIndex = allEquipment.headers.indexOf(key);
+                    if (headerIndex > -1) updatedRow[headerIndex] = equipmentData[key];
+                });
+                allEquipment.rows[rowIndex] = updatedRow;
+            }
         } else {
-            equipmentData['EquipmentID'] = `EQP-${Date.now()}`;
-            await writeData('Equipment', equipmentData);
+            const newRow = allEquipment.headers.map(header => equipmentData[header] || '');
+            const idIndex = allEquipment.headers.indexOf('EquipmentID');
+            if (idIndex > -1) newRow[idIndex] = `EQP-${Date.now()}`; // Approximate ID for UI
+            allEquipment.rows.push(newRow);
         }
 
+        renderEquipment(); // Re-render with the optimistic update
+        
+        await sheetPromise; // Wait for the sheet operation to complete
+        console.log("Google Sheet update successful.");
+
         statusSpan.textContent = 'Equipment saved successfully!';
-        await refreshData();
+
         setTimeout(() => {
             elements.equipmentModal.style.display = 'none';
         }, 1500);
@@ -263,6 +281,8 @@ async function handleFormSubmit(event) {
     } catch (err) {
         statusSpan.textContent = `Error: ${err.message}`;
         console.error('Equipment save error:', err);
+        // If the save fails, refresh data to revert optimistic changes
+        refreshData();
     }
 }
 
