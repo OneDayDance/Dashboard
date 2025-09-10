@@ -3,7 +3,7 @@
 
 import { state, allProjects, allClients, allTasks, allRequests, updateState } from './state.js';
 import { updateSheetRow, writeData, clearSheetRow } from './api.js';
-import { elements, loadDataForActiveTab } from './ui.js';
+import { elements } from './ui.js';
 import { showRequestDetailsModal } from './requests.js';
 import { showClientDetailsModal } from './clients.js';
 
@@ -858,4 +858,3 @@ function renderLinks(links) {
         });
     });
 }
-
