@@ -27,7 +27,6 @@ async function fetchData(range, setter) {
             const headerCount = headers.length;
             const rawRows = values.slice(1).filter(row => row.some(cell => cell !== '' && cell !== null)); // Filter truly empty rows
 
-            // **THE FIX**: Pad any truncated rows to match the header count
             const paddedRows = rawRows.map(row => {
                 while (row.length < headerCount) {
                     row.push('');
@@ -293,21 +292,8 @@ export async function uploadImageToDrive(file) {
         supportsAllDrives: true,
     });
     
-    // Construct a direct-view link that works in <img> tags
     const directLink = `https://drive.google.com/uc?export=view&id=${fileId}`;
     return { link: directLink, id: fileId };
-}
-
-
-/**
- * Extracts the Google Drive file ID from various URL formats.
- * @param {string} url - The Google Drive URL.
- * @returns {string|null} - The extracted file ID or null.
- */
-function extractFileIdFromUrl(url) {
-    if (!url || typeof url !== 'string') return null;
-    const match = url.match(/([a-zA-Z0-9_-]{28,})/);
-    return match ? match[0] : null;
 }
 
 /**
@@ -319,18 +305,26 @@ function extractFileIdFromUrl(url) {
  */
 export async function fetchDriveImageAsBlobUrl(fileId) {
     if (!fileId) return null;
+    const accessToken = gapi.client.getToken().access_token;
+    const fetchUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
+
     try {
-        const response = await gapi.client.drive.files.get({
-            fileId: fileId,
-            alt: 'media',
-            supportsAllDrives: true
+        const response = await fetch(fetchUrl, {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`
+            }
         });
 
-        // The body of the response is the raw image data.
-        const blob = new Blob([response.body], { type: response.headers['Content-Type'] });
-        return URL.createObjectURL(blob);
+        if (!response.ok) {
+            const errorBody = await response.json().catch(() => response.text());
+            console.error(`Google Drive API responded with ${response.status} for fileId "${fileId}":`, errorBody);
+            throw new Error(`Failed to fetch image data. Status: ${response.status}`);
+        }
+
+        const imageBlob = await response.blob();
+        return URL.createObjectURL(imageBlob);
     } catch (err) {
-        console.error(`Error fetching Drive image blob for fileId "${fileId}":`, err);
+        console.error(`Error fetching Drive image via fetch for fileId "${fileId}":`, err);
         return null;
     }
 }
@@ -350,3 +344,4 @@ function columnToLetter(column) {
     }
     return letter;
 }
+
