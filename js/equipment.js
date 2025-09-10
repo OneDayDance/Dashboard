@@ -207,6 +207,11 @@ function showEquipmentModal(rowData = null) {
     } else {
         modal.querySelector('#equipment-modal-title').textContent = 'Add New Equipment';
         safeSetValue('equipment-id-input', '');
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        safeSetValue('equipment-purchase-date', `${year}-${month}-${day}`);
     }
 
     modal.style.display = 'block';

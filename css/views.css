@@ -68,40 +68,7 @@
 #activity-feed li .activity-date { display: block; font-size: 12px; color: #888; margin-top: 4px; }
 
 /* --- Clients View --- */
-.client-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 20px; flex-wrap: wrap; }
-
-
-/* --- Inventory Views (Costumes & Equipment) --- */
-.inventory-card {
-    padding: 0;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-.inventory-card-image {
-    width: 100%;
-    height: 200px;
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    border-bottom: 1px solid #eee;
-}
-.inventory-card-image.no-image {
-    background-image: none !important;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #aaa;
-    font-size: 14px;
-    background-color: #f0f0f0;
-}
-.inventory-card-content {
-    padding: 15px;
-    flex-grow: 1;
-}
-.inventory-card-content h4 {
-    margin-top: 0;
-}
+.client-layout-container { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; align-items: start; }
 
 /* --- Rebuilt Client & Request Modal Views --- */
 .modal-nav { border-right: 1px solid #eee; padding-right: 20px; }
@@ -217,4 +184,54 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 #task-details-modal .form-field label { display: block; margin-bottom: 5px; font-weight: bold; }
 #task-details-modal .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 #task-details-modal .add-item-form .btn { flex-shrink: 0; } /* Prevent add button from shrinking */
+
+/* --- Inventory Section --- */
+.inventory-card {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+    cursor: pointer;
+}
+.inventory-card-image {
+    width: 100%;
+    height: 200px;
+    background-size: cover;
+    background-position: center;
+    background-color: #f0f0f0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #888;
+}
+.inventory-card-content {
+    padding: 15px;
+    flex-grow: 1;
+}
+.inventory-modal-body {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 20px;
+}
+.inventory-image-section .image-preview-box {
+    width: 100%;
+    height: 250px;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-size: cover;
+    background-position: center;
+    cursor: pointer;
+    color: #888;
+    text-align: center;
+    transition: border-color 0.2s ease;
+}
+.inventory-image-section .image-preview-box:hover {
+    border-color: #76F1FF;
+}
+.form-field.full-width {
+    grid-column: 1 / -1;
+}
 

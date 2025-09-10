@@ -11,7 +11,6 @@ let refreshData;
 export function initCostumesTab(refreshDataFn) {
     refreshData = refreshDataFn;
     
-    // Attach event listeners to elements that exist on page load
     if (elements.costumeAddBtn) {
         elements.costumeAddBtn.onclick = () => showCostumeModal(null);
     }
@@ -150,7 +149,6 @@ function showCostumeModal(rowData = null) {
     const modal = elements.costumeModal;
     const form = elements.costumeModalForm;
     
-    // Add logging to see if the elements are found
     console.log("Attempting to show costume modal...", { modal, form });
 
     if (!modal || !form) {
