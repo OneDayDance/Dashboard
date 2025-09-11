@@ -105,7 +105,8 @@
 .analytics-layout {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: auto auto;
+    /* THE FIX: Give the rows a defined minimum height to prevent infinite growing */
+    grid-template-rows: repeat(2, minmax(400px, auto));
     gap: 20px;
 }
 .analytics-main-chart {
