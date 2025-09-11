@@ -13,8 +13,8 @@ let refreshData; // This will hold the main data refresh function.
 export function initClientsTab(refreshDataFn) {
     refreshData = refreshDataFn;
     
-    if (elements.addClientBtn) {
-        elements.addClientBtn.onclick = () => showAddClientModal();
+    if (elements.clientAddBtn) {
+        elements.clientAddBtn.onclick = () => showAddClientModal();
     }
     if (elements.clientSearchBar) {
         elements.clientSearchBar.oninput = (e) => { updateState({ clientSearchTerm: e.target.value.toLowerCase() }); renderClients(); };
@@ -25,6 +25,7 @@ export function initClientsTab(refreshDataFn) {
     if (elements.clientViewToggleBtn) {
         elements.clientViewToggleBtn.onclick = () => setClientView(state.clientCurrentView === 'list' ? 'card' : 'list');
     }
+    // FIX: Corrected event listener logic
     if (elements.clientColumnSelectBtn) {
         elements.clientColumnSelectBtn.onclick = () => showColumnModal(allClients.headers, state.visibleClientColumns, 'client-column-checkboxes');
     }
@@ -194,29 +195,6 @@ function handleSaveColumns() {
     if (modal) modal.style.display = 'none';
     renderClients();
 }
-
-/**
- * Finds a client by their ID and opens the details modal.
- * @param {string} clientId The 'ClientID' of the client.
- */
-export function openClientDetailsFromId(clientId) {
-    if (!allClients || !allClients.rows) {
-        console.error("Client data not loaded, cannot open details.");
-        return;
-    }
-    const idIdx = allClients.headers.indexOf('ClientID');
-    if (idIdx === -1) {
-        console.error("'ClientID' column not found in client data.");
-        return;
-    }
-    const clientRow = allClients.rows.find(row => row[idIdx] === clientId);
-    if (clientRow) {
-        showClientDetailsModal(clientRow, allClients.headers);
-    } else {
-        alert(`Client with ID ${clientId} not found.`);
-    }
-}
-
 
 // --- REBUILT MODAL FUNCTIONS ---
 
