@@ -1,28 +1,38 @@
 // js/projects.js
-// Description: Contains all logic for the 'Projects' tab and task management.
+// Description: Contains all logic for the 'Projects' tab shell and project-level actions.
 
-import { state, allProjects, allClients, allTasks, allRequests, allEquipment, allStaff, updateState } from './state.js';
+import { state, allProjects, allClients, allTasks, allRequests, updateState } from './state.js';
 import { updateSheetRow, writeData, clearSheetRow } from './api.js';
 import { elements } from './ui.js';
 import { showRequestDetailsModal } from './requests.js';
 import { showClientDetailsModal } from './clients.js';
+import { renderTasksSection, setupDragAndDrop, setupTaskClickHandlers, initTaskManager } from './taskManager.js';
+import { renderAssignedEquipmentSection, showAssignEquipmentModal, initAssignEquipment } from './assignEquipmentModal.js';
+import { renderAssignedStaffSection, showAssignStaffModal, initAssignStaff } from './assignStaffModal.js';
 
-let refreshData; // This will hold the main data refresh function.
+
+let refreshData;
 
 // --- INITIALIZATION ---
 export function initProjectsTab(refreshDataFn) {
     refreshData = refreshDataFn;
+    initTaskManager(refreshDataFn);
+    initAssignEquipment(refreshDataFn);
+    initAssignStaff(refreshDataFn);
+
     document.getElementById('project-search-bar').oninput = (e) => {
         updateState({ projectSearchTerm: e.target.value });
         renderProjectsTab();
     };
     document.getElementById('create-project-form').addEventListener('submit', handleCreateProjectSubmit);
-    document.getElementById('task-details-form').addEventListener('submit', handleSaveTask);
     document.getElementById('gdrive-link-form').addEventListener('submit', handleSaveGDriveLink);
     document.getElementById('archived-projects-toggle').onclick = (e) => {
         e.currentTarget.classList.toggle('collapsed');
         document.getElementById('archived-projects-list').classList.toggle('collapsed');
     };
+    
+    // Make showProjectDetails globally accessible for taskManager to prevent circular dependencies
+    window.showProjectDetails = showProjectDetails;
 }
 
 // --- TAB RENDERING ---
@@ -32,6 +42,11 @@ export function renderProjectsTab() {
     const detailsColumn = document.getElementById('project-details-column');
     activeList.innerHTML = '';
     archivedList.innerHTML = '';
+
+    if (!allProjects.rows) {
+        activeList.innerHTML = '<p>Loading projects...</p>';
+        return;
+    }
 
     const { headers, rows } = allProjects;
     const searchTerm = state.projectSearchTerm.toLowerCase();
@@ -95,7 +110,7 @@ export function renderProjectsTab() {
     }
 }
 
-// --- PROJECT DETAILS VIEW (REBUILT) ---
+// --- PROJECT DETAILS VIEW ---
 
 function showProjectDetails(projectId, isEditingProject = false) {
     const detailsColumn = document.getElementById('project-details-column');
@@ -116,6 +131,8 @@ function showProjectDetails(projectId, isEditingProject = false) {
     `;
     attachProjectDetailsEventListeners(projectId);
 }
+
+// --- DETAIL SECTION RENDERERS ---
 
 function renderProjectHeader(project, headers, isEditing) {
     const projectName = project[headers.indexOf('Project Name')] || 'Untitled Project';
@@ -221,19 +238,6 @@ function renderFinancialsSection(project, headers, isEditMode = false) {
         </div>`;
 }
 
-function renderTasksSection(projectId) {
-    const renderFn = state.projectTaskView === 'list' ? renderTasksAsList : renderTasksAsBoard;
-    return `<div class="project-details-section content-section">
-        <div class="project-details-section-header"><h4>Tasks</h4>
-            <div class="view-controls">
-                <button id="add-bucket-btn" class="btn btn-secondary">+</button>
-                <button id="task-view-toggle" class="btn btn-subtle">${state.projectTaskView === 'list' ? 'Board' : 'List'} View</button>
-            </div>
-        </div>
-        ${renderFn(projectId)}
-    </div>`;
-}
-
 function renderAdvancedDetails(data, headers) {
     const reqId = data[headers.indexOf('Source Request ID')];
     return `<div class="project-details-section collapsible-header collapsed"><h4>Advanced Details</h4><span class="toggle-arrow">&#9662;</span></div>
@@ -243,11 +247,12 @@ function renderAdvancedDetails(data, headers) {
     </ul></div>`;
 }
 
+// --- EVENT LISTENERS ---
 function attachProjectDetailsEventListeners(projectId) {
     const detailsColumn = document.getElementById('project-details-column');
     if (!detailsColumn) return;
 
-    // --- Header Actions ---
+    // Header Actions
     const actionsContainer = detailsColumn.querySelector('#project-actions-container');
     if (actionsContainer) {
         const actionsBtn = actionsContainer.querySelector('#project-actions-btn');
@@ -264,34 +269,23 @@ function attachProjectDetailsEventListeners(projectId) {
     const saveProjectBtn = detailsColumn.querySelector('#project-save-btn');
     if (saveProjectBtn) saveProjectBtn.onclick = () => handleSaveProjectUpdate(projectId);
 
-    // --- Core Details ---
+    // Core Details
     const gdriveCard = detailsColumn.querySelector('.folder-link-container');
-    if (gdriveCard) {
-        gdriveCard.onclick = (e) => {
-            e.preventDefault(); e.stopPropagation();
-            const link = gdriveCard.dataset.link;
-            if (link) window.open(link, '_blank');
-            else {
-                elements.gdriveLinkModal.style.display = 'block';
-                document.getElementById('gdrive-project-id-input').value = projectId;
-            }
-        };
-    }
-
+    if (gdriveCard) gdriveCard.onclick = (e) => {
+        e.preventDefault(); e.stopPropagation();
+        if (gdriveCard.dataset.link) window.open(gdriveCard.dataset.link, '_blank');
+        else {
+            elements.gdriveLinkModal.style.display = 'block';
+            document.getElementById('gdrive-project-id-input').value = projectId;
+        }
+    };
     const clientCard = detailsColumn.querySelector('.project-client-card');
-    if (clientCard) {
-        clientCard.onclick = () => {
-            const clientEmail = clientCard.dataset.clientEmail;
-            const client = allClients.rows.find(c => c[allClients.headers.indexOf('Email')] === clientEmail);
-            if (client) {
-                showClientDetailsModal(client, allClients.headers);
-            } else {
-                alert('Could not find the client details.');
-            }
-        };
-    }
+    if (clientCard) clientCard.onclick = () => {
+        const client = allClients.rows.find(c => c[allClients.headers.indexOf('Email')] === clientCard.dataset.clientEmail);
+        if (client) showClientDetailsModal(client, allClients.headers);
+    };
 
-    // --- Financials ---
+    // Financials
     const editFinancialsBtn = detailsColumn.querySelector('#edit-financials-btn');
     if (editFinancialsBtn) editFinancialsBtn.onclick = () => {
         const project = allProjects.rows.find(p => p[allProjects.headers.indexOf('ProjectID')] === projectId);
@@ -307,29 +301,19 @@ function attachProjectDetailsEventListeners(projectId) {
         const tbody = detailsColumn.querySelector('.line-item-table tbody');
         const newRow = document.createElement('tr');
         newRow.className = 'line-item-row';
-        newRow.innerHTML = `
-            <td><input type="text" class="line-item-desc" placeholder="Item Description"></td>
-            <td><input type="number" class="line-item-cost" step="0.01" placeholder="0.00"></td>
-            <td><button type="button" class="btn btn-danger remove-line-item-btn">&times;</button></td>`;
+        newRow.innerHTML = `<td><input type="text" class="line-item-desc" placeholder="Item Description"></td><td><input type="number" class="line-item-cost" step="0.01" placeholder="0.00"></td><td><button type="button" class="btn btn-danger remove-line-item-btn">&times;</button></td>`;
         tbody.appendChild(newRow);
         newRow.querySelector('.remove-line-item-btn').onclick = (e) => e.target.closest('tr').remove();
     };
     detailsColumn.querySelectorAll('.remove-line-item-btn').forEach(btn => btn.onclick = (e) => e.target.closest('tr').remove());
 
-    // --- Assigned Equipment ---
+    // Assign Modals
     const assignEquipmentBtn = detailsColumn.querySelector('#assign-equipment-btn');
-    if (assignEquipmentBtn) {
-        assignEquipmentBtn.onclick = () => showAssignEquipmentModal(projectId);
-    }
-    
-    // --- Assigned Staff ---
+    if (assignEquipmentBtn) assignEquipmentBtn.onclick = () => showAssignEquipmentModal(projectId);
     const assignStaffBtn = detailsColumn.querySelector('#assign-staff-btn');
-    if (assignStaffBtn) {
-        assignStaffBtn.onclick = () => showAssignStaffModal(projectId);
-    }
+    if (assignStaffBtn) assignStaffBtn.onclick = () => showAssignStaffModal(projectId);
 
-
-    // --- Other Sections ---
+    // Advanced Details
     detailsColumn.querySelectorAll('.collapsible-header').forEach(header => header.onclick = () => {
         header.classList.toggle('collapsed');
         header.nextElementSibling.classList.toggle('collapsed');
@@ -345,7 +329,7 @@ function attachProjectDetailsEventListeners(projectId) {
     setupTaskClickHandlers(detailsColumn, projectId);
 }
 
-
+// --- PROJECT-LEVEL ACTIONS ---
 async function handleSaveFinancials(projectId) {
     const lineItems = [];
     document.querySelectorAll('.line-item-table .line-item-row').forEach(row => {
@@ -356,375 +340,36 @@ async function handleSaveFinancials(projectId) {
     try {
         await updateSheetRow('Projects', 'ProjectID', projectId, { 'Cost Breakdown': JSON.stringify(lineItems) });
         await refreshData();
-    } catch (err) { 
-        alert('Error saving financials.'); 
-        console.error(err); 
-    }
+    } catch (err) { alert('Error saving financials.'); console.error(err); }
 }
 
-// --- NEW EQUIPMENT ASSIGNMENT FUNCTIONS ---
-
-function renderAssignedEquipmentSection(project, headers) {
-    const assignedEquipmentJSON = project[headers.indexOf('Assigned Equipment')] || '[]';
-    let assignedIds = [];
-    try {
-        assignedIds = JSON.parse(assignedEquipmentJSON);
-    } catch (e) {
-        console.error("Could not parse assigned equipment JSON:", e);
-    }
-
-    let itemsHtml = '';
-    if (assignedIds.length > 0) {
-        const [idIndex, nameIndex, imageIndex] = ['EquipmentID', 'Name', 'Image URL'].map(h => allEquipment.headers.indexOf(h));
-        
-        assignedIds.forEach(id => {
-            const equipment = allEquipment.rows.find(row => row[idIndex] === id);
-            if (equipment) {
-                const fileId = extractFileIdFromUrl(equipment[imageIndex] || '');
-                const thumbHtml = fileId 
-                    ? `<img src="https://drive.google.com/thumbnail?id=${fileId}&sz=w100" alt="${equipment[nameIndex]}">`
-                    : `<span>No Image</span>`;
-
-                itemsHtml += `
-                    <div class="assigned-equipment-card">
-                        <div class="assigned-equipment-thumb">${thumbHtml}</div>
-                        <div class="assigned-equipment-details">
-                            <p>${equipment[nameIndex]}</p>
-                            <span>${equipment[idIndex]}</span>
-                        </div>
-                    </div>
-                `;
-            }
-        });
-    } else {
-        itemsHtml = '<p>No equipment assigned to this project.</p>';
-    }
-
-    return `
-        <div class="project-details-section content-section">
-            <div class="project-details-section-header">
-                <h4>Assigned Equipment</h4>
-                <div class="view-controls">
-                     <button id="assign-equipment-btn" type="button" class="btn btn-secondary">Assign Equipment</button>
-                </div>
-            </div>
-            <div id="assigned-equipment-container">${itemsHtml}</div>
-        </div>
-    `;
+export function showCreateProjectModal(clientRow, clientHeaders, sourceRequestId = null) {
+    elements.createProjectModal.style.display = 'block';
+    const clientEmail = clientRow[clientHeaders.indexOf('Email')];
+    const clientName = `${clientRow[clientHeaders.indexOf('First Name')]} ${clientRow[clientHeaders.indexOf('Last Name')]}`;
+    document.getElementById('project-client-name').value = clientName;
+    const sourceRequestSelect = document.getElementById('project-source-request');
+    sourceRequestSelect.innerHTML = '<option value="">Start from scratch</option>';
+    sourceRequestSelect.dataset.clientEmail = clientEmail;
+    const activeClientRequests = allRequests.rows.filter(r => r[allRequests.headers.indexOf('Email')] === clientEmail && r[allRequests.headers.indexOf('Status')] !== 'Archived');
+    activeClientRequests.forEach(req => {
+        const date = req[allRequests.headers.indexOf('Submission Date')] || 'No Date';
+        const service = req[allRequests.headers.indexOf('Primary Service Category')] || 'No Service';
+        const id = req[allRequests.headers.indexOf('Submission ID')];
+        sourceRequestSelect.add(new Option(`${date} - ${service}`, id));
+    });
+    if (sourceRequestId) sourceRequestSelect.value = sourceRequestId;
+    sourceRequestSelect.onchange = (e) => {
+        const selectedRequestId = e.target.value;
+        if (!selectedRequestId) { document.getElementById('project-name').value = ''; document.getElementById('project-value').value = ''; return; }
+        const selectedRequest = allRequests.rows.find(r => r[allRequests.headers.indexOf('Submission ID')] === selectedRequestId);
+        if (selectedRequest) {
+            document.getElementById('project-name').value = selectedRequest[allRequests.headers.indexOf('Primary Service Category')] || '';
+            document.getElementById('project-value').value = selectedRequest[allRequests.headers.indexOf('Quote Total')] || '';
+        }
+    };
+    sourceRequestSelect.dispatchEvent(new Event('change'));
 }
-
-function showAssignEquipmentModal(projectId) {
-    const project = allProjects.rows.find(p => p[allProjects.headers.indexOf('ProjectID')] === projectId);
-    if (!project) return;
-    
-    const assignedEquipmentJSON = project[allProjects.headers.indexOf('Assigned Equipment')] || '[]';
-    let currentlyAssignedIds = new Set();
-    try {
-        currentlyAssignedIds = new Set(JSON.parse(assignedEquipmentJSON));
-    } catch (e) {}
-
-    const searchInput = elements.equipmentSearchInput;
-    const searchResultsContainer = elements.equipmentSearchResults;
-    const selectedContainer = elements.selectedEquipmentList;
-    
-    let localSelectedIds = new Set(currentlyAssignedIds);
-
-    const render = () => {
-        const searchTerm = searchInput.value.toLowerCase();
-        
-        searchResultsContainer.innerHTML = '';
-        selectedContainer.innerHTML = '';
-
-        const [idIndex, nameIndex, imageIndex] = ['EquipmentID', 'Name', 'Image URL'].map(h => allEquipment.headers.indexOf(h));
-
-        // Render selected items first
-        localSelectedIds.forEach(id => {
-            const item = allEquipment.rows.find(row => row[idIndex] === id);
-            if (item) {
-                selectedContainer.appendChild(createEquipmentItemElement(item, allEquipment.headers, idIndex, nameIndex, imageIndex, true));
-            }
-        });
-        
-        // Render search results
-        const availableItems = allEquipment.rows.filter(row => {
-            const name = (row[nameIndex] || '').toLowerCase();
-            const id = (row[idIndex] || '').toLowerCase();
-            return (name.includes(searchTerm) || id.includes(searchTerm));
-        });
-
-        availableItems.forEach(item => {
-             searchResultsContainer.appendChild(createEquipmentItemElement(item, allEquipment.headers, idIndex, nameIndex, imageIndex, false));
-        });
-    };
-
-    const createEquipmentItemElement = (item, headers, idIndex, nameIndex, imageIndex, isSelected) => {
-        const element = document.createElement('div');
-        const itemId = item[idIndex];
-        element.className = isSelected ? 'selected-equipment-item' : 'equipment-search-item';
-        element.dataset.equipmentId = itemId;
-
-        if (!isSelected && localSelectedIds.has(itemId)) {
-            element.classList.add('selected');
-        }
-
-        const fileId = extractFileIdFromUrl(item[imageIndex] || '');
-        const thumbHtml = fileId 
-            ? `<img src="https://drive.google.com/thumbnail?id=${fileId}&sz=w100" alt="${item[nameIndex]}">`
-            : '';
-
-        element.innerHTML = `
-            <div class="equipment-item-thumb">${thumbHtml}</div>
-            <div class="equipment-item-details">
-                <p>${item[nameIndex]}</p>
-                <span>${itemId}</span>
-            </div>
-        `;
-        
-        element.onclick = () => {
-            if (localSelectedIds.has(itemId)) {
-                localSelectedIds.delete(itemId);
-            } else {
-                localSelectedIds.add(itemId);
-            }
-            render();
-        };
-        return element;
-    };
-
-    searchInput.oninput = render;
-    elements.saveAssignedEquipmentBtn.onclick = async () => {
-        const statusSpan = document.getElementById('assign-equipment-status');
-        statusSpan.textContent = 'Saving...';
-        try {
-            const newAssignedEquipment = JSON.stringify(Array.from(localSelectedIds));
-            await updateSheetRow('Projects', 'ProjectID', projectId, { 'Assigned Equipment': newAssignedEquipment });
-            statusSpan.textContent = 'Saved!';
-            await refreshData();
-            setTimeout(() => {
-                elements.assignEquipmentModal.style.display = 'none';
-            }, 1000);
-        } catch (err) {
-            statusSpan.textContent = 'Error saving.';
-            console.error('Error assigning equipment:', err);
-        }
-    };
-
-    render();
-    elements.assignEquipmentModal.style.display = 'block';
-}
-
-function extractFileIdFromUrl(url) {
-    if (!url || typeof url !== 'string') return null;
-    const match = url.match(/([a-zA-Z0-9_-]{28,})/);
-    return match ? match[0] : null;
-}
-
-// --- NEW STAFF ASSIGNMENT FUNCTIONS ---
-
-function renderAssignedStaffSection(project, headers) {
-    const assignedStaffJSON = project[headers.indexOf('Assigned Staff')] || '[]';
-    let assignedStaff = [];
-    try {
-        assignedStaff = JSON.parse(assignedStaffJSON);
-    } catch (e) {
-        console.error("Could not parse assigned staff JSON:", e);
-    }
-
-    let itemsHtml = '';
-    if (assignedStaff.length > 0) {
-        const [idIndex, nameIndex, imageIndex] = ['StaffID', 'Name', 'Image URL'].map(h => allStaff.headers.indexOf(h));
-        
-        assignedStaff.forEach(assignment => {
-            const staffMember = allStaff.rows.find(row => row[idIndex] === assignment.id);
-            if (staffMember) {
-                const fileId = extractFileIdFromUrl(staffMember[imageIndex] || '');
-                const thumbHtml = fileId 
-                    ? `<img src="https://drive.google.com/thumbnail?id=${fileId}&sz=w100" alt="${staffMember[nameIndex]}">`
-                    : `<span>No Photo</span>`;
-                
-                const rolesHtml = (assignment.roles || []).map(role => `<span class="skill-chip">${role}</span>`).join('');
-
-                itemsHtml += `
-                    <div class="assigned-staff-card">
-                        <div class="assigned-staff-thumb">${thumbHtml}</div>
-                        <div class="assigned-staff-details">
-                            <p>${staffMember[nameIndex]}</p>
-                            <div class="skill-chips-container">${rolesHtml || 'No role assigned'}</div>
-                        </div>
-                    </div>
-                `;
-            }
-        });
-    } else {
-        itemsHtml = '<p>No staff assigned to this project.</p>';
-    }
-
-    return `
-        <div class="project-details-section content-section">
-            <div class="project-details-section-header">
-                <h4>Assigned Staff</h4>
-                <div class="view-controls">
-                     <button id="assign-staff-btn" type="button" class="btn btn-secondary">Assign Staff</button>
-                </div>
-            </div>
-            <div id="assigned-staff-container">${itemsHtml}</div>
-        </div>
-    `;
-}
-
-function showAssignStaffModal(projectId) {
-    const project = allProjects.rows.find(p => p[allProjects.headers.indexOf('ProjectID')] === projectId);
-    if (!project) return;
-    
-    const assignedStaffJSON = project[allProjects.headers.indexOf('Assigned Staff')] || '[]';
-    let currentlyAssigned = [];
-    try {
-        currentlyAssigned = JSON.parse(assignedStaffJSON).map(staff => ({
-            ...staff,
-            roles: Array.isArray(staff.roles) ? staff.roles : (staff.role ? [staff.role] : [])
-        }));
-    } catch (e) {}
-
-    const searchInput = elements.staffSearchInput;
-    const searchResultsContainer = elements.staffSearchResults;
-    const selectedContainer = elements.selectedStaffList;
-    
-    let localSelected = [...currentlyAssigned]; 
-
-    const render = () => {
-        const searchTerm = searchInput.value.toLowerCase();
-        
-        searchResultsContainer.innerHTML = '';
-        selectedContainer.innerHTML = '';
-
-        const [idIndex, nameIndex, imageIndex] = ['StaffID', 'Name', 'Image URL'].map(h => allStaff.headers.indexOf(h));
-
-        // Render selected items
-        localSelected.forEach(assignment => {
-            const item = allStaff.rows.find(row => row[idIndex] === assignment.id);
-            if (item) {
-                selectedContainer.appendChild(createStaffItemElement(item, idIndex, nameIndex, imageIndex, true, assignment.roles));
-            }
-        });
-        
-        // Render search results
-        const availableItems = allStaff.rows.filter(row => {
-            const name = (row[nameIndex] || '').toLowerCase();
-            const id = (row[idIndex] || '').toLowerCase();
-            return name.includes(searchTerm) || id.includes(searchTerm);
-        });
-
-        availableItems.forEach(item => {
-             searchResultsContainer.appendChild(createStaffItemElement(item, idIndex, nameIndex, imageIndex, false));
-        });
-    };
-
-    const createStaffItemElement = (item, idIndex, nameIndex, imageIndex, isSelected, roles = []) => {
-        const element = document.createElement('div');
-        const itemId = item[idIndex];
-        element.className = isSelected ? 'selected-staff-item' : 'staff-search-item';
-        element.dataset.staffId = itemId;
-
-        if (!isSelected && localSelected.some(s => s.id === itemId)) {
-            element.classList.add('selected');
-        }
-
-        const fileId = extractFileIdFromUrl(item[imageIndex] || '');
-        const thumbHtml = fileId 
-            ? `<img src="https://drive.google.com/thumbnail?id=${fileId}&sz=w100" alt="${item[nameIndex]}">`
-            : '';
-        
-        let rolesHtml = '';
-        if (isSelected) {
-            rolesHtml = '<div class="staff-role-input-container">';
-            roles.forEach((role, i) => {
-                rolesHtml += `<div class="role-entry"><input type="text" class="staff-role-input" placeholder="Role..." value="${role}" data-staff-id="${itemId}" data-index="${i}"><button type="button" class="btn btn-danger btn-small remove-role-btn" data-index="${i}">&times;</button></div>`;
-            });
-            rolesHtml += '<button type="button" class="btn btn-secondary btn-small add-role-btn">+ Role</button></div>';
-        }
-
-        element.innerHTML = `
-            <div class="staff-item-thumb">${thumbHtml}</div>
-            <div class="staff-item-details">
-                <p>${item[nameIndex]}</p>
-                <span>${itemId}</span>
-                ${rolesHtml}
-            </div>
-        `;
-        
-        if (!isSelected) {
-            element.onclick = () => {
-                if (!localSelected.some(s => s.id === itemId)) {
-                    localSelected.push({ id: itemId, roles: [''] });
-                    render();
-                }
-            };
-        } else {
-             const removeButton = document.createElement('button');
-             removeButton.className = 'btn btn-danger btn-small';
-             removeButton.innerHTML = '&times;';
-             removeButton.onclick = () => {
-                localSelected = localSelected.filter(s => s.id !== itemId);
-                render();
-             };
-             element.appendChild(removeButton);
-
-             element.querySelector('.add-role-btn').onclick = () => {
-                 const assignment = localSelected.find(s => s.id === itemId);
-                 assignment.roles.push('');
-                 render();
-             };
-
-             element.querySelectorAll('.remove-role-btn').forEach(btn => {
-                 btn.onclick = () => {
-                     const assignment = localSelected.find(s => s.id === itemId);
-                     assignment.roles.splice(btn.dataset.index, 1);
-                     render();
-                 };
-             });
-        }
-
-        return element;
-    };
-
-    searchInput.oninput = render;
-    elements.saveAssignedStaffBtn.onclick = async () => {
-        // Update roles from input fields before saving
-        selectedContainer.querySelectorAll('.selected-staff-item').forEach(item => {
-            const staffId = item.dataset.staffId;
-            const assignment = localSelected.find(s => s.id === staffId);
-            if (assignment) {
-                const roles = [];
-                item.querySelectorAll('.staff-role-input').forEach(input => {
-                    const roleValue = input.value.trim();
-                    if (roleValue) roles.push(roleValue);
-                });
-                assignment.roles = roles;
-            }
-        });
-
-        const statusSpan = document.getElementById('assign-staff-status');
-        statusSpan.textContent = 'Saving...';
-        try {
-            const newAssignedStaff = JSON.stringify(localSelected);
-            await updateSheetRow('Projects', 'ProjectID', projectId, { 'Assigned Staff': newAssignedStaff });
-            statusSpan.textContent = 'Saved!';
-            await refreshData();
-            setTimeout(() => {
-                elements.assignStaffModal.style.display = 'none';
-            }, 1000);
-        } catch (err) {
-            statusSpan.textContent = 'Error saving.';
-            console.error('Error assigning staff:', err);
-        }
-    };
-
-    render();
-    elements.assignStaffModal.style.display = 'block';
-}
-
-
-// --- PROJECT & TASK ACTIONS ---
 
 async function handleCreateProjectSubmit(event) {
     event.preventDefault();
@@ -740,36 +385,18 @@ async function handleCreateProjectSubmit(event) {
         
         if (request && quoteIndex > -1 && request[quoteIndex]) {
             try {
-                // Attempt to parse the quote breakdown as JSON
                 const parsedQuote = JSON.parse(request[quoteIndex]);
                 if (Array.isArray(parsedQuote)) {
-                    const formattedLineItems = parsedQuote.map(item => ({
+                    costBreakdown = JSON.stringify(parsedQuote.map(item => ({
                         description: item.item || 'Unnamed Item',
                         cost: parseFloat(item.cost) || 0
-                    }));
-                    costBreakdown = JSON.stringify(formattedLineItems);
+                    })));
                 }
             } catch (e) {
-                console.error("Could not parse quote breakdown from request:", e);
-                // Handle non-JSON strings gracefully
-                const description = request[quoteIndex]; // Treat the string as the description
-                const totalCostIndex = allRequests.headers.indexOf('Quote Total');
-                const cost = (totalCostIndex > -1 && request[totalCostIndex]) ? parseFloat(request[totalCostIndex]) || 0 : 0;
-                
-                const lineItem = [{ description: description, cost: cost }];
-                costBreakdown = JSON.stringify(lineItem);
+                const desc = request[quoteIndex];
+                const total = parseFloat(request[allRequests.headers.indexOf('Quote Total')] || '0') || 0;
+                costBreakdown = JSON.stringify([{ description: desc, cost: total }]);
             }
-        } else if (request) {
-             // Fallback if 'Quote Breakdown' column doesn't exist or is empty
-             const descriptionIndex = allRequests.headers.indexOf('Primary Service Category');
-             const description = (descriptionIndex > -1 && request[descriptionIndex]) ? request[descriptionIndex] : 'Initial project cost';
-             const totalCostIndex = allRequests.headers.indexOf('Quote Total');
-             const cost = (totalCostIndex > -1 && request[totalCostIndex]) ? parseFloat(request[totalCostIndex]) || 0 : 0;
-
-             if (cost > 0 || description !== 'Initial project cost') {
-                 const lineItem = [{ description: description, cost: cost }];
-                 costBreakdown = JSON.stringify(lineItem);
-             }
         }
     }
 
@@ -787,14 +414,11 @@ async function handleCreateProjectSubmit(event) {
             await updateSheetRow('Submissions', 'Submission ID', projectData['Source Request ID'], { 'Status': 'Archived' });
         }
         await refreshData();
-        
         statusSpan.textContent = 'Project created!';
-        
         setTimeout(() => {
             elements.createProjectModal.style.display = 'none';
             document.querySelector('.tab-button[data-tab="projects"]').click(); 
         }, 1500);
-
     } catch (err) { statusSpan.textContent = 'Error creating project.'; console.error('Project creation error', err); }
 }
 
@@ -838,13 +462,8 @@ async function handleDeleteProject(projectId) {
         updateState({ selectedProjectId: null });
         await refreshData();
         statusSpan.textContent = 'Project deleted.';
-        setTimeout(() => { 
-            elements.deleteProjectModal.style.display = 'none';
-        }, 1500);
-    } catch(err) {
-        statusSpan.textContent = 'Error deleting project.';
-        console.error('Delete project error', err);
-    }
+        setTimeout(() => { elements.deleteProjectModal.style.display = 'none'; }, 1500);
+    } catch(err) { statusSpan.textContent = 'Error deleting project.'; console.error('Delete project error', err); }
 }
 
 async function handleSaveGDriveLink(event) {
@@ -859,379 +478,5 @@ async function handleSaveGDriveLink(event) {
         await refreshData();
         statusSpan.textContent = 'Saved!';
         setTimeout(() => { elements.gdriveLinkModal.style.display = 'none'; }, 1000);
-    } catch (err) {
-        statusSpan.textContent = 'Error saving link.';
-        console.error('GDrive link save error:', err);
-    }
+    } catch (err) { statusSpan.textContent = 'Error saving link.'; console.error('GDrive link save error:', err); }
 }
-
-
-// --- Functions below this line are copied from the previous version and are assumed to be working ---
-// --- They are required for the task management functionality to continue operating. ---
-
-// --- DRAG AND DROP ---
-function setupDragAndDrop(container) {
-    container.querySelectorAll('[draggable="true"]').forEach(el => {
-        el.addEventListener('dragstart', (e) => {
-            e.stopPropagation();
-            e.dataTransfer.setData(el.matches('.task-bucket, .task-board-column') ? 'text/bucket-id' : 'text/task-id', el.dataset.bucket || el.dataset.taskId);
-            e.dataTransfer.effectAllowed = 'move';
-            setTimeout(() => el.classList.add('dragging'), 0);
-        });
-        el.addEventListener('dragend', () => {
-            el.classList.remove('dragging');
-            document.querySelectorAll('.task-placeholder, .bucket-placeholder').forEach(p => p.remove());
-        });
-    });
-
-    container.querySelectorAll('.task-bucket, .task-board-column, #project-task-list, #project-task-board').forEach(zone => {
-        zone.addEventListener('dragover', handleDragOver);
-        zone.addEventListener('drop', handleDrop);
-    });
-}
-function handleDragOver(e) {
-    e.preventDefault();
-    const draggingEl = document.querySelector('.dragging');
-    if (!draggingEl) return;
-
-    let placeholder = document.querySelector('.task-placeholder, .bucket-placeholder');
-    const removePlaceholder = () => { if(placeholder) placeholder.remove(); placeholder = null; };
-
-    if (draggingEl.matches('.task-bucket, .task-board-column')) {
-        const isListView = draggingEl.matches('.task-bucket');
-        const container = isListView ? document.getElementById('project-task-list') : document.getElementById('project-task-board');
-        const afterEl = isListView ? getDragAfterElementVertical(container, e.clientY, '.task-bucket') : getDragAfterBucketHorizontal(container, e.clientX);
-        if ((draggingEl.nextElementSibling === afterEl) || (afterEl && afterEl.previousElementSibling === draggingEl) || (!afterEl && container.lastElementChild === draggingEl)) { removePlaceholder(); return; }
-        if (!placeholder) { placeholder = document.createElement('div'); placeholder.className = 'bucket-placeholder'; }
-        if(isListView) placeholder.style.height = `${draggingEl.offsetHeight}px`;
-        if (afterEl) container.insertBefore(placeholder, afterEl); else container.appendChild(placeholder);
-    } else {
-        const container = e.target.closest('.task-bucket, .task-board-column');
-        if (!container) { removePlaceholder(); return; }
-        const afterEl = getDragAfterElementVertical(container, e.clientY, '.task-item, .task-card');
-        const addBtn = container.querySelector('.add-task-to-bucket-btn');
-        if (draggingEl.parentNode === container && ((draggingEl.nextElementSibling === afterEl) || (afterEl && afterEl.previousElementSibling === draggingEl) || (!afterEl && addBtn && addBtn.previousElementSibling === draggingEl))) { removePlaceholder(); return; }
-        if (!placeholder) { placeholder = document.createElement('div'); placeholder.className = 'task-placeholder'; }
-        placeholder.style.height = `${draggingEl.offsetHeight}px`;
-        if (afterEl) container.insertBefore(placeholder, afterEl); else container.insertBefore(placeholder, addBtn);
-    }
-}
-function getDragAfterElementVertical(container, y, selector) {
-    const draggableElements = [...container.querySelectorAll(`${selector}:not(.dragging)`)];
-    return draggableElements.reduce((closest, child) => {
-        const box = child.getBoundingClientRect();
-        const offset = y - box.top - box.height / 2;
-        if (offset < 0 && offset > closest.offset) return { offset, element: child };
-        return closest;
-    }, { offset: Number.NEGATIVE_INFINITY }).element;
-}
-function getDragAfterBucketHorizontal(container, x) {
-    const draggableElements = [...container.querySelectorAll('.task-board-column:not(.dragging)')];
-    return draggableElements.reduce((closest, child) => {
-        const box = child.getBoundingClientRect();
-        const offset = x - box.left - box.width / 2;
-        if (offset < 0 && offset > closest.offset) return { offset, element: child };
-        return closest;
-    }, { offset: Number.NEGATIVE_INFINITY }).element;
-}
-async function handleDrop(e) {
-    e.preventDefault(); e.stopPropagation();
-    const placeholder = document.querySelector('.task-placeholder, .bucket-placeholder');
-    const draggedElement = document.querySelector('.dragging');
-    if (!draggedElement || !placeholder) { if (draggedElement) draggedElement.classList.remove('dragging'); if (placeholder) placeholder.remove(); return; }
-
-    const taskId = e.dataTransfer.getData('text/task-id');
-    const bucketId = e.dataTransfer.getData('text/bucket-id');
-    placeholder.parentNode.replaceChild(draggedElement, placeholder);
-    draggedElement.classList.remove('dragging');
-
-    try {
-        const promises = [];
-        if (bucketId) {
-            const newOrder = Array.from(draggedElement.parentNode.children).filter(el => el.matches('[data-bucket]')).map(el => el.dataset.bucket);
-            promises.push(updateSheetRow('Projects', 'ProjectID', state.selectedProjectId, { 'Task Buckets': JSON.stringify(newOrder) }));
-        } else if (taskId) {
-            document.querySelectorAll('.task-bucket, .task-board-column').forEach(bucketEl => {
-                Array.from(bucketEl.querySelectorAll('[data-task-id]')).forEach((taskEl, i) => {
-                     promises.push(updateSheetRow('Tasks', 'TaskID', taskEl.dataset.taskId, { 'Bucket': bucketEl.dataset.bucket, 'SortIndex': i }));
-                });
-            });
-        }
-        await Promise.all(promises);
-        await refreshData();
-    } catch (err) { 
-        alert("Error saving new order."); 
-        console.error("Drag/drop save error:", err); 
-        await refreshData(); // Refresh even on error to get back to a consistent state
-    }
-}
-
-// --- TASK RENDERING & MODALS ---
-export function showCreateProjectModal(clientRow, clientHeaders, sourceRequestId = null) {
-    elements.createProjectModal.style.display = 'block';
-    const clientEmail = clientRow[clientHeaders.indexOf('Email')];
-    const clientName = `${clientRow[clientHeaders.indexOf('First Name')]} ${clientRow[clientHeaders.indexOf('Last Name')]}`;
-    document.getElementById('project-client-name').value = clientName;
-    const sourceRequestSelect = document.getElementById('project-source-request');
-    sourceRequestSelect.innerHTML = '<option value="">Start from scratch</option>';
-    sourceRequestSelect.dataset.clientEmail = clientEmail;
-    const activeClientRequests = allRequests.rows.filter(r => r[allRequests.headers.indexOf('Email')] === clientEmail && r[allRequests.headers.indexOf('Status')] !== 'Archived');
-    activeClientRequests.forEach(req => {
-        const date = req[allRequests.headers.indexOf('Submission Date')] || 'No Date';
-        const service = req[allRequests.headers.indexOf('Primary Service Category')] || 'No Service';
-        const id = req[allRequests.headers.indexOf('Submission ID')];
-        sourceRequestSelect.add(new Option(`${date} - ${service}`, id));
-    });
-    if (sourceRequestId) sourceRequestSelect.value = sourceRequestId;
-    sourceRequestSelect.onchange = (e) => {
-        const selectedRequestId = e.target.value;
-        if (!selectedRequestId) { document.getElementById('project-name').value = ''; document.getElementById('project-value').value = ''; return; }
-        const selectedRequest = allRequests.rows.find(r => r[allRequests.headers.indexOf('Submission ID')] === selectedRequestId);
-        if (selectedRequest) {
-            document.getElementById('project-name').value = selectedRequest[allRequests.headers.indexOf('Primary Service Category')] || '';
-            document.getElementById('project-value').value = selectedRequest[allRequests.headers.indexOf('Quote Total')] || '';
-        }
-    };
-    sourceRequestSelect.dispatchEvent(new Event('change')); 
-}
-async function handleSaveTask(event) {
-    event.preventDefault();
-    const statusSpan = document.getElementById('task-modal-status');
-    statusSpan.textContent = 'Saving...';
-    const taskId = document.getElementById('task-id-input').value;
-    const taskData = {
-        'ProjectID': document.getElementById('task-project-id-input').value,
-        'Task Name': document.getElementById('task-title').value,
-        'Description': document.getElementById('task-description').value,
-        'Due Date': document.getElementById('task-due-date').value,
-        'Assignee': document.getElementById('task-assignee').value,
-        'Status': document.getElementById('task-status').value,
-        'Bucket': document.getElementById('task-bucket').value || 'General',
-        'Subtasks': document.getElementById('subtasks-data').value,
-        'Links': document.getElementById('links-data').value
-    };
-    try {
-        if (taskId) {
-            await updateSheetRow('Tasks', 'TaskID', taskId, taskData);
-        } else { 
-            taskData.TaskID = `T-${Date.now()}`; 
-            const tasksInBucket = getProjectTasksSorted(taskData.ProjectID).filter(t => (t.row[allTasks.headers.indexOf('Bucket')] || 'General') === taskData.Bucket);
-            taskData.SortIndex = tasksInBucket.length;
-            await writeData('Tasks', taskData); 
-        }
-        await refreshData();
-        statusSpan.textContent = 'Saved!';
-        setTimeout(() => { elements.taskDetailsModal.style.display = 'none'; }, 1000);
-    } catch (err) { statusSpan.textContent = 'Error saving task.'; console.error('Task save error', err); }
-}
-function setupTaskClickHandlers(container, projectId) {
-    container.querySelectorAll('.task-item, .task-card').forEach(el => {
-        el.onclick = (e) => {
-            if (e.target.closest('.subtask-item') || e.currentTarget.classList.contains('dragging')) return;
-            const taskId = e.currentTarget.dataset.taskId;
-            if (e.target.matches('.task-main input[type="checkbox"]')) handleTaskStatusChange(taskId, e.target.checked);
-            else showTaskModal(projectId, taskId);
-        };
-    });
-    container.querySelectorAll('.subtask-item input[type="checkbox"]').forEach(cb => cb.addEventListener('change', handleSubtaskStatusChange));
-    container.querySelectorAll('.add-task-to-bucket-btn').forEach(btn => btn.onclick = () => showTaskModal(projectId, null, btn.dataset.bucket));
-    const taskViewToggle = document.getElementById('task-view-toggle');
-    if (taskViewToggle) taskViewToggle.onclick = () => {
-        updateState({ projectTaskView: state.projectTaskView === 'list' ? 'board' : 'list' });
-        showProjectDetails(projectId);
-    };
-    const addBucketBtn = document.getElementById('add-bucket-btn');
-    if(addBucketBtn) addBucketBtn.onclick = async () => {
-        const bucketName = prompt("Enter new bucket name:");
-        if (bucketName && bucketName.trim() !== '') {
-            const project = allProjects.rows.find(p => p[allProjects.headers.indexOf('ProjectID')] === projectId);
-            const bucketsIndex = allProjects.headers.indexOf('Task Buckets');
-            let currentBuckets = [];
-            if (bucketsIndex > -1 && project[bucketsIndex]) try { currentBuckets = JSON.parse(project[bucketsIndex]); } catch (e) {}
-            if (!currentBuckets.includes(bucketName.trim())) {
-                currentBuckets.push(bucketName.trim());
-                try {
-                    await updateSheetRow('Projects', 'ProjectID', projectId, { 'Task Buckets': JSON.stringify(currentBuckets) });
-                    await refreshData();
-                } catch (err) { alert("Could not save new bucket."); console.error(err); }
-            }
-        }
-    };
-}
-async function handleTaskStatusChange(taskId, isChecked) {
-    const newStatus = isChecked ? 'Done' : 'To Do';
-    try {
-        await updateSheetRow('Tasks', 'TaskID', taskId, { 'Status': newStatus });
-        await refreshData();
-    } catch(err) { console.error('Task status update error', err); alert('Could not update task status.'); }
-}
-async function handleSubtaskStatusChange(event) {
-    const checkbox = event.target;
-    const taskId = checkbox.dataset.taskId;
-    const subtaskIndex = parseInt(checkbox.dataset.subtaskIndex, 10);
-    const isChecked = checkbox.checked;
-    checkbox.disabled = true;
-    const taskIndex = allTasks.rows.findIndex(t => t[allTasks.headers.indexOf('TaskID')] === taskId);
-    if (taskIndex === -1) return;
-    const taskRow = allTasks.rows[taskIndex];
-    const subtasksJson = taskRow[allTasks.headers.indexOf('Subtasks')] || '[]';
-    let subtasks = [];
-    try { subtasks = JSON.parse(subtasksJson); } catch (e) { console.error("Error parsing subtasks for task:", taskId, e); return; }
-    if (subtasks[subtaskIndex]) subtasks[subtaskIndex].completed = isChecked;
-    const updatedSubtasksJson = JSON.stringify(subtasks);
-    try {
-        await updateSheetRow('Tasks', 'TaskID', taskId, { 'Subtasks': updatedSubtasksJson });
-        await refreshData();
-    } catch (err) { 
-        console.error('Subtask status update error', err); 
-        alert('Could not update subtask status.'); 
-        await refreshData();
-    }
-}
-function getProjectTasksSorted(projectId) {
-    const { headers, rows } = allTasks, [idIdx, sortIdx, subtaskIdx] = ['ProjectID', 'SortIndex', 'Subtasks'].map(h => headers.indexOf(h));
-    return rows.filter(t => t[idIdx] === projectId)
-               .sort((a,b) => (a[sortIdx] || 0) - (b[sortIdx] || 0))
-               .map(row => ({ row, subtasks: JSON.parse(row[subtaskIdx] || '[]') }));
-}
-function getProjectBuckets(projectId) {
-    const project = allProjects.rows.find(p => p[allProjects.headers.indexOf('ProjectID')] === projectId);
-    if (project) {
-        const bucketsJSON = project[allProjects.headers.indexOf('Task Buckets')];
-        if (bucketsJSON) try { return JSON.parse(bucketsJSON); } catch(e){}
-    }
-    return ['General'];
-}
-function renderTasksAsList(projectId) {
-    let html = `<div id="project-task-list">`;
-    const projectTasks = getProjectTasksSorted(projectId);
-    const buckets = getProjectBuckets(projectId);
-    buckets.forEach(bucket => {
-        html += `<div class="task-bucket" draggable="true" data-bucket="${bucket}"><h5>${bucket}</h5>`;
-        projectTasks.filter(t => (t.row[allTasks.headers.indexOf('Bucket')] || 'General') === bucket).forEach(task => {
-            html += renderTaskItem(task.row, task.subtasks);
-        });
-        html += `<button class="add-task-to-bucket-btn btn btn-secondary" data-bucket="${bucket}">+ Add Task</button></div>`;
-    });
-    return html + `</div>`;
-}
-function renderTasksAsBoard(projectId) {
-    let html = `<div id="project-task-board" class="task-board">`;
-    const projectTasks = getProjectTasksSorted(projectId);
-    const buckets = getProjectBuckets(projectId);
-    buckets.forEach(bucket => {
-        html += `<div class="task-board-column" draggable="true" data-bucket="${bucket}"><h5>${bucket}</h5>`;
-        projectTasks.filter(t => (t.row[allTasks.headers.indexOf('Bucket')] || 'General') === bucket).forEach(task => {
-            html += renderTaskCard(task.row, task.subtasks);
-        });
-        html += `<button class="add-task-to-bucket-btn btn btn-secondary" data-bucket="${bucket}">+ Add Task</button></div>`;
-    });
-    return html + `</div>`;
-}
-function renderTaskItem(taskRow, subtasks) {
-    const [idIdx, nameIdx, statusIdx] = ['TaskID', 'Task Name', 'Status'].map(h => allTasks.headers.indexOf(h));
-    const isCompleted = taskRow[statusIdx] === 'Done';
-    let subtasksHtml = '';
-    if (subtasks.length > 0) {
-        subtasksHtml += '<ul class="subtask-list">';
-        subtasks.forEach((sub, i) => { subtasksHtml += `<li class="subtask-item"><input type="checkbox" data-task-id="${taskRow[idIdx]}" data-subtask-index="${i}" ${sub.completed ? 'checked' : ''}> ${sub.name}</li>`; });
-        subtasksHtml += '</ul>';
-        const completedCount = subtasks.filter(s => s.completed).length;
-        const progress = subtasks.length > 0 ? (completedCount / subtasks.length) * 100 : 0;
-        subtasksHtml += `<div class="task-progress" title="${completedCount}/${subtasks.length} complete"><div class="task-progress-bar" style="width:${progress}%"></div></div>`;
-    }
-    return `<div class="task-item" draggable="true" data-task-id="${taskRow[idIdx]}"><div class="task-main ${isCompleted ? 'completed' : ''}"><input type="checkbox" ${isCompleted ? 'checked' : ''}><label>${taskRow[nameIdx]}</label></div>${subtasksHtml}</div>`;
-}
-function renderTaskCard(taskRow, subtasks) {
-     const [idIdx, nameIdx] = ['TaskID', 'Task Name'].map(h => allTasks.headers.indexOf(h));
-     let subtaskSummary = '';
-     if (subtasks.length > 0) { const completedCount = subtasks.filter(s => s.completed).length; subtaskSummary = `<p class="subtask-summary">✓ ${completedCount}/${subtasks.length}</p>`; }
-    return `<div class="task-card" draggable="true" data-task-id="${taskRow[idIdx]}"><p>${taskRow[nameIdx]}</p>${subtaskSummary}</div>`;
-}
-export function showTaskModal(projectId, taskId = null, bucketName = null) {
-    const form = document.getElementById('task-details-form'); form.reset();
-    document.getElementById('task-project-id-input').value = projectId;
-    document.getElementById('task-modal-status').textContent = '';
-    let buckets = getProjectBuckets(projectId);
-    const bucketSelect = document.getElementById('task-bucket');
-    bucketSelect.innerHTML = '';
-    buckets.forEach(b => bucketSelect.add(new Option(b, b)));
-    if (taskId) {
-        document.getElementById('task-modal-title').textContent = 'Edit Task';
-        document.getElementById('task-id-input').value = taskId;
-        const task = allTasks.rows.find(t => t[allTasks.headers.indexOf('TaskID')] === taskId);
-        if(task) {
-            const { headers } = allTasks;
-            document.getElementById('task-title').value = task[headers.indexOf('Task Name')] || '';
-            document.getElementById('task-description').value = task[headers.indexOf('Description')] || '';
-            document.getElementById('task-due-date').value = task[headers.indexOf('Due Date')] || '';
-            document.getElementById('task-assignee').value = task[headers.indexOf('Assignee')] || '';
-            document.getElementById('task-status').value = task[headers.indexOf('Status')] || 'To Do';
-            bucketSelect.value = task[headers.indexOf('Bucket')] || 'General';
-            renderSubtasks(JSON.parse(task[headers.indexOf('Subtasks')] || '[]'));
-            renderLinks(JSON.parse(task[headers.indexOf('Links')] || '[]'));
-        }
-    } else {
-        document.getElementById('task-modal-title').textContent = 'New Task';
-        if (bucketName) bucketSelect.value = bucketName;
-        renderSubtasks([]); renderLinks([]);
-    }
-    document.getElementById('add-subtask-btn').onclick = () => {
-        const name = document.getElementById('new-subtask-name').value; if(!name) return;
-        const subtasks = JSON.parse(document.getElementById('subtasks-data').value);
-        subtasks.push({ name, completed: false });
-        renderSubtasks(subtasks);
-        document.getElementById('new-subtask-name').value = '';
-    };
-    document.getElementById('add-link-btn').onclick = () => {
-        const url = document.getElementById('new-link-url').value; if(!url) return;
-        const links = JSON.parse(document.getElementById('links-data').value);
-        links.push(url);
-        renderLinks(links);
-        document.getElementById('new-link-url').value = '';
-    };
-    elements.taskDetailsModal.style.display = 'block';
-}
-function renderSubtasks(subtasks) {
-    const container = document.getElementById('subtasks-container-modal');
-    container.innerHTML = `<input type="hidden" id="subtasks-data" value='${JSON.stringify(subtasks)}'>`;
-    subtasks.forEach((sub, i) => {
-        const item = document.createElement('div');
-        item.className = 'subtask-item';
-        item.setAttribute('draggable', true);
-        item.dataset.index = i;
-        item.innerHTML = `<input type="checkbox" ${sub.completed ? 'checked' : ''}> <label>${sub.name}</label> <button type="button" class="btn btn-subtle">&times;</button>`;
-        item.querySelector('input').onchange = (e) => updateSubtaskStatus(i, e.target.checked);
-        item.querySelector('button').onclick = () => removeSubtask(i);
-        item.ondragstart = (e) => e.dataTransfer.setData('text/subtask-index', i);
-        container.appendChild(item);
-    });
-    container.ondragover = (e) => e.preventDefault();
-    container.ondrop = (e) => {
-        e.preventDefault();
-        const fromIndex = parseInt(e.dataTransfer.getData('text/subtask-index'));
-        const target = e.target.closest('.subtask-item');
-        if (target) { const toIndex = parseInt(target.dataset.index); const subtasks = JSON.parse(document.getElementById('subtasks-data').value); const [moved] = subtasks.splice(fromIndex, 1); subtasks.splice(toIndex, 0, moved); renderSubtasks(subtasks); }
-    };
-}
-function updateSubtaskStatus(index, completed) { const subtasks = JSON.parse(document.getElementById('subtasks-data').value); subtasks[index].completed = completed; renderSubtasks(subtasks); }
-function removeSubtask(index) { const subtasks = JSON.parse(document.getElementById('subtasks-data').value); subtasks.splice(index, 1); renderSubtasks(subtasks); }
-function renderLinks(links) {
-    const container = document.getElementById('links-container');
-    container.innerHTML = `<input type="hidden" id="links-data" value='${JSON.stringify(links)}'>`;
-    links.forEach((link, i) => {
-        const linkEl = document.createElement('div');
-        linkEl.className = 'item-tag';
-        linkEl.innerHTML = `<a href="${link}" target="_blank">${link}</a> <button type="button" class="btn btn-subtle" data-index="${i}">&times;</button>`;
-        container.appendChild(linkEl);
-    });
-    container.querySelectorAll('.item-tag button').forEach(button => {
-        button.addEventListener('click', e => {
-            const indexToRemove = parseInt(e.currentTarget.dataset.index, 10);
-            const currentLinks = JSON.parse(document.getElementById('links-data').value);
-            currentLinks.splice(indexToRemove, 1);
-            renderLinks(currentLinks);
-        });
-    });
-}
-
