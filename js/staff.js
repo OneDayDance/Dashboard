@@ -2,7 +2,7 @@
 // Description: Contains all logic for the 'Staff' tab.
 
 import { state, allStaff, updateState } from './state.js';
-import { updateSheetRow, writeData, uploadImageToDrive } from './api.js';
+import { updateSheetRow, writeData, uploadImageToDrive, clearSheetRow } from './api.js';
 import { elements } from './ui.js';
 
 let refreshData;
@@ -102,9 +102,15 @@ function renderStaffAsCards() {
         
         const contentDiv = document.createElement('div');
         contentDiv.className = 'inventory-card-content';
+        
+        const skills = (row[skillsIndex] || '').split(',').map(s => s.trim()).filter(Boolean);
+        const skillChips = skills.map(skill => `<span class="skill-chip">${skill}</span>`).join('');
+
         contentDiv.innerHTML = `
             <h4>${row[nameIndex] || 'Unnamed Staff Member'}</h4>
-            <p><strong>Skills:</strong> ${row[skillsIndex] || 'N/A'}</p>
+            <div class="skill-chips-container">
+                ${skillChips || '<p>No skills listed.</p>'}
+            </div>
         `;
 
         card.appendChild(imageDiv);
@@ -163,15 +169,16 @@ function showStaffModal(rowData = null) {
     const imagePreviewContainer = document.getElementById('staff-image-preview-container');
     const imagePreview = document.getElementById('staff-image-preview');
     const imageUploadInput = document.getElementById('staff-image-upload');
+    const changePhotoButton = document.getElementById('staff-change-photo-btn');
+    const deleteButton = document.getElementById('delete-staff-btn');
     
-    // Reset UI
     imagePreview.src = '';
-    imagePreviewContainer.style.backgroundImage = 'none';
     imagePreview.style.display = 'none';
-    imageUploadInput.value = ''; // Clear file input
+    imageUploadInput.value = '';
     safeSetValue('staff-image-url', '');
 
-    imagePreviewContainer.onclick = () => imageUploadInput.click();
+    // The entire preview container now triggers the file input
+    changePhotoButton.onclick = () => imageUploadInput.click();
     imageUploadInput.onchange = (event) => {
         const file = event.target.files[0];
         if (file) {
@@ -179,6 +186,7 @@ function showStaffModal(rowData = null) {
             reader.onload = (e) => {
                 imagePreview.src = e.target.result;
                 imagePreview.style.display = 'block';
+                changePhotoButton.textContent = 'Change Photo';
             };
             reader.readAsDataURL(file);
         }
@@ -187,8 +195,9 @@ function showStaffModal(rowData = null) {
     if (rowData) {
         modal.querySelector('#staff-modal-title').textContent = 'Edit Staff';
         const { headers } = allStaff;
+        const staffId = rowData[headers.indexOf('StaffID')] || '';
         
-        safeSetValue('staff-id-input', rowData[headers.indexOf('StaffID')] || '');
+        safeSetValue('staff-id-input', staffId);
         safeSetValue('staff-name', rowData[headers.indexOf('Name')] || '');
         safeSetValue('staff-rate', rowData[headers.indexOf('Standard Rate')] || '');
         safeSetValue('staff-skills', rowData[headers.indexOf('Skills')] || '');
@@ -202,7 +211,14 @@ function showStaffModal(rowData = null) {
         if (fileId) {
             imagePreview.src = `https://drive.google.com/thumbnail?id=${fileId}&sz=w300`;
             imagePreview.style.display = 'block';
+            changePhotoButton.textContent = 'Change Photo';
+        } else {
+            changePhotoButton.textContent = 'Add Photo';
         }
+
+        deleteButton.style.display = 'block';
+        deleteButton.onclick = () => showDeleteStaffModal(staffId);
+
     } else {
         modal.querySelector('#staff-modal-title').textContent = 'Add New Staff';
         safeSetValue('staff-id-input', '');
@@ -211,6 +227,8 @@ function showStaffModal(rowData = null) {
         const month = String(today.getMonth() + 1).padStart(2, '0');
         const day = String(today.getDate()).padStart(2, '0');
         safeSetValue('staff-start-date', `${year}-${month}-${day}`);
+        changePhotoButton.textContent = 'Add Photo';
+        deleteButton.style.display = 'none';
     }
 
     modal.style.display = 'block';
@@ -260,3 +278,44 @@ async function handleFormSubmit(event) {
         console.error('Staff save error:', err);
     }
 }
+
+// --- DELETE STAFF ---
+
+function showDeleteStaffModal(staffId) {
+    const modal = elements.deleteStaffModal;
+    if (!modal) return;
+    modal.style.display = 'block';
+
+    const confirmInput = document.getElementById('delete-staff-confirm-input');
+    const confirmBtn = document.getElementById('delete-staff-confirm-btn');
+    
+    confirmInput.value = '';
+    confirmBtn.disabled = true;
+
+    confirmInput.oninput = () => {
+        confirmBtn.disabled = confirmInput.value !== 'Delete';
+    };
+
+    confirmBtn.onclick = () => handleDeleteStaff(staffId);
+}
+
+async function handleDeleteStaff(staffId) {
+    const statusSpan = document.getElementById('delete-staff-status');
+    statusSpan.textContent = 'Deleting...';
+    document.getElementById('delete-staff-confirm-btn').disabled = true;
+
+    try {
+        await clearSheetRow('Staff', 'StaffID', staffId);
+        await refreshData();
+        statusSpan.textContent = 'Staff member deleted.';
+        setTimeout(() => {
+            elements.deleteStaffModal.style.display = 'none';
+            elements.staffModal.style.display = 'none'; // Also close the edit modal
+        }, 1500);
+    } catch (err) {
+        statusSpan.textContent = 'Error deleting staff member.';
+        console.error('Delete staff error:', err);
+        document.getElementById('delete-staff-confirm-btn').disabled = false;
+    }
+}
+

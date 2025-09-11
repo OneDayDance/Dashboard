@@ -61,6 +61,7 @@ export function cacheDOMElements() {
     elements.taskDetailsModal = document.getElementById('task-details-modal');
     elements.deleteClientModal = document.getElementById('delete-client-modal');
     elements.deleteProjectModal = document.getElementById('delete-project-modal');
+    elements.deleteStaffModal = document.getElementById('delete-staff-modal');
     elements.clientColumnModal = document.getElementById('client-column-modal');
     elements.gdriveLinkModal = document.getElementById('gdrive-link-modal');
     elements.addClientModal = document.getElementById('add-client-modal');
@@ -213,3 +214,4 @@ export function showMainError(message) {
 export function loadDataForActiveTab() {
     console.warn("loadDataForActiveTab() is deprecated and should be removed from imports.");
 }
+

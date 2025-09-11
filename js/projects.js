@@ -541,13 +541,15 @@ function renderAssignedStaffSection(project, headers) {
                 const thumbHtml = fileId 
                     ? `<img src="https://drive.google.com/thumbnail?id=${fileId}&sz=w100" alt="${staffMember[nameIndex]}">`
                     : `<span>No Photo</span>`;
+                
+                const rolesHtml = (assignment.roles || []).map(role => `<span class="skill-chip">${role}</span>`).join('');
 
                 itemsHtml += `
                     <div class="assigned-staff-card">
                         <div class="assigned-staff-thumb">${thumbHtml}</div>
                         <div class="assigned-staff-details">
                             <p>${staffMember[nameIndex]}</p>
-                            <span>${assignment.role || 'No role assigned'}</span>
+                            <div class="skill-chips-container">${rolesHtml || 'No role assigned'}</div>
                         </div>
                     </div>
                 `;
@@ -577,7 +579,10 @@ function showAssignStaffModal(projectId) {
     const assignedStaffJSON = project[allProjects.headers.indexOf('Assigned Staff')] || '[]';
     let currentlyAssigned = [];
     try {
-        currentlyAssigned = JSON.parse(assignedStaffJSON);
+        currentlyAssigned = JSON.parse(assignedStaffJSON).map(staff => ({
+            ...staff,
+            roles: Array.isArray(staff.roles) ? staff.roles : (staff.role ? [staff.role] : [])
+        }));
     } catch (e) {}
 
     const searchInput = elements.staffSearchInput;
@@ -598,7 +603,7 @@ function showAssignStaffModal(projectId) {
         localSelected.forEach(assignment => {
             const item = allStaff.rows.find(row => row[idIndex] === assignment.id);
             if (item) {
-                selectedContainer.appendChild(createStaffItemElement(item, idIndex, nameIndex, imageIndex, true, assignment.role));
+                selectedContainer.appendChild(createStaffItemElement(item, idIndex, nameIndex, imageIndex, true, assignment.roles));
             }
         });
         
@@ -614,7 +619,7 @@ function showAssignStaffModal(projectId) {
         });
     };
 
-    const createStaffItemElement = (item, idIndex, nameIndex, imageIndex, isSelected, role = '') => {
+    const createStaffItemElement = (item, idIndex, nameIndex, imageIndex, isSelected, roles = []) => {
         const element = document.createElement('div');
         const itemId = item[idIndex];
         element.className = isSelected ? 'selected-staff-item' : 'staff-search-item';
@@ -629,23 +634,28 @@ function showAssignStaffModal(projectId) {
             ? `<img src="https://drive.google.com/thumbnail?id=${fileId}&sz=w100" alt="${item[nameIndex]}">`
             : '';
         
-        const roleInput = isSelected 
-            ? `<input type="text" class="staff-role-input" placeholder="Role..." value="${role}" data-staff-id="${itemId}">`
-            : '';
+        let rolesHtml = '';
+        if (isSelected) {
+            rolesHtml = '<div class="staff-role-input-container">';
+            roles.forEach((role, i) => {
+                rolesHtml += `<div class="role-entry"><input type="text" class="staff-role-input" placeholder="Role..." value="${role}" data-staff-id="${itemId}" data-index="${i}"><button type="button" class="btn btn-danger btn-small remove-role-btn" data-index="${i}">&times;</button></div>`;
+            });
+            rolesHtml += '<button type="button" class="btn btn-secondary btn-small add-role-btn">+ Role</button></div>';
+        }
 
         element.innerHTML = `
             <div class="staff-item-thumb">${thumbHtml}</div>
             <div class="staff-item-details">
                 <p>${item[nameIndex]}</p>
                 <span>${itemId}</span>
-                ${roleInput}
+                ${rolesHtml}
             </div>
         `;
         
         if (!isSelected) {
             element.onclick = () => {
                 if (!localSelected.some(s => s.id === itemId)) {
-                    localSelected.push({ id: itemId, role: '' });
+                    localSelected.push({ id: itemId, roles: [''] });
                     render();
                 }
             };
@@ -658,6 +668,20 @@ function showAssignStaffModal(projectId) {
                 render();
              };
              element.appendChild(removeButton);
+
+             element.querySelector('.add-role-btn').onclick = () => {
+                 const assignment = localSelected.find(s => s.id === itemId);
+                 assignment.roles.push('');
+                 render();
+             };
+
+             element.querySelectorAll('.remove-role-btn').forEach(btn => {
+                 btn.onclick = () => {
+                     const assignment = localSelected.find(s => s.id === itemId);
+                     assignment.roles.splice(btn.dataset.index, 1);
+                     render();
+                 };
+             });
         }
 
         return element;
@@ -665,12 +689,17 @@ function showAssignStaffModal(projectId) {
 
     searchInput.oninput = render;
     elements.saveAssignedStaffBtn.onclick = async () => {
-        // First, update roles from input fields
-        selectedContainer.querySelectorAll('.staff-role-input').forEach(input => {
-            const staffId = input.dataset.staffId;
+        // Update roles from input fields before saving
+        selectedContainer.querySelectorAll('.selected-staff-item').forEach(item => {
+            const staffId = item.dataset.staffId;
             const assignment = localSelected.find(s => s.id === staffId);
             if (assignment) {
-                assignment.role = input.value;
+                const roles = [];
+                item.querySelectorAll('.staff-role-input').forEach(input => {
+                    const roleValue = input.value.trim();
+                    if (roleValue) roles.push(roleValue);
+                });
+                assignment.roles = roles;
             }
         });
 

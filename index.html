@@ -606,6 +606,25 @@
             </div>
         </div>
     </div>
+    <div id="delete-staff-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Confirm Staff Deletion</h2>
+                <span class="close-button">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="warning-box">
+                    <p><strong>Warning:</strong> This action is permanent and cannot be undone. This will remove the staff member from the system.</p>
+                </div>
+                <p>To proceed, please type "Delete" in the box below.</p>
+                <input type="text" id="delete-staff-confirm-input" placeholder="Type Delete to confirm">
+            </div>
+            <div class="modal-footer">
+                <button id="delete-staff-confirm-btn" class="btn btn-danger" disabled>Delete Staff Member</button>
+                <span id="delete-staff-status"></span>
+            </div>
+        </div>
+    </div>
 
     <!-- Column Selector Modals (Standardized) -->
     <div id="column-modal" class="modal">
@@ -815,6 +834,7 @@
                                 <span>Click to upload photo</span>
                              </div>
                         </div>
+                        <button type="button" id="staff-change-photo-btn" class="btn btn-secondary">Add Photo</button>
                         <input type="file" id="staff-image-upload" accept="image/*" style="display: none;">
                         <input type="hidden" id="staff-image-url">
                     </div>
@@ -843,8 +863,9 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Save Staff</button>
+                    <button type="button" id="delete-staff-btn" class="btn btn-danger" style="display: none;">Delete Staff</button>
                     <span id="staff-modal-status"></span>
+                    <button type="submit" class="btn btn-primary">Save Staff</button>
                 </div>
             </form>
         </div>
