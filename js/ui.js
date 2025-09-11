@@ -48,6 +48,11 @@ export function cacheDOMElements() {
     elements.equipmentStatusFilter = document.getElementById('equipment-status-filter');
     elements.equipmentCategoryFilter = document.getElementById('equipment-category-filter');
 
+    // Staff Tab
+    elements.staffAddBtn = document.getElementById('add-staff-btn');
+    elements.staffSearchBar = document.getElementById('staff-search-bar');
+    elements.staffSkillsFilter = document.getElementById('staff-skills-filter');
+
     // Modals
     elements.detailsModal = document.getElementById('details-modal');
     elements.columnModal = document.getElementById('column-modal');
@@ -61,19 +66,25 @@ export function cacheDOMElements() {
     elements.addClientModal = document.getElementById('add-client-modal');
     elements.costumeModal = document.getElementById('costume-modal');
     elements.equipmentModal = document.getElementById('equipment-modal');
+    elements.staffModal = document.getElementById('staff-modal');
     elements.assignEquipmentModal = document.getElementById('assign-equipment-modal');
+    elements.assignStaffModal = document.getElementById('assign-staff-modal');
 
     // Modal Forms & Inputs
     elements.addClientForm = document.getElementById('add-client-form');
     elements.costumeModalForm = document.getElementById('costume-modal-form');
-    elements.costumeImageUpload = document.getElementById('costume-image-upload');
     elements.equipmentModalForm = document.getElementById('equipment-modal-form');
-    elements.equipmentImageUpload = document.getElementById('equipment-image-upload');
+    elements.staffModalForm = document.getElementById('staff-modal-form');
+
     elements.equipmentSearchInput = document.getElementById('equipment-search-input');
     elements.equipmentSearchResults = document.getElementById('equipment-search-results');
     elements.selectedEquipmentList = document.getElementById('selected-equipment-list');
     elements.saveAssignedEquipmentBtn = document.getElementById('save-assigned-equipment-btn');
 
+    elements.staffSearchInput = document.getElementById('staff-search-input');
+    elements.staffSearchResults = document.getElementById('staff-search-results');
+    elements.selectedStaffList = document.getElementById('selected-staff-list');
+    elements.saveAssignedStaffBtn = document.getElementById('save-assigned-staff-btn');
 }
 
 /**
@@ -202,4 +213,3 @@ export function showMainError(message) {
 export function loadDataForActiveTab() {
     console.warn("loadDataForActiveTab() is deprecated and should be removed from imports.");
 }
-

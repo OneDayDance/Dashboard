@@ -2,7 +2,7 @@
 // Description: Handles all interactions with the Google Sheets API and Google Drive API.
 
 import { SPREADSHEET_ID } from './config.js';
-import { setAllRequests, setAllClients, setAllProjects, setAllTasks, setAllCostumes, setAllEquipment } from './state.js';
+import { setAllRequests, setAllClients, setAllProjects, setAllTasks, setAllCostumes, setAllEquipment, setAllStaff } from './state.js';
 
 // --- GOOGLE SHEETS API ---
 
@@ -55,6 +55,7 @@ export const loadProjects = () => fetchData('Projects', setAllProjects);
 export const loadTasks = () => fetchData('Tasks', setAllTasks);
 export const loadCostumes = () => fetchData('Costumes', setAllCostumes);
 export const loadEquipment = () => fetchData('Equipment', setAllEquipment);
+export const loadStaff = () => fetchData('Staff', setAllStaff);
 
 /**
  * Finds a row by a unique ID and updates specified columns.
@@ -305,4 +306,3 @@ function columnToLetter(column) {
     }
     return letter;
 }
-

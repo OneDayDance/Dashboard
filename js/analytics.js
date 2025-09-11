@@ -1,7 +1,7 @@
 // js/analytics.js
 // Description: Handles all logic for the Analytics tab, including KPIs and charts.
 
-import { allProjects, allRequests, allClients, allCostumes, allEquipment } from './state.js';
+import { allProjects, allRequests, allClients, allCostumes, allEquipment, allStaff } from './state.js';
 
 // This object holds the actual Chart.js instances.
 let charts = {
@@ -44,7 +44,8 @@ function setupKpiCardLinks() {
         'kpi-card-projects': 'projects',
         'kpi-card-clients': 'clients',
         'kpi-card-costumes': 'costumes',
-        'kpi-card-equipment': 'equipment'
+        'kpi-card-equipment': 'equipment',
+        'kpi-card-staff': 'staff'
     };
 
     for (const [cardId, tabId] of Object.entries(kpiLinks)) {
@@ -120,6 +121,11 @@ function renderKpis() {
     // KPI 6: Total Equipment
     if (allEquipment?.rows) {
         document.getElementById('kpi-total-equipment').textContent = allEquipment.rows.length;
+    }
+
+    // KPI 7: Total Staff
+    if (allStaff?.rows) {
+        document.getElementById('kpi-total-staff').textContent = allStaff.rows.length;
     }
 }
 
@@ -459,4 +465,3 @@ function renderEquipmentStatusChart() {
         }
     });
 }
-

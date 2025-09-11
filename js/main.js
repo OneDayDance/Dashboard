@@ -2,7 +2,7 @@
 // Description: The main entry point for the application. Handles initialization, authentication, and orchestrates the different modules.
 
 import { CLIENT_ID, SCOPES } from './config.js';
-import { loadRequests, loadClients, loadProjects, loadTasks, loadCostumes, loadEquipment } from './api.js';
+import { loadRequests, loadClients, loadProjects, loadTasks, loadCostumes, loadEquipment, loadStaff } from './api.js';
 import { 
     elements, 
     cacheDOMElements, 
@@ -17,6 +17,7 @@ import { initClientsTab, renderClients } from './clients.js';
 import { initProjectsTab, renderProjectsTab } from './projects.js';
 import { initCostumesTab, renderCostumes } from './costumes.js';
 import { initEquipmentTab, renderEquipment } from './equipment.js';
+import { initStaffTab, renderStaff } from './staff.js';
 import { renderAnalytics } from './analytics.js';
 
 
@@ -65,6 +66,9 @@ function renderContentForActiveTab() {
         case 'equipment':
             renderEquipment();
             break;
+        case 'staff':
+            renderStaff();
+            break;
         default:
             console.warn(`No render function found for tab: ${activeTab}`);
     }
@@ -80,6 +84,7 @@ function initializeAppUI() {
     initProjectsTab(loadInitialData);
     initCostumesTab(loadInitialData);
     initEquipmentTab(loadInitialData);
+    initStaffTab(loadInitialData);
 }
 
 
@@ -227,7 +232,8 @@ async function loadInitialData() {
             loadProjects(), 
             loadTasks(),
             loadCostumes(),
-            loadEquipment()
+            loadEquipment(),
+            loadStaff()
         ]);
         console.log("All application data refreshed.");
         renderContentForActiveTab(); // Use the new central function to refresh the current view
@@ -261,4 +267,3 @@ function handleSignoutClick() {
         silentAuthAttempted = false; 
     }
 }
-
