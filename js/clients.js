@@ -1,7 +1,7 @@
 // js/clients.js
 // Description: This file contains all the functions for managing clients in the dashboard.
 
-import { SPREADSHEET_ID, API_KEY } from './config.js';
+import { SPREADSHEET_ID } from './config.js';
 import { getSheetData, getClientById, updateClientData, deleteClientById, createSheet, addClientToSheet } from './api.js';
 import { showModal, hideModal, createTable, createCard, clearContainer, formatDate, sanitizeHTML } from './utils.js';
 import { appState } from './state.js';
