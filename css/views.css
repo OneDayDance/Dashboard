@@ -61,7 +61,7 @@
     column-count: 5; /* Increased column count for smaller cards */
     column-gap: 20px;
 }
-.info-card { 
+.info-card {
     border: 1px solid #ddd;
     border-radius: 8px;
     background-color: #fff;
@@ -69,13 +69,13 @@
     transition: all 0.2s ease-in-out;
     margin-bottom: 20px; /* Space between rows */
     break-inside: avoid;
-    padding: 15px; 
-    box-sizing: border-box; 
+    padding: 15px;
+    box-sizing: border-box;
 }
-.info-card:hover { 
-    border-color: #FF9D76; 
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
-    transform: scale(1.02); 
+.info-card:hover {
+    border-color: #FF9D76;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transform: scale(1.02);
 }
 .info-card h3 { margin-top: 0; }
 .info-card p { margin: 5px 0; color: #555; font-size: 14px; }
@@ -115,12 +115,12 @@
 }
 
 .analytics-main-chart {
-    flex: 2; 
+    flex: 2;
     min-width: 0;
 }
 
 .analytics-activity-feed {
-    flex: 1; 
+    flex: 1;
     min-width: 0;
 }
 
@@ -137,26 +137,29 @@
     }
 }
 
-.chart-container { 
-    display: flex; 
+.chart-container {
+    display: flex;
     flex-direction: column;
-    max-height: 450px; /* THE FIX: Constrain all chart containers */
+    max-height: 450px; /* Constrain all chart containers */
 }
-.chart-container h3 { 
-    margin: 0 0 15px 0; 
-    text-align: center; 
+.chart-container h3 {
+    margin: 0 0 15px 0;
+    text-align: center;
     flex-shrink: 0; /* Prevent header from shrinking */
 }
-.chart-container canvas { 
-    flex-grow: 1;
-    min-height: 0;
+
+/* FIX: Apply flex properties to both canvas and the activity feed to constrain their height */
+.chart-container canvas,
+.chart-container #activity-feed {
+    flex-grow: 1; /* Allows the element to grow to fill available space inside the flex container */
+    min-height: 0; /* CRITICAL: Allows the element to shrink below its intrinsic content size, enabling the parent's max-height to work */
 }
 
-#activity-feed { 
-    list-style: none; 
-    padding: 0; 
-    margin: 0; 
-    overflow-y: auto; /* This will now work correctly */
+#activity-feed {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    overflow-y: auto; /* Enables scrolling when content overflows the container's new, constrained height */
 }
 /* END: Definitive Analytics Layout Fix */
 
@@ -465,4 +468,3 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 .form-field.full-width {
     grid-column: 1 / -1;
 }
-
