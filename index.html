@@ -75,69 +75,73 @@
                 <h2>Dashboard Analytics</h2>
             </div>
             <div class="analytics-grid kpi-grid">
-                <div class="kpi-card info-card" id="kpi-revenue-card">
+                <div class="kpi-card info-card">
                     <h3>Total Revenue (YTD)</h3>
                     <p id="kpi-total-revenue">$0</p>
                     <span class="kpi-icon">&#128176;</span>
                 </div>
-                <div class="kpi-card info-card" id="kpi-projects-card">
+                <div id="kpi-card-projects" class="kpi-card info-card">
                     <h3>Active Projects</h3>
                     <p id="kpi-active-projects">0</p>
                      <span class="kpi-icon">&#128188;</span>
                 </div>
-                 <div class="kpi-card info-card" id="kpi-clients-card">
+                 <div id="kpi-card-clients" class="kpi-card info-card">
                     <h3>Total Clients</h3>
                     <p id="kpi-total-clients">0</p>
                      <span class="kpi-icon">&#128100;</span>
                 </div>
-                <div class="kpi-card info-card" id="kpi-requests-card">
+                <div class="kpi-card info-card">
                     <h3>Pending Requests</h3>
                     <p id="kpi-pending-requests">0</p>
                      <span class="kpi-icon">&#128221;</span>
                 </div>
-                 <div class="kpi-card info-card" id="kpi-costumes-card">
+                <div id="kpi-card-costumes" class="kpi-card info-card">
                     <h3>Total Costumes</h3>
                     <p id="kpi-total-costumes">0</p>
-                     <span class="kpi-icon">&#128111;</span>
+                    <span class="kpi-icon">&#128111;</span>
                 </div>
-                 <div class="kpi-card info-card" id="kpi-equipment-card">
+                <div id="kpi-card-equipment" class="kpi-card info-card">
                     <h3>Total Equipment</h3>
                     <p id="kpi-total-equipment">0</p>
-                     <span class="kpi-icon">&#128295;</span>
+                    <span class="kpi-icon">&#128295;</span>
                 </div>
             </div>
-            <div class="analytics-layout">
-                <div class="chart-container info-card analytics-main-chart">
-                    <h3>Revenue Over Time</h3>
-                    <canvas id="revenue-chart"></canvas>
+            
+            <!-- START: New Flexbox Layout for Charts -->
+            <div class="analytics-container">
+                <div class="analytics-row-top">
+                    <div class="info-card chart-container analytics-main-chart">
+                        <h3>Revenue Over Time</h3>
+                        <canvas id="revenue-chart"></canvas>
+                    </div>
+                    <div class="info-card chart-container analytics-activity-feed" id="activity-feed-container">
+                        <h3>Recent Activity</h3>
+                        <ul id="activity-feed">
+                            <li>Loading activity...</li>
+                        </ul>
+                    </div>
                 </div>
-                <div id="activity-feed-container" class="chart-container info-card analytics-activity-feed">
-                    <h3>Recent Activity</h3>
-                    <ul id="activity-feed">
-                        <li>Loading activity...</li>
-                    </ul>
-                </div>
-                <div class="chart-container info-card analytics-secondary-chart">
-                    <h3>Service Request Breakdown</h3>
-                    <canvas id="services-chart"></canvas>
-                </div>
-                <div class="chart-container info-card analytics-secondary-chart">
-                    <h3>Project Status Distribution</h3>
-                    <canvas id="projects-chart"></canvas>
-                </div>
-                 <div class="chart-container info-card analytics-secondary-chart">
-                    <h3>Lead Source Breakdown</h3>
-                    <canvas id="lead-source-chart"></canvas>
-                </div>
-                 <div class="chart-container info-card analytics-secondary-chart">
-                    <h3>Costume Inventory by Category</h3>
-                    <canvas id="costume-category-chart"></canvas>
-                </div>
-                <div class="chart-container info-card analytics-secondary-chart">
-                    <h3>Equipment Status</h3>
-                    <canvas id="equipment-status-chart"></canvas>
+                <div class="analytics-row-bottom">
+                    <div class="info-card chart-container">
+                        <h3>Service Request Breakdown</h3>
+                        <canvas id="services-chart"></canvas>
+                    </div>
+                    <div class="info-card chart-container">
+                        <h3>Lead Source Breakdown</h3>
+                        <canvas id="lead-source-chart"></canvas>
+                    </div>
+                    <div class="info-card chart-container">
+                        <h3>Costume Categories</h3>
+                        <canvas id="costume-category-chart"></canvas>
+                    </div>
+                    <div class="info-card chart-container">
+                        <h3>Equipment Status</h3>
+                        <canvas id="equipment-status-chart"></canvas>
+                    </div>
                 </div>
             </div>
+            <!-- END: New Flexbox Layout for Charts -->
+
         </main>
         
         <main id="tab-clients" class="tab-content" style="display: none;">
@@ -488,26 +492,27 @@
             </form>
         </div>
     </div>
-    
+
     <!-- Assign Equipment Modal -->
     <div id="assign-equipment-modal" class="modal">
         <div class="modal-content large">
-            <div class="modal-header">
+             <div class="modal-header">
                 <h2>Assign Equipment to Project</h2>
                 <span class="close-button">&times;</span>
             </div>
             <div class="modal-body assign-equipment-body">
                 <div class="equipment-selection-pane">
+                    <h3>Available Equipment</h3>
                     <input type="text" id="assign-equipment-search" placeholder="Search equipment...">
                     <div id="assign-equipment-list" class="equipment-list"></div>
                 </div>
                 <div class="equipment-selected-pane">
-                    <h3>Selected Equipment</h3>
-                    <div id="selected-equipment-list" class="equipment-list"></div>
+                    <h3>Assigned to Project</h3>
+                    <div id="assigned-equipment-list" class="equipment-list"></div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button id="save-assigned-equipment-btn" class="btn btn-primary">Save Assignments</button>
+                <button id="assign-equipment-save-btn" class="btn btn-primary">Save Changes</button>
                 <span id="assign-equipment-status"></span>
             </div>
         </div>
@@ -596,7 +601,7 @@
                 <div class="modal-body inventory-modal-body-grid">
                     <div class="inventory-image-upload-container">
                         <div id="costume-image-preview" class="image-upload-preview">
-                            <span>No Image</span>
+                            <span>Click to upload image</span>
                         </div>
                         <button type="button" id="costume-image-upload-btn" class="btn btn-secondary">Change Image</button>
                         <input type="file" id="costume-image-upload" accept="image/*" style="display: none;">
@@ -683,7 +688,7 @@
                 <div class="modal-body inventory-modal-body-grid">
                      <div class="inventory-image-upload-container">
                         <div id="equipment-image-preview" class="image-upload-preview">
-                             <span>No Image</span>
+                             <span>Click to upload image</span>
                         </div>
                         <button type="button" id="equipment-image-upload-btn" class="btn btn-secondary">Change Image</button>
                         <input type="file" id="equipment-image-upload" accept="image/*" style="display: none;">
@@ -751,3 +756,4 @@
     <script type="module" src="js/main.js"></script>
 </body>
 </html>
+
