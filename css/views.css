@@ -115,6 +115,7 @@
 .analytics-activity-feed {
     grid-column: 3 / 4;
     grid-row: 1 / 3;
+    overflow: hidden; /* THE FIX: Prevents this grid item from growing beyond its boundaries */
 }
 .analytics-secondary-chart {
     grid-column: auto;
@@ -161,7 +162,7 @@
     list-style: none; padding: 0; margin: 0; 
     overflow-y: auto; /* Enable scrolling */
     flex-grow: 1; /* Allow it to fill the container height */
-    min-height: 0; /* THE FIX: Allows the container to shrink and the scrollbar to appear */
+    min-height: 0; 
 }
 #activity-feed li { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
 #activity-feed li:last-child { border-bottom: none; }
