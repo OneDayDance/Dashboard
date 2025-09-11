@@ -11,7 +11,6 @@ import {
     showModal, hideModal, updateStatus,
     openClientDetailsFromId
 } from './ui.js';
-import { gapi } from './main.js';
 
 let activeDragTask = null;
 let activeDragBucket = null;
