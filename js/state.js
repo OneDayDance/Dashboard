@@ -29,6 +29,8 @@ export let state = {
     costumeFilters: { searchTerm: '', status: 'all', category: 'all' },
     // equipment tab state
     equipmentFilters: { searchTerm: '', status: 'all', category: 'all' },
+    // staff tab state
+    staffFilters: { searchTerm: '', skill: '' },
 };
 
 // Data stores for spreadsheet content
@@ -38,6 +40,7 @@ export let allProjects = { headers: [], rows: [] };
 export let allTasks = { headers: [], rows: [] };
 export let allCostumes = { headers: [], rows: [] };
 export let allEquipment = { headers: [], rows: [] };
+export let allStaff = { headers: [], rows: [] };
 
 // --- STATE SETTERS ---
 export function setAllRequests(data) { allRequests = data; }
@@ -46,6 +49,7 @@ export function setAllProjects(data) { allProjects = data; }
 export function setAllTasks(data) { allTasks = data; }
 export function setAllCostumes(data) { allCostumes = data; }
 export function setAllEquipment(data) { allEquipment = data; }
+export function setAllStaff(data) { allStaff = data; }
 
 // --- STATE UPDATERS ---
 export function updateState(newState) {
@@ -67,4 +71,3 @@ export function updateCostumeFilters(key, value) {
 export function updateEquipmentFilters(key, value) {
     state.equipmentFilters[key] = value;
 }
-
