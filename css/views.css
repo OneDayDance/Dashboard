@@ -278,47 +278,53 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 .project-details-section .add-task-to-bucket-btn { display: block; margin: 10px auto; width: fit-content; opacity: 0.5; transition: opacity 0.2s ease-in-out; }
 .task-bucket:hover .add-task-to-bucket-btn, .task-board-column:hover .add-task-to-bucket-btn { opacity: 1; }
 
-/* Assigned Equipment Section */
-.assigned-equipment-card {
+/* Assigned Equipment/Staff Section */
+#assigned-staff-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 15px;
+}
+.assigned-equipment-card, .assigned-staff-card {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 15px;
     background-color: #f8f9fa;
-    border-radius: 6px;
-    padding: 8px;
-    margin-bottom: 8px;
+    border-radius: 8px;
+    padding: 12px;
     border: 1px solid #eee;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
-.assigned-equipment-thumb {
-    width: 50px;
-    height: 50px;
+.assigned-equipment-thumb, .assigned-staff-thumb {
+    width: 60px;
+    height: 60px;
     flex-shrink: 0;
-    border-radius: 4px;
+    border-radius: 50%;
     background-color: #e9ecef;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 10px;
     color: #6c757d;
+    overflow: hidden;
 }
-.assigned-equipment-thumb img {
+.assigned-equipment-thumb img, .assigned-staff-thumb img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    border-radius: 4px;
 }
-.assigned-equipment-details {
+.assigned-equipment-details, .assigned-staff-details {
     flex-grow: 1;
 }
-.assigned-equipment-details p {
+.assigned-equipment-details p, .assigned-staff-details p {
     margin: 0;
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 500;
 }
-.assigned-equipment-details span {
-    font-size: 12px;
+.assigned-equipment-details span, .assigned-staff-details span {
+    font-size: 14px;
     color: #6c757d;
 }
+
 
 /* Item Tags (used in modals) */
 .item-tag a { color: #FF9D76; }
@@ -333,31 +339,33 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 #task-details-modal .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 #task-details-modal .add-item-form .btn { flex-shrink: 0; } /* Prevent add button from shrinking */
 
-/* --- Assign Equipment Modal --- */
-.assign-equipment-body {
+/* --- Assign Modals (Equipment & Staff) --- */
+.assign-equipment-body, .assign-staff-body {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 20px;
     min-height: 50vh;
 }
-.equipment-selection-pane, .equipment-selected-pane {
+.equipment-selection-pane, .equipment-selected-pane,
+.staff-selection-pane, .staff-selected-pane {
     display: flex;
     flex-direction: column;
     gap: 10px;
 }
-.equipment-selected-pane {
+.equipment-selected-pane, .staff-selected-pane {
     background-color: #f8f9fa;
     padding: 10px;
     border-radius: 8px;
 }
-.equipment-list {
+.equipment-list, .staff-list {
     flex-grow: 1;
     overflow-y: auto;
     border: 1px solid #ddd;
     border-radius: 6px;
     padding: 5px;
 }
-.equipment-search-item, .selected-equipment-item {
+.equipment-search-item, .selected-equipment-item,
+.staff-search-item, .selected-staff-item {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -366,40 +374,54 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
     cursor: pointer;
     transition: background-color 0.2s;
 }
-.equipment-search-item:hover {
+.equipment-search-item:hover, .staff-search-item:hover {
     background-color: #e9ecef;
 }
-.equipment-search-item.selected {
+.equipment-search-item.selected, .staff-search-item.selected {
     background-color: #d4f4ff;
     opacity: 0.6;
     cursor: not-allowed;
 }
-.selected-equipment-item {
+.selected-equipment-item, .selected-staff-item {
     background-color: #fff;
     border: 1px solid #eee;
     margin-bottom: 5px;
+    cursor: default;
 }
-.equipment-item-thumb {
+.equipment-item-thumb, .staff-item-thumb {
     width: 40px;
     height: 40px;
     flex-shrink: 0;
-    border-radius: 4px;
+    border-radius: 50%;
     background-color: #e9ecef;
+    overflow: hidden;
 }
-.equipment-item-thumb img {
+.equipment-item-thumb img, .staff-item-thumb img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    border-radius: 4px;
 }
-.equipment-item-details p {
+.equipment-item-details, .staff-item-details {
+    flex-grow: 1;
+}
+.equipment-item-details p, .staff-item-details p {
     margin: 0;
     font-weight: 500;
 }
-.equipment-item-details span {
+.equipment-item-details span, .staff-item-details span {
     font-size: 0.8em;
     color: #6c757d;
 }
+.staff-role-input {
+    margin-top: 5px;
+    font-size: 12px;
+    padding: 4px 6px;
+}
+.selected-staff-item .btn-small {
+    padding: 2px 6px;
+    font-size: 12px;
+}
+
 
 /* --- Inventory Styles --- */
 .inventory-card {
@@ -430,13 +452,13 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
     padding: 15px;
     flex-grow: 1;
 }
-.inventory-modal-body-grid {
+.inventory-modal-body-grid, .staff-modal-body-grid {
     display: grid;
     grid-template-columns: 200px 1fr;
-    gap: 20px;
+    gap: 30px;
     align-items: start;
 }
-.inventory-image-upload-container {
+.inventory-image-upload-container, .staff-image-upload-container {
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -454,11 +476,33 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
     color: #888;
     background-color: #f8f9fa;
     overflow: hidden; /* Ensure image fits */
+    position: relative;
+    cursor: pointer;
+}
+.image-upload-preview.staff-image {
+    border-radius: 50%;
 }
 .image-upload-preview img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+}
+.image-placeholder-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0,0,0,0.3);
+    color: white;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+.image-upload-preview:hover .image-placeholder-overlay {
+    opacity: 1;
+}
+#staff-image-preview:not([src=""]) + #staff-image-placeholder {
+    opacity: 0;
 }
 .inventory-form-fields {
     display: grid;
@@ -468,3 +512,4 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 .form-field.full-width {
     grid-column: 1 / -1;
 }
+

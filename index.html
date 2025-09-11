@@ -807,11 +807,13 @@
                 <span class="close-button">&times;</span>
             </div>
             <form id="staff-modal-form">
-                <div class="modal-body inventory-modal-body-grid">
-                     <div class="inventory-image-upload-container">
-                        <div class="image-upload-preview" id="staff-image-preview-container">
+                <div class="modal-body staff-modal-body-grid">
+                     <div class="staff-image-upload-container">
+                        <div class="image-upload-preview staff-image" id="staff-image-preview-container">
                              <img id="staff-image-preview" src="" alt="Staff Preview" style="display: none;">
-                             <span id="staff-image-placeholder">Click to upload image</span>
+                             <div id="staff-image-placeholder" class="image-placeholder-overlay">
+                                <span>Click to upload photo</span>
+                             </div>
                         </div>
                         <input type="file" id="staff-image-upload" accept="image/*" style="display: none;">
                         <input type="hidden" id="staff-image-url">
@@ -853,3 +855,4 @@
     <script type="module" src="js/main.js"></script>
 </body>
 </html>
+

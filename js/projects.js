@@ -540,14 +540,14 @@ function renderAssignedStaffSection(project, headers) {
                 const fileId = extractFileIdFromUrl(staffMember[imageIndex] || '');
                 const thumbHtml = fileId 
                     ? `<img src="https://drive.google.com/thumbnail?id=${fileId}&sz=w100" alt="${staffMember[nameIndex]}">`
-                    : `<span>No Image</span>`;
+                    : `<span>No Photo</span>`;
 
                 itemsHtml += `
                     <div class="assigned-staff-card">
                         <div class="assigned-staff-thumb">${thumbHtml}</div>
                         <div class="assigned-staff-details">
                             <p>${staffMember[nameIndex]}</p>
-                            <span>Role: ${assignment.role || 'N/A'}</span>
+                            <span>${assignment.role || 'No role assigned'}</span>
                         </div>
                     </div>
                 `;
@@ -1205,3 +1205,4 @@ function renderLinks(links) {
         });
     });
 }
+
