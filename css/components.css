@@ -196,17 +196,21 @@
 
 @media (max-width: 768px) {
     .tabs-container {
-        padding: 5px 0 0;
+        padding: 5px 10px 0;
     }
     .tab-nav {
-        justify-content: flex-start;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+        flex-wrap: wrap; /* Allow tabs to wrap */
+        justify-content: center; /* Center the wrapped tabs */
+        border-bottom: none; /* Remove the bottom border for a cleaner look */
     }
     .tab-button {
         padding: 8px 12px;
         font-size: 14px;
-        flex-shrink: 0; /* Prevent tabs from shrinking */
+        flex-grow: 1; /* Allow tabs to grow and fill space */
+        border-bottom: 2px solid #ccc; /* Give each tab its own border */
+    }
+    .tab-button.active {
+        border-bottom-color: #76F1FF;
     }
 
     .modal-content {
@@ -231,3 +235,4 @@
         white-space: nowrap;
     }
 }
+

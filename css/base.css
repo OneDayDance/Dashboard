@@ -75,11 +75,6 @@ header {
 
 main { padding: 20px; }
 
-#auth-container {
-    /* No longer needs absolute positioning */
-}
-
-
 /* --- Modernized Form Fields --- */
 input[type="text"],
 input[type="email"],
