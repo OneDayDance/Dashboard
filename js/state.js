@@ -454,3 +454,4 @@ export async function removeAssignedStaffFromProject(projectId, staffAssignment)
     const newValue = JSON.stringify(newAssigned);
     return updateProjectData(projectId, 'Assigned Staff', newValue);
 }
+
