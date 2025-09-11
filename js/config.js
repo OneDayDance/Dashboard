@@ -12,3 +12,13 @@ export const SCOPES = "https://www.googleapis.com/auth/spreadsheets https://www.
 // The name of the folder in the Shared Drive where inventory images will be stored.
 export const INVENTORY_IMAGE_FOLDER = "Dashboard_Inventory_Images";
 
+// Names of the sheets in the Google Sheet
+export const SHEET_NAMES = {
+    requests: 'Submissions',
+    clients: 'Clients',
+    projects: 'Projects',
+    costumes: 'Costumes',
+    equipment: 'Equipment',
+    staff: 'Staff',
+    tasks: 'Tasks'
+};

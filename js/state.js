@@ -4,13 +4,35 @@
 
 import { updateSheetData } from './api.js';
 import { SHEET_NAMES } from './config.js';
-import { renderProjects } from './projects.js';
-import { renderClients } from './clients.js';
-import { renderCostumes } from './costumes.js';
-import { renderEquipment } from './equipment.js';
-import { renderStaff } from './staff.js';
 
-// --- State Variables --- //
+// --- UI State --- //
+export let state = {
+    // Requests Tab
+    currentView: 'list',
+    searchTerm: '',
+    filters: { service: 'all', status: 'all' },
+    sortColumn: 'Submission Date',
+    sortDirection: 'desc',
+    visibleColumns: ['Full Name', 'Email', 'Primary Service Category', 'Submission Date', 'Status'],
+    
+    // Clients Tab
+    clientCurrentView: 'list',
+    clientSearchTerm: '',
+    clientFilters: { status: 'all' },
+    clientSortColumn: 'Last Name',
+    clientSortDirection: 'asc',
+    visibleClientColumns: ['First Name', 'Last Name', 'Email', 'Phone', 'Status'],
+
+    // Inventory Tabs
+    costumeFilters: { searchTerm: '', status: 'all', category: 'all' },
+    equipmentFilters: { searchTerm: '', status: 'all', category: 'all' },
+    staffFilters: { searchTerm: '', skill: '' },
+
+    // Projects Tab
+    selectedProjectId: null,
+};
+
+// --- Raw Data State --- //
 // Each variable holds an object with 'headers' and 'rows' properties
 export let allRequests = {};
 export let allClients = {};
@@ -18,9 +40,39 @@ export let allProjects = {};
 export let allCostumes = {};
 export let allEquipment = {};
 export let allStaff = {};
-export let currentView = 'requests'; // Default view
+export let allTasks = {};
 
-// --- State Initialization and Updates --- //
+// --- Constants --- //
+export const sortableColumns = ['Submission Date', 'Full Name', 'Email', 'Primary Service Category'];
+export const clientSortableColumns = ['First Name', 'Last Name', 'Email', 'Organization', 'Status', 'Intake Date'];
+
+
+// --- State Management Functions --- //
+
+/**
+ * Merges a new state object into the global UI state.
+ * @param {object} newState - The partial state object to merge.
+ */
+export function updateState(newState) {
+    Object.assign(state, newState);
+}
+
+export function updateFilters(key, value) {
+    state.filters[key] = value;
+}
+
+export function updateClientFilters(key, value) {
+    state.clientFilters[key] = value.toLowerCase();
+}
+
+export function updateCostumeFilters(key, value) {
+    state.costumeFilters[key] = value.toLowerCase();
+}
+
+export function updateEquipmentFilters(key, value) {
+    state.equipmentFilters[key] = value.toLowerCase();
+}
+
 
 /**
  * Updates a state variable with new data and adds a helper method.
@@ -42,9 +94,8 @@ function updateStateVariable(stateVar, data) {
     };
 }
 
-
 /**
- * Sets the data for a specific part of the state.
+ * Generic function to set data for any state property.
  * @param {string} type - The type of data to set (e.g., 'requests', 'clients').
  * @param {object} data - The data object from the API.
  */
@@ -68,17 +119,30 @@ export function setData(type, data) {
         case 'staff':
             updateStateVariable(allStaff, data);
             break;
+        case 'tasks':
+            updateStateVariable(allTasks, data);
+            break;
         default:
             console.warn(`Unknown data type: ${type}`);
     }
 }
+
+// --- Specific Data Setters (for api.js) --- //
+export function setAllRequests(data) { setData('requests', data); }
+export function setAllClients(data) { setData('clients', data); }
+export function setAllProjects(data) { setData('projects', data); }
+export function setAllCostumes(data) { setData('costumes', data); }
+export function setAllEquipment(data) { setData('equipment', data); }
+export function setAllStaff(data) { setData('staff', data); }
+export function setAllTasks(data) { setData('tasks', data); }
+
 
 /**
  * Sets the current active view.
  * @param {string} viewName - The name of the tab/view.
  */
 export function setCurrentView(viewName) {
-    currentView = viewName;
+    state.currentView = viewName;
 }
 
 // --- Data Mutation Functions --- //
@@ -112,10 +176,6 @@ export async function updateClientData(clientId, field, value) {
         await updateSheetData(SHEET_NAMES.clients, sheetRow, sheetCol, value);
         // Update local state
         allClients.rows[rowIndex][fieldIdx] = value;
-        // Re-render if the view is active
-        if (currentView === 'clients') {
-            renderClients();
-        }
     } catch (error) {
         console.error('Failed to update client data:', error);
         throw error;
@@ -306,7 +366,6 @@ export async function updateCostumeData(costumeId, field, value) {
 
     await updateSheetData(SHEET_NAMES.costumes, sheetRow, sheetCol, value);
     allCostumes.rows[rowIndex][fieldIdx] = value;
-    if (currentView === 'costumes') renderCostumes();
 }
 
 /**
@@ -329,7 +388,6 @@ export async function updateEquipmentData(equipmentId, field, value) {
 
     await updateSheetData(SHEET_NAMES.equipment, sheetRow, sheetCol, value);
     allEquipment.rows[rowIndex][fieldIdx] = value;
-    if (currentView === 'equipment') renderEquipment();
 }
 
 /**
@@ -352,7 +410,6 @@ export async function updateStaffData(staffId, field, value) {
 
     await updateSheetData(SHEET_NAMES.staff, sheetRow, sheetCol, value);
     allStaff.rows[rowIndex][fieldIdx] = value;
-    if (currentView === 'staff') renderStaff();
 }
 
 // Helper function to find project row index
@@ -454,4 +511,3 @@ export async function removeAssignedStaffFromProject(projectId, staffAssignment)
     const newValue = JSON.stringify(newAssigned);
     return updateProjectData(projectId, 'Assigned Staff', newValue);
 }
-

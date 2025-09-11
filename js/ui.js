@@ -173,6 +173,50 @@ export function showColumnModal(headers, visibleColumns, containerId) {
     container.closest('.modal').style.display = 'block';
 }
 
+/**
+ * Shows a modal by its ID.
+ * @param {string} modalId The ID of the modal element to show.
+ */
+export function showModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'block';
+    }
+}
+
+/**
+ * Hides a modal by its ID.
+ * @param {string} modalId The ID of the modal element to hide.
+ */
+export function hideModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+/**
+ * Updates a status element with a message and optional class.
+ * @param {string} message The text to display.
+ * @param {'info'|'success'|'error'|'clear'} type The type of message.
+ * @param {string|HTMLElement} elementOrId The element or its ID to update.
+ */
+export function updateStatus(message, type, elementOrId) {
+    const element = typeof elementOrId === 'string' ? document.getElementById(elementOrId) : elementOrId;
+    if (!element) return;
+    
+    element.textContent = message;
+    element.classList.remove('status-success', 'status-error', 'status-info');
+
+    if (type === 'success') {
+        element.classList.add('status-success');
+    } else if (type === 'error') {
+        element.classList.add('status-error');
+    } else if (type === 'info') {
+        element.classList.add('status-info');
+    }
+}
+
 // --- LOADING AND ERROR INDICATORS ---
 export function showLoadingIndicator() {
     if (elements.loadingOverlay) {
@@ -208,12 +252,3 @@ export function showMainError(message) {
     errorContainer.innerHTML = `<h2>An Error Occurred</h2><p>${message}</p>`;
     errorContainer.style.display = 'block';
 }
-
-/**
- * @deprecated This function is no longer in use and is kept for backward compatibility to avoid import errors.
- * The data loading and rendering logic has been moved to main.js and individual tab modules.
- */
-export function loadDataForActiveTab() {
-    console.warn("loadDataForActiveTab() is deprecated and should be removed from imports.");
-}
-

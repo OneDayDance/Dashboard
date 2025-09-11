@@ -195,6 +195,29 @@ function handleSaveColumns() {
     renderClients();
 }
 
+/**
+ * Finds a client by their ID and opens the details modal.
+ * @param {string} clientId The 'ClientID' of the client.
+ */
+export function openClientDetailsFromId(clientId) {
+    if (!allClients || !allClients.rows) {
+        console.error("Client data not loaded, cannot open details.");
+        return;
+    }
+    const idIdx = allClients.headers.indexOf('ClientID');
+    if (idIdx === -1) {
+        console.error("'ClientID' column not found in client data.");
+        return;
+    }
+    const clientRow = allClients.rows.find(row => row[idIdx] === clientId);
+    if (clientRow) {
+        showClientDetailsModal(clientRow, allClients.headers);
+    } else {
+        alert(`Client with ID ${clientId} not found.`);
+    }
+}
+
+
 // --- REBUILT MODAL FUNCTIONS ---
 
 export function showClientDetailsModal(rowData, headers) {
@@ -495,4 +518,3 @@ function showDeleteClientModal(rowData, headers) {
         } catch (err) { statusSpan.textContent = 'Error deleting client.'; console.error('Delete client error:', err); confirmBtn.disabled = false; }
     };
 }
-
