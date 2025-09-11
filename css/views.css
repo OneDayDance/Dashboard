@@ -105,7 +105,6 @@
 .analytics-layout {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    /* THE FIX: Change `auto` to a fixed height to prevent rows from growing infinitely */
     grid-template-rows: repeat(2, 400px);
     gap: 20px;
 }
@@ -162,6 +161,7 @@
     list-style: none; padding: 0; margin: 0; 
     overflow-y: auto; /* Enable scrolling */
     flex-grow: 1; /* Allow it to fill the container height */
+    min-height: 0; /* THE FIX: Allows the container to shrink and the scrollbar to appear */
 }
 #activity-feed li { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
 #activity-feed li:last-child { border-bottom: none; }
