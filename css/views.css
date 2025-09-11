@@ -102,7 +102,7 @@
 .kpi-card p { font-size: 32px; font-weight: bold; color: #333; }
 .kpi-icon { position: absolute; right: 15px; bottom: 10px; font-size: 40px; opacity: 0.1; pointer-events: none; }
 
-/* --- START: New Flexbox Analytics Layout --- */
+/* START: Definitive Analytics Layout Fix */
 .analytics-container {
     display: flex;
     flex-direction: column;
@@ -112,19 +112,16 @@
 .analytics-row-top {
     display: flex;
     gap: 20px;
-    height: 450px; /* Give the top row a fixed height */
 }
 
 .analytics-main-chart {
-    flex: 2; /* Takes up 2/3 of the space */
-    min-width: 0; /* Prevents flex item from overflowing */
+    flex: 2; 
+    min-width: 0;
 }
 
 .analytics-activity-feed {
-    flex: 1; /* Takes up 1/3 of the space */
-    min-width: 0; /* Prevents flex item from overflowing */
-    display: flex;
-    flex-direction: column;
+    flex: 1; 
+    min-width: 0;
 }
 
 .analytics-row-bottom {
@@ -137,30 +134,31 @@
 @media (max-width: 1000px) {
     .analytics-row-top {
         flex-direction: column;
-        height: auto; /* Let height be automatic on smaller screens */
     }
 }
 
 .chart-container { 
     display: flex; 
-    flex-direction: column; 
+    flex-direction: column;
+    max-height: 450px; /* THE FIX: Constrain all chart containers */
 }
-.chart-container h3 { margin: 0 0 15px 0; text-align: center; }
+.chart-container h3 { 
+    margin: 0 0 15px 0; 
+    text-align: center; 
+    flex-shrink: 0; /* Prevent header from shrinking */
+}
 .chart-container canvas { 
     flex-grow: 1;
-    min-height: 0; /* Crucial for allowing canvas to shrink in a flex container */
+    min-height: 0;
 }
 
-#activity-feed-container {
-    height: 100%;
-}
 #activity-feed { 
-    list-style: none; padding: 0; margin: 0; 
-    overflow-y: auto; /* Enable scrolling */
-    flex-grow: 1; 
+    list-style: none; 
+    padding: 0; 
+    margin: 0; 
+    overflow-y: auto; /* This will now work correctly */
 }
-/* --- END: New Flexbox Analytics Layout --- */
-
+/* END: Definitive Analytics Layout Fix */
 
 #activity-feed li { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
 #activity-feed li:last-child { border-bottom: none; }
