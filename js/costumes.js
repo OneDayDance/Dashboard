@@ -1,8 +1,8 @@
 // js/costumes.js
 // Description: Contains all logic for the 'Costumes' tab.
 
-import { state, allCostumes, updateState, updateCostumeFilters } from './state.js';
-import { updateSheetRow, writeData, uploadImageToDrive } from './api.js';
+import { state, allCostumes, updateCostumeFilters } from './state.js';
+import { updateSheetRow, writeData, uploadImageToDrive, clearSheetRow } from './api.js';
 import { elements } from './ui.js';
 
 let refreshData;
@@ -11,27 +11,29 @@ let refreshData;
 export function initCostumesTab(refreshDataFn) {
     refreshData = refreshDataFn;
     
+    // Check for element existence before assigning event handlers
     if (elements.costumeAddBtn) {
         elements.costumeAddBtn.onclick = () => showCostumeModal(null);
     }
     if (elements.costumeSearchBar) {
-        elements.costumeSearchBar.oninput = (e) => { updateCostumeFilters('searchTerm', e.target.value.toLowerCase()); renderCostumes(); };
+        elements.costumeSearchBar.oninput = (e) => { updateCostumeFilters('searchTerm', e.target.value); renderCostumes(); };
     }
     if (elements.costumeStatusFilter) {
-        elements.costumeStatusFilter.onchange = (e) => { updateCostumeFilters('status', e.target.value); renderCostumes(); };
+        elements.costumeStatusFilter.oninput = (e) => { updateCostumeFilters('status', e.target.value); renderCostumes(); };
     }
     if (elements.costumeCategoryFilter) {
-        elements.costumeCategoryFilter.onchange = (e) => { updateCostumeFilters('category', e.target.value); renderCostumes(); };
+        elements.costumeCategoryFilter.oninput = (e) => { updateCostumeFilters('category', e.target.value); renderCostumes(); };
     }
     if (elements.costumeModalForm) {
         elements.costumeModalForm.addEventListener('submit', handleFormSubmit);
     }
 }
 
+
 // --- RENDERING ---
 export function renderCostumes() {
     renderCostumesAsCards();
-    populateFilterOptions();
+    updateFilterDropdowns();
 }
 
 /**
@@ -66,21 +68,11 @@ function renderCostumesAsCards() {
         return;
     }
     
-    if (!allCostumes.headers || allCostumes.headers.length === 0) {
-        console.warn("Costume headers not available yet, skipping render.");
-        container.innerHTML = `<p>Loading costume headers...</p>`;
-        return;
-    }
-    
     const { headers } = allCostumes;
     const cardContainer = document.createElement('div');
     cardContainer.className = 'card-container';
 
-    const [nameIndex, statusIndex, categoryIndex, imageIndex] = ['Name', 'Status', 'Category', 'Image URL'].map(h => headers.indexOf(h));
-
-    if (imageIndex === -1) {
-        console.error("Critical Error: 'Image URL' header not found in fetched data for Costumes.");
-    }
+    const [nameIndex, categoryIndex, imageIndex] = ['Name', 'Category', 'Image URL'].map(h => headers.indexOf(h));
 
     processedRows.forEach(row => {
         const card = document.createElement('div');
@@ -112,7 +104,6 @@ function renderCostumesAsCards() {
         contentDiv.className = 'inventory-card-content';
         contentDiv.innerHTML = `
             <h4>${row[nameIndex] || 'Unnamed Costume'}</h4>
-            <p><strong>Status:</strong> ${row[statusIndex] || 'N/A'}</p>
             <p><strong>Category:</strong> ${row[categoryIndex] || 'N/A'}</p>
         `;
 
@@ -130,82 +121,105 @@ function getProcessedCostumes() {
     let { headers, rows } = allCostumes;
     let processedRows = [...rows];
 
-    const { searchTerm, status, category } = state.costumeFilters;
+    const { searchTerm, status, category } = state.costumeFilters || { searchTerm: '', status: 'all', category: 'all' };
 
     if (searchTerm) {
         processedRows = processedRows.filter(row => row.some(cell => String(cell).toLowerCase().includes(searchTerm)));
     }
-    if (status !== 'all') {
+    
+    if (status && status !== 'all') {
         const statusIndex = headers.indexOf('Status');
-        if (statusIndex > -1) processedRows = processedRows.filter(row => row[statusIndex] === status);
+        if (statusIndex > -1) {
+            processedRows = processedRows.filter(row => (row[statusIndex] || '').toLowerCase() === status);
+        }
     }
-    if (category !== 'all') {
+
+    if (category && category !== 'all') {
         const categoryIndex = headers.indexOf('Category');
-        if (categoryIndex > -1) processedRows = processedRows.filter(row => row[categoryIndex] === category);
+        if (categoryIndex > -1) {
+            processedRows = processedRows.filter(row => (row[categoryIndex] || '').toLowerCase() === category);
+        }
     }
+
     return processedRows;
 }
 
-function populateFilterOptions() {
-    // This function can be expanded to dynamically populate filters from sheet data
+function updateFilterDropdowns() {
+    if (!allCostumes || !allCostumes.rows) return;
+    const { headers, rows } = allCostumes;
+    
+    const populateDropdown = (filterElement, columnIndex) => {
+        if (!filterElement) return;
+
+        const uniqueValues = [...new Set(rows.map(row => row[columnIndex]).filter(Boolean))];
+        const currentValue = filterElement.value;
+        filterElement.innerHTML = '<option value="all">All</option>'; // Default option
+        uniqueValues.sort().forEach(value => {
+            const option = document.createElement('option');
+            option.value = value.toLowerCase();
+            option.textContent = value;
+            filterElement.appendChild(option);
+        });
+        filterElement.value = currentValue;
+    };
+
+    populateDropdown(elements.costumeStatusFilter, headers.indexOf('Status'));
+    populateDropdown(elements.costumeCategoryFilter, headers.indexOf('Category'));
 }
+
 
 // --- MODAL & FORM HANDLING ---
 
 function safeSetValue(id, value) {
     const element = document.getElementById(id);
-    if (element) {
-        element.value = value;
-    } else {
-        console.warn(`Element with ID '${id}' not found.`);
-    }
+    if (element) element.value = value;
 }
 
 function showCostumeModal(rowData = null) {
     const modal = elements.costumeModal;
     const form = elements.costumeModalForm;
-    
-    if (!modal || !form) {
-        console.error("Costume modal or form element not found in cache! Check `ui.js` and `index.html`.");
-        return;
-    }
+    if (!modal || !form) return;
 
     form.reset();
     document.getElementById('costume-modal-status').textContent = '';
 
-    // --- NEW IMAGE HANDLING LOGIC ---
     const imagePreview = document.getElementById('costume-image-preview');
-    const imagePlaceholder = document.getElementById('costume-image-placeholder');
-    const changeImageBtn = document.getElementById('costume-change-image-btn');
     const imageUploadInput = document.getElementById('costume-image-upload');
+    const changePhotoButton = document.getElementById('costume-change-photo-btn');
+    const deleteButton = document.getElementById('delete-costume-btn');
 
-    // Reset UI
-    imagePreview.src = '';
-    imagePreview.style.display = 'none';
-    imagePlaceholder.style.display = 'block';
-    imageUploadInput.value = ''; // Clear file input
+    // Robustly find and reset elements
+    if (imagePreview) {
+        imagePreview.src = '';
+        imagePreview.style.display = 'none';
+    }
+    if (imageUploadInput) imageUploadInput.value = '';
     safeSetValue('costume-image-url', '');
-
-    // Event listeners for new image upload
-    changeImageBtn.onclick = () => imageUploadInput.click();
-    imageUploadInput.onchange = (event) => {
-        const file = event.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                imagePreview.src = e.target.result;
-                imagePreview.style.display = 'block';
-                imagePlaceholder.style.display = 'none';
-            };
-            reader.readAsDataURL(file);
-        }
-    };
+    
+    if (changePhotoButton && imageUploadInput) {
+        changePhotoButton.onclick = () => imageUploadInput.click();
+    }
+    if (imageUploadInput && imagePreview && changePhotoButton) {
+        imageUploadInput.onchange = (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imagePreview.src = e.target.result;
+                    imagePreview.style.display = 'block';
+                    changePhotoButton.textContent = 'Change Photo';
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+    }
     
     if (rowData) {
         modal.querySelector('#costume-modal-title').textContent = 'Edit Costume';
         const { headers } = allCostumes;
+        const costumeId = rowData[headers.indexOf('CostumeID')] || '';
         
-        safeSetValue('costume-id-input', rowData[headers.indexOf('CostumeID')] || '');
+        safeSetValue('costume-id-input', costumeId);
         safeSetValue('costume-name', rowData[headers.indexOf('Name')] || '');
         safeSetValue('costume-status', rowData[headers.indexOf('Status')] || 'Available');
         safeSetValue('costume-category', rowData[headers.indexOf('Category')] || '');
@@ -213,7 +227,7 @@ function showCostumeModal(rowData = null) {
         safeSetValue('costume-color', rowData[headers.indexOf('Color')] || '');
         safeSetValue('costume-material', rowData[headers.indexOf('Material')] || '');
         safeSetValue('costume-era', rowData[headers.indexOf('Era/Style')] || '');
-        safeSetValue('costume-purchase-cost', rowData[headers.indexOf('Purchase Cost')] || '');
+        safeSetValue('costume-purchase-cost', rowData[headers.indexOf('Purchase Cost ($)')] || '');
         safeSetValue('costume-condition', rowData[headers.indexOf('Condition')] || 'New');
         safeSetValue('costume-location', rowData[headers.indexOf('Storage Location')] || '');
         safeSetValue('costume-date-added', rowData[headers.indexOf('Date Added')] || '');
@@ -223,19 +237,26 @@ function showCostumeModal(rowData = null) {
         safeSetValue('costume-image-url', imageUrlFromSheet);
         const fileId = extractFileIdFromUrl(imageUrlFromSheet);
 
-        if (fileId) {
+        if (fileId && imagePreview) {
             imagePreview.src = `https://drive.google.com/thumbnail?id=${fileId}&sz=w300`;
             imagePreview.style.display = 'block';
-            imagePlaceholder.style.display = 'none';
+            if (changePhotoButton) changePhotoButton.textContent = 'Change Photo';
+        } else {
+            if (changePhotoButton) changePhotoButton.textContent = 'Add Photo';
         }
+
+        if (deleteButton) {
+            deleteButton.style.display = 'block';
+            deleteButton.onclick = () => showDeleteCostumeModal(costumeId);
+        }
+
     } else {
         modal.querySelector('#costume-modal-title').textContent = 'Add New Costume';
         safeSetValue('costume-id-input', '');
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
-        safeSetValue('costume-date-added', `${year}-${month}-${day}`);
+        const today = new Date().toISOString().split('T')[0];
+        safeSetValue('costume-date-added', today);
+        if (changePhotoButton) changePhotoButton.textContent = 'Add Photo';
+        if (deleteButton) deleteButton.style.display = 'none';
     }
 
     modal.style.display = 'block';
@@ -258,34 +279,23 @@ async function handleFormSubmit(event) {
 
         const costumeId = document.getElementById('costume-id-input').value;
         const costumeData = {
-            'Name': document.getElementById('costume-name').value,
-            'Image URL': imageUrl,
-            'Status': document.getElementById('costume-status').value,
-            'Category': document.getElementById('costume-category').value,
-            'Size': document.getElementById('costume-size').value,
-            'Color': document.getElementById('costume-color').value,
-            'Material': document.getElementById('costume-material').value,
-            'Era/Style': document.getElementById('costume-era').value,
-            'Purchase Cost': document.getElementById('costume-purchase-cost').value,
-            'Condition': document.getElementById('costume-condition').value,
-            'Storage Location': document.getElementById('costume-location').value,
-            'Date Added': document.getElementById('costume-date-added').value,
+            'Name': document.getElementById('costume-name').value, 'Image URL': imageUrl,
+            'Status': document.getElementById('costume-status').value, 'Category': document.getElementById('costume-category').value,
+            'Size': document.getElementById('costume-size').value, 'Color': document.getElementById('costume-color').value,
+            'Material': document.getElementById('costume-material').value, 'Era/Style': document.getElementById('costume-era').value,
+            'Purchase Cost ($)': document.getElementById('costume-purchase-cost').value, 'Condition': document.getElementById('costume-condition').value,
+            'Storage Location': document.getElementById('costume-location').value, 'Date Added': document.getElementById('costume-date-added').value,
             'Notes': document.getElementById('costume-notes').value,
         };
 
         const sheetPromise = costumeId 
             ? updateSheetRow('Costumes', 'CostumeID', costumeId, costumeData)
-            : writeData('Costumes', { ...costumeData, CostumeID: `COS-${Date.now()}` });
+            : writeData('Costumes', { ...costumeData, CostumeID: `C-${Date.now()}` });
         
         await sheetPromise; 
-        console.log("Google Sheet update successful.");
         statusSpan.textContent = 'Costume saved successfully!';
-
         await refreshData();
-
-        setTimeout(() => {
-            elements.costumeModal.style.display = 'none';
-        }, 1500);
+        setTimeout(() => { elements.costumeModal.style.display = 'none'; }, 1500);
 
     } catch (err) {
         statusSpan.textContent = `Error: ${err.message}`;
@@ -293,3 +303,37 @@ async function handleFormSubmit(event) {
     }
 }
 
+// --- DELETE COSTUME ---
+function showDeleteCostumeModal(costumeId) {
+    const modal = elements.deleteCostumeModal;
+    if (!modal) return;
+    modal.style.display = 'block';
+
+    const confirmInput = document.getElementById('delete-costume-confirm-input');
+    const confirmBtn = document.getElementById('delete-costume-confirm-btn');
+    
+    confirmInput.value = '';
+    confirmBtn.disabled = true;
+    confirmInput.oninput = () => { confirmBtn.disabled = confirmInput.value !== 'Delete'; };
+    confirmBtn.onclick = () => handleDeleteCostume(costumeId);
+}
+
+async function handleDeleteCostume(costumeId) {
+    const statusSpan = document.getElementById('delete-costume-status');
+    statusSpan.textContent = 'Deleting...';
+    document.getElementById('delete-costume-confirm-btn').disabled = true;
+
+    try {
+        await clearSheetRow('Costumes', 'CostumeID', costumeId);
+        await refreshData();
+        statusSpan.textContent = 'Costume deleted.';
+        setTimeout(() => {
+            elements.deleteCostumeModal.style.display = 'none';
+            elements.costumeModal.style.display = 'none';
+        }, 1500);
+    } catch (err) {
+        statusSpan.textContent = 'Error deleting costume.';
+        console.error('Delete costume error:', err);
+        document.getElementById('delete-costume-confirm-btn').disabled = false;
+    }
+}

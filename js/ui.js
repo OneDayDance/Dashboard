@@ -62,6 +62,8 @@ export function cacheDOMElements() {
     elements.deleteClientModal = document.getElementById('delete-client-modal');
     elements.deleteProjectModal = document.getElementById('delete-project-modal');
     elements.deleteStaffModal = document.getElementById('delete-staff-modal');
+    elements.deleteCostumeModal = document.getElementById('delete-costume-modal');
+    elements.deleteEquipmentModal = document.getElementById('delete-equipment-modal');
     elements.clientColumnModal = document.getElementById('client-column-modal');
     elements.gdriveLinkModal = document.getElementById('gdrive-link-modal');
     elements.addClientModal = document.getElementById('add-client-modal');
