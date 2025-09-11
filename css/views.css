@@ -119,6 +119,31 @@
 .analytics-secondary-chart {
     grid-column: auto;
 }
+
+/* --- Responsive Analytics Layout --- */
+@media (max-width: 1200px) {
+    .analytics-layout {
+        grid-template-columns: 1fr 1fr; /* Two columns for tablets */
+    }
+    .analytics-main-chart {
+        grid-column: 1 / 3; /* Main chart spans both columns */
+    }
+    .analytics-activity-feed {
+        grid-column: 1 / 3; /* Activity feed also spans both columns */
+        grid-row: auto; /* Let it flow naturally */
+    }
+}
+
+@media (max-width: 768px) {
+    .analytics-layout {
+        grid-template-columns: 1fr; /* Single column for mobile */
+    }
+    .analytics-main-chart, .analytics-activity-feed, .analytics-secondary-chart {
+        grid-column: 1 / 2; /* Ensure all items take up the full single column */
+    }
+}
+
+
 .chart-container { 
     padding: 20px; 
     display: flex; 
@@ -442,3 +467,4 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 .form-field.full-width {
     grid-column: 1 / -1;
 }
+
