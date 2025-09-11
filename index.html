@@ -625,6 +625,45 @@
             </div>
         </div>
     </div>
+    <div id="delete-costume-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Confirm Costume Deletion</h2>
+                <span class="close-button">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="warning-box">
+                    <p><strong>Warning:</strong> This action is permanent and cannot be undone. This will remove the costume from the inventory.</p>
+                </div>
+                <p>To proceed, please type "Delete" in the box below.</p>
+                <input type="text" id="delete-costume-confirm-input" placeholder="Type Delete to confirm">
+            </div>
+            <div class="modal-footer">
+                <button id="delete-costume-confirm-btn" class="btn btn-danger" disabled>Delete Costume</button>
+                <span id="delete-costume-status"></span>
+            </div>
+        </div>
+    </div>
+    <div id="delete-equipment-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Confirm Equipment Deletion</h2>
+                <span class="close-button">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="warning-box">
+                    <p><strong>Warning:</strong> This action is permanent and cannot be undone. This will remove the equipment from the inventory.</p>
+                </div>
+                <p>To proceed, please type "Delete" in the box below.</p>
+                <input type="text" id="delete-equipment-confirm-input" placeholder="Type Delete to confirm">
+            </div>
+            <div class="modal-footer">
+                <button id="delete-equipment-confirm-btn" class="btn btn-danger" disabled>Delete Equipment</button>
+                <span id="delete-equipment-status"></span>
+            </div>
+        </div>
+    </div>
+
 
     <!-- Column Selector Modals (Standardized) -->
     <div id="column-modal" class="modal">
@@ -669,8 +708,9 @@
                     <div class="inventory-image-upload-container">
                         <div class="image-upload-preview" id="costume-image-preview-container">
                              <img id="costume-image-preview" src="" alt="Costume Preview" style="display: none;">
-                             <span id="costume-image-placeholder">Click to upload image</span>
+                             <div id="costume-image-placeholder" class="image-placeholder-overlay"><span>Click to upload image</span></div>
                         </div>
+                        <button type="button" id="costume-change-photo-btn" class="btn btn-secondary">Add Photo</button>
                         <input type="file" id="costume-image-upload" accept="image/*" style="display: none;">
                         <input type="hidden" id="costume-image-url">
                     </div>
@@ -737,8 +777,9 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Save Costume</button>
+                    <button type="button" id="delete-costume-btn" class="btn btn-danger" style="display: none;">Delete Costume</button>
                     <span id="costume-modal-status"></span>
+                    <button type="submit" class="btn btn-primary">Save Costume</button>
                 </div>
             </form>
         </div>
@@ -756,8 +797,9 @@
                      <div class="inventory-image-upload-container">
                         <div class="image-upload-preview" id="equipment-image-preview-container">
                              <img id="equipment-image-preview" src="" alt="Equipment Preview" style="display: none;">
-                             <span id="equipment-image-placeholder">Click to upload image</span>
+                             <div id="equipment-image-placeholder" class="image-placeholder-overlay"><span>Click to upload image</span></div>
                         </div>
+                        <button type="button" id="equipment-change-photo-btn" class="btn btn-secondary">Add Photo</button>
                         <input type="file" id="equipment-image-upload" accept="image/*" style="display: none;">
                         <input type="hidden" id="equipment-image-url">
                     </div>
@@ -811,8 +853,9 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Save Equipment</button>
+                    <button type="button" id="delete-equipment-btn" class="btn btn-danger" style="display: none;">Delete Equipment</button>
                     <span id="equipment-modal-status"></span>
+                    <button type="submit" class="btn btn-primary">Save Equipment</button>
                 </div>
             </form>
         </div>
