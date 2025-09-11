@@ -9,6 +9,8 @@
     left: 0;
     width: 100%;
     z-index: 2000;
+    padding: 15px;
+    box-sizing: border-box;
 }
 
 .landing-box {
@@ -19,6 +21,8 @@
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     text-align: center;
+    width: 100%;
+    max-width: 400px;
 }
 
 .landing-box h1 { margin-top: 0; }
@@ -29,7 +33,7 @@
 .main-header-controls { margin-bottom: 20px; }
 .controls-container { display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; }
 .filter-controls { display: flex; gap: 10px; flex-grow: 1; }
-.filter-controls input, .filter-controls select { width: auto; flex-grow: 1; }
+.filter-controls input, .filter-controls select { width: auto; flex-grow: 1; min-width: 120px; }
 .view-controls { display: flex; gap: 10px; flex-shrink: 0; }
 .collapsible-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 10px 0; border-top: 1px solid #ccc; margin-top: 20px; }
 .collapsible-header h2, .collapsible-header h3 { margin: 0; }
@@ -43,7 +47,7 @@
     padding: 40px 20px;
     background-color: rgba(240, 240, 240, 0.5);
     border-radius: 8px;
-    margin: 20px;
+    margin: 20px 0;
 }
 .empty-state-container h3 {
     margin-top: 0;
@@ -58,8 +62,9 @@
 
 /* --- Standardized Cards --- */
 .card-container {
-    column-count: 5; /* Increased column count for smaller cards */
-    column-gap: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
 }
 .info-card {
     border: 1px solid #ddd;
@@ -67,42 +72,26 @@
     background-color: #fff;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     transition: all 0.2s ease-in-out;
-    margin-bottom: 20px; /* Space between rows */
-    break-inside: avoid;
     padding: 15px;
     box-sizing: border-box;
 }
 .info-card:hover {
     border-color: #FF9D76;
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    transform: scale(1.02);
+    transform: translateY(-2px);
 }
 .info-card h3 { margin-top: 0; }
 .info-card p { margin: 5px 0; color: #555; font-size: 14px; }
 
-/* Responsive columns for masonry layout */
-@media (max-width: 1400px) { /* Adjusted breakpoint */
-    .card-container { column-count: 4; }
-}
-@media (max-width: 1100px) { /* Adjusted breakpoint */
-    .card-container { column-count: 3; }
-}
-@media (max-width: 768px) { /* Adjusted breakpoint */
-    .card-container { column-count: 2; }
-}
-@media (max-width: 500px) { /* Adjusted breakpoint */
-    .card-container { column-count: 1; }
-}
 
 /* --- Analytics View --- */
 .analytics-grid { display: grid; gap: 20px; margin-bottom: 20px; }
-.kpi-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); } /* Reduced min-width */
-.kpi-card { position: relative; overflow: hidden; cursor: pointer; } /* Added cursor */
+.kpi-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.kpi-card { position: relative; overflow: hidden; cursor: pointer; }
 .kpi-card h3 { font-size: 15px; color: #555; font-weight: normal; }
 .kpi-card p { font-size: 32px; font-weight: bold; color: #333; }
 .kpi-icon { position: absolute; right: 15px; bottom: 10px; font-size: 40px; opacity: 0.1; pointer-events: none; }
 
-/* START: Definitive Analytics Layout Fix */
 .analytics-container {
     display: flex;
     flex-direction: column;
@@ -126,62 +115,44 @@
 
 .analytics-row-bottom {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 20px;
-}
-
-/* Responsive Analytics Layout */
-@media (max-width: 1000px) {
-    .analytics-row-top {
-        flex-direction: column;
-    }
 }
 
 .chart-container {
     display: flex;
     flex-direction: column;
-    max-height: 450px; /* Constrain all chart containers */
+    height: 400px; 
 }
 .chart-container h3 {
     margin: 0 0 15px 0;
     text-align: center;
-    flex-shrink: 0; /* Prevent header from shrinking */
+    flex-shrink: 0;
 }
 
-/* FIX: Apply flex properties to both canvas and the activity feed to constrain their height */
 .chart-container canvas,
 .chart-container #activity-feed {
-    flex-grow: 1; /* Allows the element to grow to fill available space inside the flex container */
-    min-height: 0; /* CRITICAL: Allows the element to shrink below its intrinsic content size, enabling the parent's max-height to work */
+    flex-grow: 1;
+    min-height: 0; 
 }
 
 #activity-feed {
     list-style: none;
     padding: 0;
     margin: 0;
-    overflow-y: auto; /* Enables scrolling when content overflows the container's new, constrained height */
+    overflow-y: auto;
 }
-/* END: Definitive Analytics Layout Fix */
-
 #activity-feed li { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
 #activity-feed li:last-child { border-bottom: none; }
 #activity-feed li .activity-date { display: block; font-size: 12px; color: #888; margin-top: 4px; }
 
-/* --- Clients View --- */
-.client-layout-container { display: grid; grid-template-columns: 1fr; gap: 20px; align-items: start; }
-.client-list-container { grid-column: 1 / -1; } /* Take full width */
-
 /* --- Requests View Fixes --- */
 #requests-container, #archived-requests-container {
-    padding: 10px; /* Increased padding for more breathing room */
+    padding: 0; 
 }
 
 
 /* --- Rebuilt Client & Request Modal Views --- */
-.modal-nav { border-right: 1px solid #eee; padding-right: 20px; }
-.modal-nav .nav-link { display: block; padding: 10px 15px; text-decoration: none; color: #333; border-radius: 6px; margin-bottom: 5px; font-weight: 500; }
-.modal-nav .nav-link:hover { background-color: #f0f0f0; }
-.modal-nav .nav-link.active { background-color: #d4f4ff; color: #0056b3; font-weight: bold; }
 .modal-pane-content, .modal-pane { max-height: 55vh; overflow-y: auto; padding-right: 10px; }
 .modal-pane-content h3, .modal-pane h3 { border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 15px; }
 .modal-pane-content p.pre-wrap { white-space: pre-wrap; }
@@ -191,15 +162,13 @@
 .contact-log { border: 1px solid #eee; padding: 10px; border-radius: 5px; margin-bottom: 10px; background: #f9f9f9; }
 .contact-log small { font-weight: bold; color: #555; }
 .modal-pane-content ul, .modal-pane ul { list-style: none; padding: 0; margin: 0; }
-.modal-pane-content li, .modal-pane li { padding: 8px 0; border-bottom: 1px solid #eee; display: flex; }
+.modal-pane-content li, .modal-pane li { padding: 8px 0; border-bottom: 1px solid #eee; display: flex; flex-wrap: wrap; gap: 5px;}
 .modal-pane-content li strong, .modal-pane li strong { display: inline-block; width: 180px; color: #555; flex-shrink: 0; }
 #request-details-pane li div { flex-grow: 1; word-break: break-word; }
 .modal-pane-content a, .modal-pane a { color: #FF9D76; text-decoration: none; font-weight: bold; }
 .action-buttons-container { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
 p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: #333; }
-/* Request modal specific layout */
-#details-modal .modal-body { display: grid; grid-template-columns: 1fr; gap: 20px; }
-@media (min-width: 900px) { #details-modal .modal-body { grid-template-columns: 2fr 1fr; } }
+#details-modal .modal-body { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
 
 
 /* --- Projects View --- */
@@ -216,7 +185,7 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 .project-list-item p { margin: 0; font-size: 12px; color: #555; }
 #project-details-column { display: flex; flex-direction: column; gap: 20px; }
 #project-details-column h3 { margin-top: 0; }
-.project-details-header { display: flex; justify-content: space-between; align-items: center; }
+.project-details-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;}
 .project-actions-dropdown { position: relative; }
 .project-actions-dropdown-content { display: none; position: absolute; right: 0; background-color: #f9f9f9; min-width: 160px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); z-index: 1; border-radius: 5px; }
 .project-actions-dropdown-content a { color: black; padding: 12px 16px; text-decoration: none; display: block; }
@@ -227,7 +196,7 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 .project-details-section li { font-size: 14px; }
 .project-details-section li:not(:last-child) { margin-bottom: 8px; }
 .project-details-section li strong { font-weight: bold; color: #555; width: auto; display: inline-block; margin-right: 5px; }
-.project-details-section-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 10px; }
+.project-details-section-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;}
 .project-details-section-header h4 { border: none; margin: 0; padding: 0;}
 .interactive-card { text-align: center; position: relative; cursor: pointer; }
 .interactive-card .card-main-content, .interactive-card .card-hover-content { transition: opacity 0.3s ease; display: flex; flex-direction: column; justify-content: center; align-items: center; }
@@ -265,7 +234,7 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 .project-details-section .subtask-item input { cursor: pointer; }
 .project-details-section .task-progress { width: 100%; background-color: #eee; border-radius: 4px; height: 6px; margin-top: 4px;}
 .project-details-section .task-progress-bar { background-color: #76F1FF; height: 100%; border-radius: 4px; }
-.project-details-section .task-board { display: flex; flex-wrap: wrap; gap: 15px; padding: 10px 0; min-height: 200px; }
+.project-details-section .task-board { display: flex; gap: 15px; padding: 10px 0; min-height: 200px; overflow-x: auto; }
 .project-details-section .task-board-column { flex: 0 0 300px; background: #f4f5f7; border-radius: 8px; padding: 10px; cursor: grab; transition: all 0.2s ease-in-out; border: 2px solid transparent; }
 .project-details-section .task-board-column:hover { border-color: #76F1FF; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
 .project-details-section .task-board-column h5 { text-align: center; margin: 5px 0 15px; }
@@ -279,7 +248,7 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 .task-bucket:hover .add-task-to-bucket-btn, .task-board-column:hover .add-task-to-bucket-btn { opacity: 1; }
 
 /* Assigned Equipment/Staff Section */
-#assigned-staff-container {
+#assigned-equipment-container, #assigned-staff-container {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 15px;
@@ -538,3 +507,54 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
     grid-column: 1 / -1;
 }
 
+
+/* --- RESPONSIVE STYLES --- */
+
+/* Tablet & Smaller */
+@media (max-width: 992px) {
+    .project-layout-container {
+        grid-template-columns: 1fr;
+    }
+    .project-list-column {
+        position: static;
+        height: auto;
+        max-height: 50vh; /* Allow it to take up to half the screen */
+    }
+    .analytics-row-top {
+        flex-direction: column;
+    }
+    .project-details-grid {
+        grid-template-columns: 1fr;
+    }
+    #details-modal .modal-body {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .controls-container, .filter-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .view-controls {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+    .view-controls .btn {
+        width: 100%;
+    }
+    
+    .inventory-modal-body-grid, .staff-modal-body-grid {
+        grid-template-columns: 1fr;
+    }
+    .inventory-image-upload-container, .staff-image-upload-container {
+        width: 100%;
+        max-width: 200px; /* Limit uploader size */
+        margin: 0 auto; /* Center it */
+    }
+    .assign-equipment-body, .assign-staff-body {
+        grid-template-columns: 1fr;
+    }
+}

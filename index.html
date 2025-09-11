@@ -22,7 +22,7 @@
         <header>
             <div class="header-content">
                 <img src="img/ODD Logo_(Vertical).svg" alt="ODD Logo" class="header-logo">
-                <h1>Client Management Dashboard</h1>
+                <h1 class="header-title">Client Management Dashboard</h1>
             </div>
             <div id="auth-container">
                 <button id="signout_button" class="btn btn-primary">Sign Out</button>
@@ -62,7 +62,7 @@
                     </div>
                 </div>
             </div>
-            <div id="requests-container"></div>
+            <div id="requests-container" class="table-responsive-container"></div>
             
             <div class="collapsible-header" id="archive-toggle">
                 <h2>Archived Requests</h2>
@@ -175,7 +175,7 @@
                     </div>
                 </div>
             </div>
-            <div id="client-table-container"></div>
+            <div id="client-table-container" class="table-responsive-container"></div>
         </main>
 
         <main id="tab-projects" class="tab-content" style="display: none;">
@@ -923,3 +923,4 @@
     <script type="module" src="js/main.js"></script>
 </body>
 </html>
+

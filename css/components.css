@@ -11,6 +11,7 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
+    white-space: nowrap; /* Prevent buttons from wrapping text */
 }
 
 .btn:hover {
@@ -96,7 +97,14 @@
 }
 
 /* --- Table Styles --- */
-.data-table { width: 100%; border-collapse: collapse; }
+.table-responsive-container {
+    overflow-x: auto; /* Allow horizontal scrolling on the container */
+}
+.data-table { 
+    width: 100%; 
+    border-collapse: collapse; 
+    min-width: 800px; /* Give table a minimum width to force scrolling */
+}
 .data-table th, .data-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
 .data-table th { background-color: rgba(255, 255, 255, 0.6); }
 .data-table th.sortable { cursor: pointer; position: relative; }
@@ -184,3 +192,42 @@
     100% { transform: rotate(360deg); }
 }
 
+/* --- Responsive Components --- */
+
+@media (max-width: 768px) {
+    .tabs-container {
+        padding: 5px 0 0;
+    }
+    .tab-nav {
+        justify-content: flex-start;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    }
+    .tab-button {
+        padding: 8px 12px;
+        font-size: 14px;
+        flex-shrink: 0; /* Prevent tabs from shrinking */
+    }
+
+    .modal-content {
+        width: 95%;
+        margin: 10% auto;
+        max-height: 85vh;
+    }
+    .modal-body.two-column {
+        grid-template-columns: 1fr;
+    }
+    .modal-nav {
+        border-right: none;
+        border-bottom: 1px solid #eee;
+        padding-right: 0;
+        padding-bottom: 10px;
+        margin-bottom: 10px;
+        display: flex;
+        overflow-x: auto;
+    }
+    .modal-nav .nav-link {
+        margin-bottom: 0;
+        white-space: nowrap;
+    }
+}

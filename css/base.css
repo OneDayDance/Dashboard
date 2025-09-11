@@ -51,21 +51,24 @@ header, .card, main {
 header {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between; /* Changed from center for better responsive control */
     text-align: center;
     margin-bottom: 20px;
     position: relative;
+    padding: 15px 20px;
+}
+
+.header-content {
+    display: flex;
+    align-items: center;
+    gap: 15px;
 }
 
 .header-logo {
-    position: absolute;
-    left: 20px;
-    top: 50%;
-    transform: translateY(-50%);
     height: 50px; /* Controls the size of the logo */
 }
 
-header h1 {
+.header-title {
     margin: 0;
     flex-grow: 1;
 }
@@ -73,10 +76,7 @@ header h1 {
 main { padding: 20px; }
 
 #auth-container {
-    position: absolute;
-    top: 50%;
-    right: 20px;
-    transform: translateY(-50%);
+    /* No longer needs absolute positioning */
 }
 
 
@@ -126,29 +126,40 @@ hr {
 }
 
 
-/* --- Responsive adjustments */
-@media (max-width: 900px) {
+/* --- Responsive adjustments --- */
+@media (max-width: 992px) {
     .chart-grid {
         grid-template-columns: 1fr; /* Stack charts on smaller screens */
     }
 }
+
 @media (max-width: 768px) {
-    .client-layout-container {
-        grid-template-columns: 1fr;
+    body {
+        padding: 10px;
     }
-    .project-layout-container {
-        grid-template-columns: 1fr;
+
+    header {
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px;
     }
-    .project-list-column {
-        position: static;
-        height: auto;
-        max-height: 50vh;
-    }
-    header h1 {
+
+    .header-title {
         font-size: 1.2em; /* Shrink title on small screens */
     }
+
     .header-logo {
         height: 40px; /* Make logo a bit smaller on mobile */
     }
-}
 
+    #auth-container {
+        width: 100%;
+    }
+    #signout_button {
+        width: 100%;
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr; /* Single column forms on mobile */
+    }
+}
