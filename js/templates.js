@@ -1,0 +1,181 @@
+// js/templates.js
+// Description: Contains all HTML templates for dynamically generating UI components.
+
+export const templates = {
+
+    // --- TAB CONTENT ---
+    requestsTab: `
+        <main id="tab-requests" class="tab-content">
+            <div class="main-header-controls">
+                <h2>New Service Requests</h2>
+                <div class="controls-container">
+                    <div class="filter-controls">
+                        <input type="text" id="search-bar" placeholder="Search requests...">
+                        <select id="service-filter">
+                            <option value="all">All Services</option>
+                        </select>
+                        <select id="status-filter">
+                            <option value="all">All Statuses</option>
+                            <option value="new">New</option>
+                            <option value="archived">Archived</option>
+                        </select>
+                    </div>
+                    <div class="view-controls">
+                        <button id="request-view-toggle-btn" class="btn btn-subtle">Card View</button>
+                        <button id="column-select-btn" class="btn btn-subtle">Display Options</button>
+                    </div>
+                </div>
+            </div>
+            <div id="requests-container" class="table-responsive-container"></div>
+            <div class="collapsible-header" id="archive-toggle">
+                <h2>Archived Requests</h2>
+                <span class="toggle-arrow">&#9662;</span>
+            </div>
+            <div id="archived-requests-container" class="collapsible-content"></div>
+        </main>
+    `,
+
+    analyticsTab: `
+        <main id="tab-analytics" class="tab-content">
+            <div class="main-header-controls">
+                <h2>Dashboard Analytics</h2>
+            </div>
+            <div class="analytics-grid kpi-grid">
+                <div class="kpi-card info-card"><span class="kpi-icon">&#128176;</span><h3>Total Revenue (YTD)</h3><p id="kpi-total-revenue">$0</p></div>
+                <div id="kpi-card-projects" class="kpi-card info-card"><span class="kpi-icon">&#128188;</span><h3>Active Projects</h3><p id="kpi-active-projects">0</p></div>
+                <div id="kpi-card-clients" class="kpi-card info-card"><span class="kpi-icon">&#128100;</span><h3>Total Clients</h3><p id="kpi-total-clients">0</p></div>
+                <div class="kpi-card info-card"><span class="kpi-icon">&#128221;</span><h3>Pending Requests</h3><p id="kpi-pending-requests">0</p></div>
+                <div id="kpi-card-costumes" class="kpi-card info-card"><span class="kpi-icon">&#128111;</span><h3>Total Costumes</h3><p id="kpi-total-costumes">0</p></div>
+                <div id="kpi-card-equipment" class="kpi-card info-card"><span class="kpi-icon">&#128295;</span><h3>Total Equipment</h3><p id="kpi-total-equipment">0</p></div>
+                <div id="kpi-card-staff" class="kpi-card info-card"><span class="kpi-icon">&#128101;</span><h3>Total Staff</h3><p id="kpi-total-staff">0</p></div>
+            </div>
+            <div class="analytics-container">
+                <div class="analytics-row-top">
+                    <div class="info-card chart-container analytics-main-chart"><h3>Revenue Over Time</h3><canvas id="revenue-chart"></canvas></div>
+                    <div class="info-card chart-container analytics-activity-feed" id="activity-feed-container"><h3>Recent Activity</h3><ul id="activity-feed"><li>Loading activity...</li></ul></div>
+                </div>
+                <div class="analytics-row-bottom">
+                    <div class="info-card chart-container"><h3>Service Request Breakdown</h3><canvas id="services-chart"></canvas></div>
+                    <div class="info-card chart-container"><h3>Lead Source Breakdown</h3><canvas id="lead-source-chart"></canvas></div>
+                    <div class="info-card chart-container"><h3>Costume Categories</h3><canvas id="costume-category-chart"></canvas></div>
+                    <div class="info-card chart-container"><h3>Equipment Status</h3><canvas id="equipment-status-chart"></canvas></div>
+                    <div class="info-card chart-container"><h3>Staff by Skill</h3><canvas id="staff-skills-chart"></canvas></div>
+                </div>
+            </div>
+        </main>
+    `,
+    clientsTab: `
+        <main id="tab-clients" class="tab-content">
+            <div class="main-header-controls">
+                <h2>Current Clients</h2>
+                <div class="controls-container">
+                    <div class="filter-controls">
+                        <input type="text" id="client-search-bar" placeholder="Search clients...">
+                        <select id="client-status-filter"><option value="all">All Statuses</option><option value="Lead">Lead</option><option value="Active">Active</option><option value="On Hold">On Hold</option><option value="Past">Past</option></select>
+                    </div>
+                    <div class="view-controls">
+                        <button id="add-client-btn" class="btn btn-primary">Add New Client</button>
+                        <button id="client-view-toggle-btn" class="btn btn-subtle">Card View</button>
+                        <button id="client-column-select-btn" class="btn btn-subtle">Display Options</button>
+                    </div>
+                </div>
+            </div>
+            <div id="client-table-container" class="table-responsive-container"></div>
+        </main>
+    `,
+    projectsTab: `
+        <main id="tab-projects" class="tab-content">
+            <div id="project-layout-container" class="project-layout-container">
+                <div class="project-list-column card">
+                    <div class="project-list-header"><h2 id="project-list-title">Projects</h2></div>
+                    <div class="project-search-container"><input type="text" id="project-search-bar" placeholder="Search projects..."></div>
+                    <h3>Active Projects</h3>
+                    <div id="active-projects-list" class="project-list"></div>
+                    <div class="collapsible-header" id="archived-projects-toggle"><h3>Archived Projects</h3><span class="toggle-arrow">&#9662;</span></div>
+                    <div id="archived-projects-list" class="collapsible-content project-list"></div>
+                </div>
+                <div id="project-details-column" class="card"><p>Select a project to view its details.</p></div>
+            </div>
+        </main>
+    `,
+    costumesTab: `
+        <main id="tab-costumes" class="tab-content">
+            <div class="main-header-controls">
+                <h2>Costume Inventory</h2>
+                <div class="controls-container">
+                    <div class="filter-controls">
+                        <input type="text" id="costume-search-bar" placeholder="Search costumes...">
+                        <select id="costume-status-filter"><option value="all">All Statuses</option></select>
+                        <select id="costume-category-filter"><option value="all">All Categories</option></select>
+                    </div>
+                    <div class="view-controls"><button id="add-costume-btn" class="btn btn-primary">Add New Costume</button></div>
+                </div>
+            </div>
+            <div id="costumes-container"></div>
+        </main>
+    `,
+    equipmentTab: `
+        <main id="tab-equipment" class="tab-content">
+            <div class="main-header-controls">
+                <h2>Equipment Inventory</h2>
+                <div class="controls-container">
+                    <div class="filter-controls">
+                        <input type="text" id="equipment-search-bar" placeholder="Search equipment...">
+                        <select id="equipment-status-filter"><option value="all">All Statuses</option></select>
+                        <select id="equipment-category-filter"><option value="all">All Categories</option></select>
+                    </div>
+                    <div class="view-controls"><button id="add-equipment-btn" class="btn btn-primary">Add New Equipment</button></div>
+                </div>
+            </div>
+            <div id="equipment-container"></div>
+        </main>
+    `,
+    staffTab: `
+        <main id="tab-staff" class="tab-content">
+            <div class="main-header-controls">
+                <h2>Staff</h2>
+                <div class="controls-container">
+                    <div class="filter-controls">
+                        <input type="text" id="staff-search-bar" placeholder="Search staff...">
+                        <input type="text" id="staff-skills-filter" placeholder="Filter by skill...">
+                    </div>
+                    <div class="view-controls"><button id="add-staff-btn" class="btn btn-primary">Add New Staff</button></div>
+                </div>
+            </div>
+            <div id="staff-container"></div>
+        </main>
+    `,
+
+    // --- MODALS ---
+    modals: `
+        <!-- Request Details Modal -->
+        <div id="details-modal" class="modal"><div class="modal-content large"><div class="modal-header"><h2 id="request-modal-title">Request Details</h2><span class="close-button">&times;</span></div><div class="modal-body"><div id="request-details-pane" class="modal-pane"></div><div id="request-actions-pane" class="modal-pane"></div></div></div></div>
+        <!-- Client Details Modal -->
+        <div id="client-details-modal" class="modal"><div class="modal-content large"><div class="modal-header"><h2 id="client-modal-name">Client Details</h2><span class="close-button">&times;</span></div><div class="modal-body two-column"><nav class="modal-nav"><a href="#" class="nav-link active" data-tab="details">Details</a><a href="#" class="nav-link" data-tab="history">History</a><a href="#" class="nav-link" data-tab="notes">Notes & Logs</a><a href="#" class="nav-link" data-tab="financials">Financials</a><a href="#" class="nav-link" data-tab="actions">Actions</a></nav><div class="modal-pane-content"></div></div><div class="modal-footer"><span id="client-modal-status"></span></div></div></div>
+        <!-- Add Client Modal -->
+        <div id="add-client-modal" class="modal"><div class="modal-content large"><div class="modal-header"><h2>Add New Client</h2><span class="close-button">&times;</span></div><form id="add-client-form"><div class="modal-body"><div class="form-grid"><div class="form-field"><label for="add-client-first-name">First Name</label><input type="text" id="add-client-first-name" required></div><div class="form-field"><label for="add-client-last-name">Last Name</label><input type="text" id="add-client-last-name" required></div><div class="form-field"><label for="add-client-email">Email</label><input type="email" id="add-client-email" required></div><div class="form-field"><label for="add-client-phone">Phone</label><input type="text" id="add-client-phone"></div><div class="form-field"><label for="add-client-organization">Organization</label><input type="text" id="add-client-organization"></div><div class="form-field"><label for="add-client-status">Status</label><select id="add-client-status"><option>Lead</option><option selected>Active</option><option>On Hold</option><option>Past</option></select></div><div class="form-field"><label for="add-client-lead-source">Lead Source</label><input type="text" id="add-client-lead-source"></div><div class="form-field"><label for="add-client-address">Address</label><input type="text" id="add-client-address"></div><div class="form-field"><label for="add-client-social">Social Media</label><input type="url" id="add-client-social"></div><div class="form-field"><label for="add-client-birthday">Birthday</label><input type="date" id="add-client-birthday"></div></div></div><div class="modal-footer"><button type="submit" class="btn btn-primary">Add Client</button><span id="add-client-modal-status"></span></div></form></div></div>
+        <!-- Create Project Modal -->
+        <div id="create-project-modal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Create New Project</h2><span class="close-button">&times;</span></div><form id="create-project-form"><div class="modal-body"><div class="form-field"><label for="project-client-name">Client</label><input type="text" id="project-client-name" readonly></div><div class="form-field"><label for="project-source-request">Source Request (Optional)</label><select id="project-source-request"></select></div><div class="form-field"><label for="project-name">Project Name</label><input type="text" id="project-name" required></div><div class="form-grid"><div class="form-field"><label for="project-type">Project Type</label><select id="project-type"><option>General</option><option>Film</option><option>Photography</option><option>Design</option></select></div><div class="form-field"><label for="project-status">Status</label><select id="project-status"><option>Not Started</option><option>In Progress</option><option>Completed</option><option>On Hold</option></select></div><div class="form-field"><label for="project-value">Value ($)</label><input type="number" id="project-value" placeholder="0.00"></div><div class="form-field"><label for="project-start-date">Start Date</label><input type="date" id="project-start-date"></div></div></div><div class="modal-footer"><button type="submit" class="btn btn-primary">Create Project</button><span id="create-project-status"></span></div></form></div></div>
+        <!-- Task Details Modal -->
+        <div id="task-details-modal" class="modal"><div class="modal-content"><div class="modal-header"><h2 id="task-modal-title">New Task</h2><span class="close-button">&times;</span></div><form id="task-details-form"><div class="modal-body"><input type="hidden" id="task-id-input"><input type="hidden" id="task-project-id-input"><div class="form-field"><label for="task-title">Title</label><input type="text" id="task-title" required></div><div class="form-field"><label for="task-description">Description</label><textarea id="task-description"></textarea></div><div class="form-grid"><div class="form-field"><label for="task-due-date">Due Date</label><input type="date" id="task-due-date"></div><div class="form-field"><label for="task-assignee">Assignee</label><input type="text" id="task-assignee"></div><div class="form-field"><label for="task-status">Status</label><select id="task-status"><option>To Do</option><option>In Progress</option><option>Done</option></select></div><div class="form-field"><label for="task-bucket">Bucket</label><select id="task-bucket"></select></div></div><div class="form-field"><label>Subtasks</label><div id="subtasks-container-modal" class="subtasks-container"></div><div class="add-item-form"><input type="text" id="new-subtask-name" placeholder="New subtask..."><button type="button" id="add-subtask-btn" class="btn btn-secondary">Add</button></div></div><div class="form-field"><label>Links</label><div id="links-container"></div><div class="add-item-form"><input type="text" id="new-link-url" placeholder="https://example.com"><button type="button" id="add-link-btn" class="btn btn-secondary">Add</button></div></div></div><div class="modal-footer"><button type="submit" class="btn btn-primary">Save Task</button><span id="task-modal-status"></span></div></form></div></div>
+        <!-- GDrive Link Modal -->
+        <div id="gdrive-link-modal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Link Google Drive Folder</h2><span class="close-button">&times;</span></div><form id="gdrive-link-form"><div class="modal-body"><input type="hidden" id="gdrive-project-id-input"><div class="form-field"><label for="gdrive-link-input">Folder URL</label><input type="url" id="gdrive-link-input" placeholder="https://drive.google.com/..." required></div></div><div class="modal-footer"><button type="submit" id="gdrive-link-save-btn" class="btn btn-primary">Save Link</button><span id="gdrive-link-status"></span></div></form></div></div>
+        <!-- Assign Equipment Modal -->
+        <div id="assign-equipment-modal" class="modal"><div class="modal-content large"><div class="modal-header"><h2>Assign Equipment to Project</h2><span class="close-button">&times;</span></div><div class="modal-body assign-equipment-body"><div class="equipment-selection-pane"><h3>Available Equipment</h3><input type="text" id="equipment-search-input" placeholder="Search equipment..."><div id="equipment-search-results" class="equipment-list"></div></div><div class="equipment-selected-pane"><h3>Assigned to Project</h3><div id="selected-equipment-list" class="equipment-list"></div></div></div><div class="modal-footer"><button id="save-assigned-equipment-btn" class="btn btn-primary">Save Changes</button><span id="assign-equipment-status"></span></div></div></div>
+        <!-- Assign Staff Modal -->
+        <div id="assign-staff-modal" class="modal"><div class="modal-content large"><div class="modal-header"><h2>Assign Staff to Project</h2><span class="close-button">&times;</span></div><div class="modal-body assign-staff-body"><div class="staff-selection-pane"><h3>Available Staff</h3><input type="text" id="staff-search-input" placeholder="Search staff..."><div id="staff-search-results" class="staff-list"></div></div><div class="staff-selected-pane"><h3>Assigned to Project</h3><div id="selected-staff-list" class="staff-list"></div></div></div><div class="modal-footer"><button id="save-assigned-staff-btn" class="btn btn-primary">Save Changes</button><span id="assign-staff-status"></span></div></div></div>
+        <!-- Delete Modals -->
+        <div id="delete-client-modal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Confirm Deletion</h2><span class="close-button">&times;</span></div><div class="modal-body"><div class="warning-box"><p><strong>Warning:</strong> This action is permanent and cannot be undone. All data associated with this client will be cleared.</p></div><p>To proceed, please type "Delete" in the box below.</p><input type="text" id="delete-confirm-input" placeholder="Type Delete to confirm"></div><div class="modal-footer"><button id="delete-confirm-btn" class="btn btn-danger" disabled>Delete Client</button><span id="delete-client-status"></span></div></div></div>
+        <div id="delete-project-modal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Confirm Project Deletion</h2><span class="close-button">&times;</span></div><div class="modal-body"><div class="warning-box"><p><strong>Warning:</strong> This action is permanent and cannot be undone. This project and all of its associated tasks will be permanently deleted.</p></div><p>To proceed, please type "Delete" in the box below.</p><input type="text" id="delete-project-confirm-input" placeholder="Type Delete to confirm"></div><div class="modal-footer"><button id="delete-project-confirm-btn" class="btn btn-danger" disabled>Delete Project</button><span id="delete-project-status"></span></div></div></div>
+        <div id="delete-staff-modal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Confirm Staff Deletion</h2><span class="close-button">&times;</span></div><div class="modal-body"><div class="warning-box"><p><strong>Warning:</strong> This action is permanent and cannot be undone. This will remove the staff member from the system.</p></div><p>To proceed, please type "Delete" in the box below.</p><input type="text" id="delete-staff-confirm-input" placeholder="Type Delete to confirm"></div><div class="modal-footer"><button id="delete-staff-confirm-btn" class="btn btn-danger" disabled>Delete Staff Member</button><span id="delete-staff-status"></span></div></div></div>
+        <div id="delete-costume-modal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Confirm Costume Deletion</h2><span class="close-button">&times;</span></div><div class="modal-body"><div class="warning-box"><p><strong>Warning:</strong> This action is permanent and cannot be undone. This will remove the costume from the inventory.</p></div><p>To proceed, please type "Delete" in the box below.</p><input type="text" id="delete-costume-confirm-input" placeholder="Type Delete to confirm"></div><div class="modal-footer"><button id="delete-costume-confirm-btn" class="btn btn-danger" disabled>Delete Costume</button><span id="delete-costume-status"></span></div></div></div>
+        <div id="delete-equipment-modal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Confirm Equipment Deletion</h2><span class="close-button">&times;</span></div><div class="modal-body"><div class="warning-box"><p><strong>Warning:</strong> This action is permanent and cannot be undone. This will remove the equipment from the inventory.</p></div><p>To proceed, please type "Delete" in the box below.</p><input type="text" id="delete-equipment-confirm-input" placeholder="Type Delete to confirm"></div><div class="modal-footer"><button id="delete-equipment-confirm-btn" class="btn btn-danger" disabled>Delete Equipment</button><span id="delete-equipment-status"></span></div></div></div>
+        <!-- Column Selector Modals -->
+        <div id="column-modal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Select Request Columns</h2><span class="close-button">&times;</span></div><div class="modal-body"><div id="column-checkboxes"></div></div><div class="modal-footer"><button id="save-columns-btn" class="btn btn-primary">Apply</button></div></div></div>
+        <div id="client-column-modal" class="modal"><div class="modal-content"><div class="modal-header"><h2>Select Client Columns</h2><span class="close-button">&times;</span></div><div class="modal-body"><div id="client-column-checkboxes"></div></div><div class="modal-footer"><button id="save-client-columns-btn" class="btn btn-primary">Apply</button></div></div></div>
+        <!-- INVENTORY MODALS -->
+        <div id="costume-modal" class="modal"><div class="modal-content large"><div class="modal-header"><h2 id="costume-modal-title">Add New Costume</h2><span class="close-button">&times;</span></div><form id="costume-modal-form"><div class="modal-body inventory-modal-body-grid"><div class="inventory-image-upload-container"><div class="image-upload-preview" id="costume-image-preview-container"><img id="costume-image-preview" src="" alt="Costume Preview" style="display: none;"><div id="costume-image-placeholder" class="image-placeholder-overlay"><span>Click to upload image</span></div></div><button type="button" id="costume-change-photo-btn" class="btn btn-secondary">Add Photo</button><input type="file" id="costume-image-upload" accept="image/*" style="display: none;"><input type="hidden" id="costume-image-url"></div><div class="inventory-form-fields"><input type="hidden" id="costume-id-input"><div class="form-field"><label for="costume-name">Name</label><input type="text" id="costume-name" required></div><div class="form-field"><label for="costume-status">Status</label><select id="costume-status"><option>Available</option><option>Rented</option><option>In Maintenance</option><option>Retired</option></select></div><div class="form-field"><label for="costume-category">Category</label><input type="text" id="costume-category"></div><div class="form-field"><label for="costume-size">Size</label><input type="text" id="costume-size"></div><div class="form-field"><label for="costume-color">Color</label><input type="text" id="costume-color"></div><div class="form-field"><label for="costume-material">Material</label><input type="text" id="costume-material"></div><div class="form-field"><label for="costume-era">Era/Style</label><input type="text" id="costume-era"></div><div class="form-field"><label for="costume-purchase-cost">Purchase Cost ($)</label><input type="number" step="0.01" id="costume-purchase-cost"></div><div class="form-field"><label for="costume-condition">Condition</label><select id="costume-condition"><option>New</option><option>Good</option><option>Fair</option><option>Poor</option></select></div><div class="form-field"><label for="costume-location">Storage Location</label><input type="text" id="costume-location"></div><div class="form-field"><label for="costume-date-added">Date Added</label><input type="date" id="costume-date-added"></div><div class="form-field full-width"><label for="costume-notes">Notes</label><textarea id="costume-notes"></textarea></div></div></div><div class="modal-footer"><button type="button" id="delete-costume-btn" class="btn btn-danger" style="display: none;">Delete Costume</button><span id="costume-modal-status"></span><button type="submit" class="btn btn-primary">Save Costume</button></div></form></div></div>
+        <div id="equipment-modal" class="modal"><div class="modal-content large"><div class="modal-header"><h2 id="equipment-modal-title">Add New Equipment</h2><span class="close-button">&times;</span></div><form id="equipment-modal-form"><div class="modal-body inventory-modal-body-grid"><div class="inventory-image-upload-container"><div class="image-upload-preview" id="equipment-image-preview-container"><img id="equipment-image-preview" src="" alt="Equipment Preview" style="display: none;"><div id="equipment-image-placeholder" class="image-placeholder-overlay"><span>Click to upload image</span></div></div><button type="button" id="equipment-change-photo-btn" class="btn btn-secondary">Add Photo</button><input type="file" id="equipment-image-upload" accept="image/*" style="display: none;"><input type="hidden" id="equipment-image-url"></div><div class="inventory-form-fields"><input type="hidden" id="equipment-id-input"><div class="form-field"><label for="equipment-name">Name</label><input type="text" id="equipment-name" required></div><div class="form-field"><label for="equipment-status">Status</label><select id="equipment-status"><option>Available</option><option>Rented</option><option>In Maintenance</option><option>Retired</option></select></div><div class="form-field"><label for="equipment-category">Category</label><input type="text" id="equipment-category"></div><div class="form-field"><label for="equipment-manufacturer">Manufacturer</label><input type="text" id="equipment-manufacturer"></div><div class="form-field"><label for="equipment-model">Model</label><input type="text" id="equipment-model"></div><div class="form-field"><label for="equipment-serial">Serial Number</label><input type="text" id="equipment-serial"></div><div class="form-field"><label for="equipment-purchase-cost">Purchase Cost ($)</label><input type="number" step="0.01" id="equipment-purchase-cost"></div><div class="form-field"><label for="equipment-purchase-date">Purchase Date</label><input type="date" id="equipment-purchase-date"></div><div class="form-field"><label for="equipment-location">Storage Location</label><input type="text" id="equipment-location"></div><div class="form-field full-width"><label for="equipment-notes">Notes</label><textarea id="equipment-notes"></textarea></div></div></div><div class="modal-footer"><button type="button" id="delete-equipment-btn" class="btn btn-danger" style="display: none;">Delete Equipment</button><span id="equipment-modal-status"></span><button type="submit" class="btn btn-primary">Save Equipment</button></div></form></div></div>
+        <div id="staff-modal" class="modal"><div class="modal-content large"><div class="modal-header"><h2 id="staff-modal-title">Add New Staff</h2><span class="close-button">&times;</span></div><form id="staff-modal-form"><div class="modal-body staff-modal-body-grid"><div class="staff-image-upload-container"><div class="image-upload-preview staff-image" id="staff-image-preview-container"><img id="staff-image-preview" src="" alt="Staff Preview" style="display: none;"><div id="staff-image-placeholder" class="image-placeholder-overlay"><span>Click to upload photo</span></div></div><button type="button" id="staff-change-photo-btn" class="btn btn-secondary">Add Photo</button><input type="file" id="staff-image-upload" accept="image/*" style="display: none;"><input type="hidden" id="staff-image-url"></div><div class="inventory-form-fields"><input type="hidden" id="staff-id-input"><div class="form-field"><label for="staff-name">Name</label><input type="text" id="staff-name" required></div><div class="form-field"><label for="staff-rate">Standard Rate ($/hr)</label><input type="number" step="0.01" id="staff-rate"></div><div class="form-field"><label for="staff-skills">Skills (comma-separated)</label><input type="text" id="staff-skills" placeholder="Videography, Editing..."></div><div class="form-field"><label for="staff-start-date">Start Date</label><input type="date" id="staff-start-date"></div><div class="form-field full-width"><label for="staff-notes">Notes</label><textarea id="staff-notes"></textarea></div></div></div><div class="modal-footer"><button type="button" id="delete-staff-btn" class="btn btn-danger" style="display: none;">Delete Staff</button><span id="staff-modal-status"></span><button type="submit" class="btn btn-primary">Save Staff</button></div></form></div></div>
+    `
+};
