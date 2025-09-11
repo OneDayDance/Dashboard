@@ -1,233 +1,165 @@
-/* --- Standardized Buttons --- */
-.btn {
-    border: none;
-    padding: 8px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    white-space: nowrap; /* Prevent buttons from wrapping text */
+/* --- Fluid Gradient Background --- */
+:root {
+    --ang: 0deg; /* Start at 0 for a seamless loop */
+    --c1: #FF9D76;
+    --c2: #76F1FF;
+    --c3: #C176FF;
+    --c4: #FFE176;
+    --input-border-color: #ccc;
+    --input-focus-color: #76F1FF;
 }
 
-.btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+html::before {
+    content: "";
+    position: fixed;
+    left: 0; top: 0; right: 0; bottom: 0;
+    z-index: -1;
+    background: linear-gradient(var(--ang), var(--c1), var(--c2), var(--c3), var(--c4));
+    background-size: 200% 200%;
+    animation: bg-pan 18s ease-in-out infinite alternate, bg-rotate 36s linear infinite;
+    pointer-events: none;
 }
 
-.btn[disabled] {
-    background-color: #ccc !important;
-    color: #888 !important;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
+@keyframes bg-pan {
+    0%   { background-position: 0% 0%; }
+    50%  { background-position: 100% 0%; }
+    100% { background-position: 0% 100%; }
 }
 
-.btn-primary {
-    background-color: #FF9D76;
-    color: white;
-}
-.btn-primary:hover {
-    background-color: #ff8a5c;
+@keyframes bg-rotate {
+    from { --ang: 0deg; } /* Explicitly start at 0 */
+    to { --ang: 360deg; } /* End at 360 (visually same as 0) */
 }
 
-.btn-secondary {
-    background-color: #f0f0f0;
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
     color: #333;
-}
-.btn-secondary:hover {
-    background-color: #e0e0e0;
+    padding: 20px;
 }
 
-.btn-danger {
-    background-color: #dc3545;
-    color: white;
-}
-.btn-danger:hover {
-    background-color: #c82333;
-}
-
-.btn-subtle {
-    background-color: #fff;
-    color: #333;
-    border: 1px solid #ccc;
-}
-.btn-subtle:hover {
-    background-color: #f8f9fa;
-    border-color: #bbb;
-}
-.btn-subtle.active {
-    background-color: #d4f4ff;
-    border-color: #76F1FF;
-}
-
-/* --- Themed Tabs --- */
-.tabs-container {
-    background-color: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(10px);
+/* --- General Layout & Themed UI --- */
+header, .card, main {
+    background-color: rgba(255, 255, 255, 0.85); /* Semi-transparent white */
+    backdrop-filter: blur(10px); /* Frosted glass effect */
     border: 1px solid rgba(255, 255, 255, 0.2);
-    padding: 10px 20px 0;
+    padding: 20px;
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    margin-bottom: 20px;
 }
-.tab-nav {
+
+header {
     display: flex;
-    justify-content: center; /* Center the tabs */
-    border-bottom: 2px solid #ccc;
-}
-.tab-button {
-    padding: 10px 20px;
-    cursor: pointer;
-    background-color: transparent;
-    font-size: 16px;
-    border: none;
-    border-bottom: 3px solid transparent;
-    margin-bottom: -2px;
-    color: #333;
-}
-.tab-button:hover { background-color: rgba(0, 0, 0, 0.05); }
-.tab-button.active {
-    border-bottom-color: #76F1FF;
-    font-weight: bold;
-}
-
-/* --- Table Styles --- */
-.table-responsive-container {
-    overflow-x: auto; /* Allow horizontal scrolling on the container */
-}
-.data-table { 
-    width: 100%; 
-    border-collapse: collapse; 
-    min-width: 800px; /* Give table a minimum width to force scrolling */
-}
-.data-table th, .data-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-.data-table th { background-color: rgba(255, 255, 255, 0.6); }
-.data-table th.sortable { cursor: pointer; position: relative; }
-.data-table th.sortable:hover { background-color: #e2e2e2; }
-.data-table th.sortable::after { content: '\2195'; opacity: 0.3; position: absolute; right: 8px; }
-.data-table th.sorted-asc::after { content: '\25B2'; opacity: 1; }
-.data-table th.sorted-desc::after { content: '\25BC'; opacity: 1; }
-.data-table tbody tr:hover { background-color: #e9ecef; cursor: pointer; }
-
-
-/* --- Standardized Modals --- */
-.modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(5px); }
-.modal-content {
-    background-color: #fefefe; margin: 5% auto; padding: 0; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 12px; position: relative; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    display: flex; flex-direction: column; max-height: 90vh;
-}
-.modal-content.large { max-width: 1000px; }
-.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid #eee; flex-shrink: 0; }
-.modal-header h2 { margin: 0; font-size: 1.25em; }
-.modal-body { 
-    padding: 20px; 
-    overflow-y: auto; 
-    flex-grow: 1; 
-    /* THIS IS THE FIX: Ensure the modal body itself can scroll */
-    max-height: calc(90vh - 140px); /* 90vh total height minus header/footer */
-}
-.modal-body.two-column { display: grid; grid-template-columns: 200px 1fr; gap: 20px; }
-.modal-footer { display: flex; justify-content: flex-end; align-items: center; gap: 10px; text-align: right; border-top: 1px solid #eee; padding: 15px 20px; background-color: #f9f9f9; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; flex-shrink: 0;}
-.close-button { color: #aaa; background: none; border: none; font-size: 28px; font-weight: bold; cursor: pointer; padding: 0; line-height: 1; }
-.close-button:hover, .close-button:focus { color: black; }
-.warning-box { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 10px; border-radius: 5px; margin-bottom: 15px; }
-
-/* --- Image Uploader in Modals --- */
-.image-uploader { margin-bottom: 15px; }
-.image-uploader label { display: block; margin-bottom: 5px; font-weight: bold; }
-.image-uploader .image-preview {
-    width: 100%;
-    height: 200px;
-    border: 2px dashed #ccc;
-    border-radius: 6px;
-    display: flex;
-    justify-content: center;
     align-items: center;
-    cursor: pointer;
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    color: #888;
+    justify-content: space-between; /* Changed from center for better responsive control */
+    text-align: center;
+    margin-bottom: 20px;
     position: relative;
+    padding: 15px 20px;
 }
-.image-uploader .image-preview:hover { border-color: #76F1FF; }
-.image-uploader input[type="file"] { display: none; }
 
-
-/* --- Loading Overlay --- */
-#loading-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(5px);
-    z-index: 9999;
+.header-content {
     display: flex;
-    flex-direction: column;
-    justify-content: center;
     align-items: center;
-    color: #333;
-    font-size: 1.2em;
+    gap: 15px;
 }
 
-.loading-spinner {
-    border: 8px solid #f3f3f3; /* Light grey */
-    border-top: 8px solid #FF9D76; /* Orange */
-    border-radius: 50%;
-    width: 60px;
-    height: 60px;
-    animation: spin 1s linear infinite;
-    margin-bottom: 20px;
+.header-logo {
+    height: 50px; /* Controls the size of the logo */
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+.header-title {
+    margin: 0;
+    flex-grow: 1;
 }
 
-/* --- Responsive Components --- */
+main { padding: 20px; }
+
+#auth-container {
+    /* No longer needs absolute positioning */
+}
+
+
+/* --- Modernized Form Fields --- */
+input[type="text"],
+input[type="email"],
+input[type="number"],
+input[type="date"],
+input[type="url"],
+textarea,
+select {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--input-border-color);
+    background-color: #fff;
+    font-size: 14px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-sizing: border-box; /* Ensures padding doesn't affect width */
+}
+
+textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="number"]:focus,
+input[type="date"]:focus,
+input[type="url"]:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: var(--input-focus-color);
+    box-shadow: 0 0 0 3px rgba(118, 241, 255, 0.4);
+}
+
+/* --- Form Field & Grid styles for modals */
+.form-field { margin-bottom: 15px; }
+.form-field label { display: block; margin-bottom: 5px; font-weight: bold; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+hr {
+    border: none;
+    border-top: 1px solid #eee;
+    margin: 20px 0;
+}
+
+
+/* --- Responsive adjustments --- */
+@media (max-width: 992px) {
+    .chart-grid {
+        grid-template-columns: 1fr; /* Stack charts on smaller screens */
+    }
+}
 
 @media (max-width: 768px) {
-    .tabs-container {
-        padding: 5px 0 0;
-    }
-    .tab-nav {
-        justify-content: flex-start;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-    }
-    .tab-button {
-        padding: 8px 12px;
-        font-size: 14px;
-        flex-shrink: 0; /* Prevent tabs from shrinking */
+    body {
+        padding: 10px;
     }
 
-    .modal-content {
-        width: 95%;
-        margin: 10% auto;
-        max-height: 85vh;
+    header {
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px;
     }
-    .modal-body.two-column {
-        grid-template-columns: 1fr;
+
+    .header-title {
+        font-size: 1.2em; /* Shrink title on small screens */
     }
-    .modal-nav {
-        border-right: none;
-        border-bottom: 1px solid #eee;
-        padding-right: 0;
-        padding-bottom: 10px;
-        margin-bottom: 10px;
-        display: flex;
-        overflow-x: auto;
+
+    .header-logo {
+        height: 40px; /* Make logo a bit smaller on mobile */
     }
-    .modal-nav .nav-link {
-        margin-bottom: 0;
-        white-space: nowrap;
+
+    #auth-container {
+        width: 100%;
+    }
+    #signout_button {
+        width: 100%;
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr; /* Single column forms on mobile */
     }
 }
