@@ -10,7 +10,8 @@ let charts = {
     projects: null,
     leadSource: null,
     costumeCategory: null,
-    equipmentStatus: null
+    equipmentStatus: null,
+    staffSkills: null
 };
 
 export function renderAnalytics() {
@@ -37,6 +38,7 @@ export function renderAnalytics() {
     renderLeadSourceChart();
     renderCostumeCategoryChart();
     renderEquipmentStatusChart();
+    renderStaffSkillsChart();
 }
 
 function setupKpiCardLinks() {
@@ -462,6 +464,49 @@ function renderEquipmentStatusChart() {
                 }
             },
             plugins: { legend: { display: false } }
+        }
+    });
+}
+
+function renderStaffSkillsChart() {
+    const canvas = document.getElementById('staff-skills-chart');
+    if (!canvas || !allStaff?.rows) return;
+
+    const skillsCount = {};
+    const skillsIdx = allStaff.headers.indexOf('Skills');
+    if (skillsIdx === -1) return;
+
+    allStaff.rows.forEach(row => {
+        const skillsString = row[skillsIdx] || '';
+        const skills = skillsString.split(',').map(s => s.trim()).filter(Boolean);
+        skills.forEach(skill => {
+            skillsCount[skill] = (skillsCount[skill] || 0) + 1;
+        });
+    });
+
+    const labels = Object.keys(skillsCount);
+    const dataPoints = Object.values(skillsCount);
+
+    const backgroundColors = [
+        '#FF9D76', '#76F1FF', '#C176FF', '#FFE176', '#8BFF76', '#FF76B7',
+        '#76A6FF', '#FF7676', '#76FFD9', '#D976FF', '#A6FF76'
+    ];
+
+    const ctx = canvas.getContext('2d');
+    charts.staffSkills = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Staff by Skill',
+                data: dataPoints,
+                backgroundColor: backgroundColors,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
         }
     });
 }
