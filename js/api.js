@@ -27,7 +27,7 @@ async function fetchData(range, setter) {
             const headerCount = headers.length;
             const rawRows = values.slice(1).filter(row => row.some(cell => cell !== '' && cell !== null)); // Filter truly empty rows
 
-            // **THE FIX**: Pad any truncated rows to match the header count
+            // Pad any truncated rows to match the header count
             const paddedRows = rawRows.map(row => {
                 while (row.length < headerCount) {
                     row.push('');
@@ -65,9 +65,6 @@ export const loadEquipment = () => fetchData('Equipment', setAllEquipment);
  * @returns {Promise<object>} - The result from the Sheets API.
  */
 export async function updateSheetRow(sheetName, idColumnName, idValue, dataToUpdate) {
-    console.log(`Attempting to update row in '${sheetName}' where '${idColumnName}' = '${idValue}'`);
-    console.log("Data to update:", dataToUpdate);
-
     let sheetResponse = await gapi.client.sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
         range: `${sheetName}!1:1`
@@ -108,8 +105,6 @@ export async function updateSheetRow(sheetName, idColumnName, idValue, dataToUpd
         }
     }
     
-    console.log(`Prepared updated row for sheet '${sheetName}':`, updatedRow);
-
     const targetRowNumber = visualRowIndex + 1;
     const targetRange = `${sheetName}!A${targetRowNumber}`;
 
@@ -130,23 +125,14 @@ export async function updateSheetRow(sheetName, idColumnName, idValue, dataToUpd
  * @returns {Promise<object>} - The result from the Sheets API.
  */
 export async function writeData(sheetName, dataObject) {
-    // --- START DEBUGGING ---
-    console.log(`--- Starting writeData for sheet: ${sheetName} ---`);
-    console.log("1. Raw data object received:", dataObject);
-
-    // 1. Get current headers from the sheet.
     const headerResponse = await gapi.client.sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
-        range: `${sheetName}!1:1` // Read only the first row
+        range: `${sheetName}!1:1`
     });
     let headers = (headerResponse.result.values ? headerResponse.result.values[0] : []) || [];
-    console.log("2. Headers fetched from the sheet:", headers);
-    console.log(`   (Total header columns: ${headers.length})`);
-
 
     const normalize = str => (str || '').toLowerCase().trim();
     
-    // Function to build a map of header names to their column index.
     const buildHeaderMap = (hdrs) => {
         const map = new Map();
         hdrs.forEach((h, i) => { 
@@ -156,16 +142,10 @@ export async function writeData(sheetName, dataObject) {
     };
 
     let headerMap = buildHeaderMap(headers);
-    console.log("3. Header map created (normalized header -> index):");
-    console.table(Array.from(headerMap.entries()).map(([key, val]) => ({ NormalizedHeader: key, OriginalHeader: val.original, Index: val.index })));
-
     
-    // 2. Identify any new headers from the data object that don't exist in the sheet.
     const newHeaders = Object.keys(dataObject).filter(k => !headerMap.has(normalize(k)));
 
-    // 3. If there are new headers, append them to the sheet and update our local headers list/map.
     if (newHeaders.length > 0) {
-        console.log("4. New headers identified to be added:", newHeaders);
         const firstEmptyColumn = columnToLetter(headers.length + 1);
         await gapi.client.sheets.spreadsheets.values.update({
             spreadsheetId: SPREADSHEET_ID,
@@ -173,17 +153,11 @@ export async function writeData(sheetName, dataObject) {
             valueInputOption: 'RAW',
             resource: { values: [newHeaders] }
         });
-        // Update local variables to reflect the new state
         headers = headers.concat(newHeaders);
         headerMap = buildHeaderMap(headers);
-        console.log("   Updated headers after adding new ones:", headers);
-    } else {
-        console.log("4. No new headers to add.");
     }
     
-    // 4. Construct the new row array, ensuring values are placed at the correct index based on the header map.
-    // This correctly handles sheets with empty or out-of-order columns.
-    const newRow = Array(headers.length).fill(''); // Initialize row with empty strings
+    const newRow = Array(headers.length).fill('');
     for (const dataKey in dataObject) {
         const normalizedKey = normalize(dataKey);
         if (headerMap.has(normalizedKey)) {
@@ -191,17 +165,8 @@ export async function writeData(sheetName, dataObject) {
             newRow[index] = dataObject[dataKey];
         }
     }
-    console.log("5. Final row array constructed for submission:", newRow);
-    console.log("   Verifying alignment:");
-    const verification = newRow.map((value, index) => ({
-        Header: headers[index] || `(Empty Column ${index})`,
-        Value: value
-    }));
-    console.table(verification);
 
-
-    // 5. Append the fully constructed row to the sheet.
-    const result = await gapi.client.sheets.spreadsheets.values.append({
+    return gapi.client.sheets.spreadsheets.values.append({
         spreadsheetId: SPREADSHEET_ID,
         range: sheetName,
         valueInputOption: 'USER_ENTERED',
@@ -210,10 +175,6 @@ export async function writeData(sheetName, dataObject) {
             values: [newRow]
         }
     });
-
-    console.log("6. Google Sheets API response received.");
-    console.log(`--- Finished writeData ---`);
-    return result;
 }
 
 
@@ -344,3 +305,4 @@ function columnToLetter(column) {
     }
     return letter;
 }
+

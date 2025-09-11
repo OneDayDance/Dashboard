@@ -58,7 +58,7 @@
 
 /* --- Standardized Cards --- */
 .card-container {
-    column-count: 4;
+    column-count: 5; /* Increased column count for smaller cards */
     column-gap: 20px;
 }
 .info-card { 
@@ -69,73 +69,74 @@
     transition: all 0.2s ease-in-out;
     margin-bottom: 20px; /* Space between rows */
     break-inside: avoid;
-    padding: 15px; /* Added padding for breathing room */
-    box-sizing: border-box; /* Ensure padding is included in the element's total width and height */
+    padding: 15px; 
+    box-sizing: border-box; 
 }
 .info-card:hover { 
     border-color: #FF9D76; 
     box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
-    transform: scale(1.02); /* Gently enlarge card on hover */
+    transform: scale(1.02); 
 }
 .info-card h3 { margin-top: 0; }
 .info-card p { margin: 5px 0; color: #555; font-size: 14px; }
 
 /* Responsive columns for masonry layout */
-@media (max-width: 1200px) {
+@media (max-width: 1400px) { /* Adjusted breakpoint */
+    .card-container { column-count: 4; }
+}
+@media (max-width: 1100px) { /* Adjusted breakpoint */
     .card-container { column-count: 3; }
 }
-@media (max-width: 900px) {
+@media (max-width: 768px) { /* Adjusted breakpoint */
     .card-container { column-count: 2; }
 }
-@media (max-width: 600px) {
+@media (max-width: 500px) { /* Adjusted breakpoint */
     .card-container { column-count: 1; }
 }
 
 /* --- Analytics View --- */
 .analytics-grid { display: grid; gap: 20px; margin-bottom: 20px; }
-.kpi-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
-.kpi-card { position: relative; overflow: hidden; }
-.kpi-card h3 { font-size: 16px; color: #555; font-weight: normal; }
-.kpi-card p { font-size: 36px; font-weight: bold; color: #333; }
-.kpi-icon { position: absolute; right: 15px; bottom: 10px; font-size: 48px; opacity: 0.1; pointer-events: none; }
-.chart-grid { 
-    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); 
-    grid-auto-rows: minmax(350px, auto); 
-}
-.chart-container { padding: 20px; display: flex; flex-direction: column; }
-.chart-container h3 { margin: 0 0 15px 0; text-align: center; }
-.chart-container canvas { flex-grow: 1; max-height: 300px; }
+.kpi-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); } /* Reduced min-width */
+.kpi-card { position: relative; overflow: hidden; cursor: pointer; } /* Added cursor */
+.kpi-card h3 { font-size: 15px; color: #555; font-weight: normal; }
+.kpi-card p { font-size: 32px; font-weight: bold; color: #333; }
+.kpi-icon { position: absolute; right: 15px; bottom: 10px; font-size: 40px; opacity: 0.1; pointer-events: none; }
 
+.analytics-layout {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: auto auto;
+    gap: 20px;
+}
+.analytics-main-chart {
+    grid-column: 1 / 3;
+    grid-row: 1 / 2;
+}
+.analytics-activity-feed {
+    grid-column: 3 / 4;
+    grid-row: 1 / 3;
+}
+.analytics-secondary-chart {
+    grid-column: auto;
+}
+.chart-container { 
+    padding: 20px; 
+    display: flex; 
+    flex-direction: column; 
+    min-height: 350px;
+}
+.chart-container h3 { margin: 0 0 15px 0; text-align: center; }
+.chart-container canvas { flex-grow: 1; }
 #activity-feed-container {
-    /* Make the activity feed take up more vertical space */
-    grid-row: span 2; 
-    /* Set a max height and enable scrolling */
-    max-height: 720px; /* 350px per row + 20px gap */
+    height: 100%;
     display: flex;
     flex-direction: column;
 }
 #activity-feed { 
-    list-style: none; 
-    padding: 0; 
-    margin: 0; 
-    overflow-y: auto; 
-    flex-grow: 1; 
-    /* Add a subtle scrollbar style */
-    scrollbar-width: thin;
-    scrollbar-color: #ccc #f0f0f0;
+    list-style: none; padding: 0; margin: 0; 
+    overflow-y: auto; /* Enable scrolling */
+    flex-grow: 1; /* Allow it to fill the container height */
 }
-#activity-feed::-webkit-scrollbar {
-    width: 8px;
-}
-#activity-feed::-webkit-scrollbar-track {
-    background: #f0f0f0;
-}
-#activity-feed::-webkit-scrollbar-thumb {
-    background-color: #ccc;
-    border-radius: 4px;
-    border: 2px solid #f0f0f0;
-}
-
 #activity-feed li { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
 #activity-feed li:last-child { border-bottom: none; }
 #activity-feed li .activity-date { display: block; font-size: 12px; color: #888; margin-top: 4px; }
@@ -145,12 +146,10 @@
 .client-list-container { grid-column: 1 / -1; } /* Take full width */
 
 /* --- Requests View Fixes --- */
-#requests-container .card-container, #archived-requests-container .card-container {
-    /* Add padding to prevent the hover animation on cards
-       from being clipped by the container's boundaries. */
-    padding: 10px;
-    box-sizing: border-box; /* Ensure padding is calculated correctly. */
+#requests-container, #archived-requests-container {
+    padding: 10px; /* Increased padding for more breathing room */
 }
+
 
 /* --- Rebuilt Client & Request Modal Views --- */
 .modal-nav { border-right: 1px solid #eee; padding-right: 20px; }
@@ -205,9 +204,6 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 .project-details-section-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 10px; }
 .project-details-section-header h4 { border: none; margin: 0; padding: 0;}
 .interactive-card { text-align: center; position: relative; cursor: pointer; }
-.info-card.interactive-card:hover { 
-    /* Allow interactive cards to scale too */
-}
 .interactive-card .card-main-content, .interactive-card .card-hover-content { transition: opacity 0.3s ease; display: flex; flex-direction: column; justify-content: center; align-items: center; }
 .interactive-card .card-main-content h4 { margin: 0; font-size: 14px; color: #555; }
 .interactive-card .card-main-content p { margin: 5px 0 0; font-size: 16px; font-weight: bold; }
@@ -388,7 +384,6 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 }
 .inventory-card-image {
     width: 100%;
-    /* height: 180px;  Removed fixed height */
     background-color: #e9ecef;
     display: flex;
     justify-content: center;
@@ -447,5 +442,3 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 .form-field.full-width {
     grid-column: 1 / -1;
 }
-
-
