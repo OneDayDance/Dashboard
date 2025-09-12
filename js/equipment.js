@@ -2,7 +2,7 @@
 // Description: Contains all logic for the 'Equipment' tab using the generic resource manager.
 
 import { allEquipment } from './state.js';
-import { createResourceManager } from './resourceManager.js';
+import { createResourceManager } from './resourcemanager.js';
 
 // --- CONFIGURATION ---
 const genericCardRenderer = (row, headers) => {

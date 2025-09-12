@@ -2,7 +2,7 @@
 // Description: Contains all logic for the 'Costumes' tab using the generic resource manager.
 
 import { allCostumes } from './state.js';
-import { createResourceManager } from './resourceManager.js';
+import { createResourceManager } from './resourcemanager.js';
 
 // --- CONFIGURATION ---
 const genericCardRenderer = (row, headers) => {

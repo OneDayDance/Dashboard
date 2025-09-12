@@ -2,7 +2,7 @@
 // Description: Contains all logic for the 'Staff' tab using the generic resource manager.
 
 import { allStaff } from './state.js';
-import { createResourceManager } from './resourceManager.js';
+import { createResourceManager } from './resourcemanager.js';
 
 // --- CONFIGURATION ---
 const staffCardRenderer = (row, headers) => {
