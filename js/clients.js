@@ -2,7 +2,7 @@
 // Description: This file contains all the functions for managing clients in the dashboard.
 
 import { SPREADSHEET_ID } from './config.js';
-import { getSheetData, getClientById, updateClientData, deleteClientById, createSheet, addSheetRow } from './api.js';
+import { getSheetData, getClientById, updateClientData, deleteClientById, createSheet, addClient } from './api.js';
 import { showModal, hideModal, createTable, createCard, clearContainer, formatDate, sanitizeHTML } from './utils.js';
 import { appState } from './state.js';
 import { renderProjectsTab } from './projects.js';
@@ -97,7 +97,7 @@ async function addNewClient() {
             'Notes': '',
             'Client ID': `C${Date.now()}` // Generate a unique ID
         };
-        await addSheetRow('Clients', newClient);
+        await addClient(newClient);
         elements.addClientModalStatus.textContent = 'Client added successfully!';
         elements.addClientForm.reset();
         setTimeout(() => {
