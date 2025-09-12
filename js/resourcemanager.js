@@ -291,3 +291,4 @@ export function createResourceManager(config) {
 
     return { init, render };
 }
+

@@ -37,19 +37,19 @@ export function cacheDOMElements() {
     elements.projectSearchBar = document.getElementById('project-search-bar');
 
     // Costumes Tab
-    elements.costumeAddBtn = document.getElementById('add-costume-btn');
+    elements.costumeAddBtn = document.getElementById('costume-add-btn');
     elements.costumeSearchBar = document.getElementById('costume-search-bar');
     elements.costumeStatusFilter = document.getElementById('costume-status-filter');
     elements.costumeCategoryFilter = document.getElementById('costume-category-filter');
     
     // Equipment Tab
-    elements.equipmentAddBtn = document.getElementById('add-equipment-btn');
+    elements.equipmentAddBtn = document.getElementById('equipment-add-btn');
     elements.equipmentSearchBar = document.getElementById('equipment-search-bar');
     elements.equipmentStatusFilter = document.getElementById('equipment-status-filter');
     elements.equipmentCategoryFilter = document.getElementById('equipment-category-filter');
 
     // Staff Tab
-    elements.staffAddBtn = document.getElementById('add-staff-btn');
+    elements.staffAddBtn = document.getElementById('staff-add-btn');
     elements.staffSearchBar = document.getElementById('staff-search-bar');
     elements.staffSkillsFilter = document.getElementById('staff-skills-filter');
 
@@ -240,7 +240,7 @@ export function showDeleteConfirmationModal(title, message, onConfirm) {
     confirmBtn.disabled = true;
     statusSpan.textContent = '';
     confirmInput.oninput = () => {
-        confirmBtn.disabled = confirmInput.value === 'Delete';
+        confirmBtn.disabled = confirmInput.value !== 'Delete';
     };
 
     // Set the confirm action
@@ -265,3 +265,4 @@ export function showDeleteConfirmationModal(title, message, onConfirm) {
     
     modal.style.display = 'block';
 }
+
