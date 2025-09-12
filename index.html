@@ -570,104 +570,26 @@
         </div>
     </div>
 
-
-    <!-- Delete Confirmation Modals (Standardized) -->
-    <div id="delete-client-modal" class="modal">
+    <!-- Unified Delete Confirmation Modal -->
+    <div id="delete-confirmation-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Confirm Deletion</h2>
+                <h2 id="delete-modal-title">Confirm Deletion</h2>
                 <span class="close-button">&times;</span>
             </div>
             <div class="modal-body">
                 <div class="warning-box">
-                    <p><strong>Warning:</strong> This action is permanent and cannot be undone. All data associated with this client will be cleared.</p>
+                    <p id="delete-modal-warning-message"><!-- JS will populate this --></p>
                 </div>
                 <p>To proceed, please type "Delete" in the box below.</p>
-                <input type="text" id="delete-confirm-input" placeholder="Type Delete to confirm">
+                <input type="text" id="delete-modal-confirm-input" placeholder="Type Delete to confirm">
             </div>
             <div class="modal-footer">
-                <button id="delete-confirm-btn" class="btn btn-danger" disabled>Delete Client</button>
-                <span id="delete-client-status"></span>
+                <button id="delete-modal-confirm-btn" class="btn btn-danger" disabled>Delete</button>
+                <span id="delete-modal-status"></span>
             </div>
         </div>
     </div>
-     <div id="delete-project-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Confirm Project Deletion</h2>
-                <span class="close-button">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="warning-box">
-                    <p><strong>Warning:</strong> This action is permanent and cannot be undone. This project and all of its associated tasks will be permanently deleted.</p>
-                </div>
-                <p>To proceed, please type "Delete" in the box below.</p>
-                <input type="text" id="delete-project-confirm-input" placeholder="Type Delete to confirm">
-            </div>
-            <div class="modal-footer">
-                <button id="delete-project-confirm-btn" class="btn btn-danger" disabled>Delete Project</button>
-                <span id="delete-project-status"></span>
-            </div>
-        </div>
-    </div>
-    <div id="delete-staff-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Confirm Staff Deletion</h2>
-                <span class="close-button">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="warning-box">
-                    <p><strong>Warning:</strong> This action is permanent and cannot be undone. This will remove the staff member from the system.</p>
-                </div>
-                <p>To proceed, please type "Delete" in the box below.</p>
-                <input type="text" id="delete-staff-confirm-input" placeholder="Type Delete to confirm">
-            </div>
-            <div class="modal-footer">
-                <button id="delete-staff-confirm-btn" class="btn btn-danger" disabled>Delete Staff Member</button>
-                <span id="delete-staff-status"></span>
-            </div>
-        </div>
-    </div>
-    <div id="delete-costume-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Confirm Costume Deletion</h2>
-                <span class="close-button">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="warning-box">
-                    <p><strong>Warning:</strong> This action is permanent and cannot be undone. This will remove the costume from the inventory.</p>
-                </div>
-                <p>To proceed, please type "Delete" in the box below.</p>
-                <input type="text" id="delete-costume-confirm-input" placeholder="Type Delete to confirm">
-            </div>
-            <div class="modal-footer">
-                <button id="delete-costume-confirm-btn" class="btn btn-danger" disabled>Delete Costume</button>
-                <span id="delete-costume-status"></span>
-            </div>
-        </div>
-    </div>
-    <div id="delete-equipment-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Confirm Equipment Deletion</h2>
-                <span class="close-button">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="warning-box">
-                    <p><strong>Warning:</strong> This action is permanent and cannot be undone. This will remove the equipment from the inventory.</p>
-                </div>
-                <p>To proceed, please type "Delete" in the box below.</p>
-                <input type="text" id="delete-equipment-confirm-input" placeholder="Type Delete to confirm">
-            </div>
-            <div class="modal-footer">
-                <button id="delete-equipment-confirm-btn" class="btn btn-danger" disabled>Delete Equipment</button>
-                <span id="delete-equipment-status"></span>
-            </div>
-        </div>
-    </div>
-
 
     <!-- Column Selector Modals (Standardized) -->
     <div id="column-modal" class="modal">

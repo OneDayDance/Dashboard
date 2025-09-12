@@ -3,7 +3,7 @@
 
 import { state, allEquipment, updateEquipmentFilters } from './state.js';
 import { updateSheetRow, writeData, uploadImageToDrive, clearSheetRow } from './api.js';
-import { elements } from './ui.js';
+import { elements, showDeleteConfirmationModal } from './ui.js';
 
 let refreshData;
 
@@ -241,7 +241,18 @@ function showEquipmentModal(rowData = null) {
 
         if (deleteButton) {
             deleteButton.style.display = 'block';
-            deleteButton.onclick = () => showDeleteEquipmentModal(equipmentId);
+            deleteButton.onclick = () => {
+                modal.style.display = 'none';
+                const equipmentName = rowData[headers.indexOf('Name')] || 'this equipment';
+                showDeleteConfirmationModal(
+                    `Delete Equipment: ${equipmentName}`,
+                    'This action is permanent and cannot be undone. This will remove the equipment from the inventory.',
+                    async () => {
+                        await clearSheetRow('Equipment', 'EquipmentID', equipmentId);
+                        await refreshData();
+                    }
+                );
+            };
         }
 
     } else {
@@ -293,40 +304,5 @@ async function handleFormSubmit(event) {
     } catch (err) {
         statusSpan.textContent = `Error: ${err.message}`;
         console.error('Equipment save error:', err);
-    }
-}
-
-// --- DELETE EQUIPMENT ---
-function showDeleteEquipmentModal(equipmentId) {
-    const modal = elements.deleteEquipmentModal;
-    if (!modal) return;
-    modal.style.display = 'block';
-
-    const confirmInput = document.getElementById('delete-equipment-confirm-input');
-    const confirmBtn = document.getElementById('delete-equipment-confirm-btn');
-    
-    confirmInput.value = '';
-    confirmBtn.disabled = true;
-    confirmInput.oninput = () => { confirmBtn.disabled = confirmInput.value !== 'Delete'; };
-    confirmBtn.onclick = () => handleDeleteEquipment(equipmentId);
-}
-
-async function handleDeleteEquipment(equipmentId) {
-    const statusSpan = document.getElementById('delete-equipment-status');
-    statusSpan.textContent = 'Deleting...';
-    document.getElementById('delete-equipment-confirm-btn').disabled = true;
-
-    try {
-        await clearSheetRow('Equipment', 'EquipmentID', equipmentId);
-        await refreshData();
-        statusSpan.textContent = 'Equipment deleted.';
-        setTimeout(() => {
-            elements.deleteEquipmentModal.style.display = 'none';
-            elements.equipmentModal.style.display = 'none';
-        }, 1500);
-    } catch (err) {
-        statusSpan.textContent = 'Error deleting equipment.';
-        console.error('Delete equipment error:', err);
-        document.getElementById('delete-equipment-confirm-btn').disabled = false;
     }
 }

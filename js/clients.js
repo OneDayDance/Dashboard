@@ -3,7 +3,7 @@
 
 import { state, allClients, allRequests, allProjects, clientSortableColumns, updateState, updateClientFilters } from './state.js';
 import { updateSheetRow, writeData, clearSheetRow } from './api.js';
-import { showColumnModal, elements } from './ui.js';
+import { showColumnModal, elements, showDeleteConfirmationModal } from './ui.js';
 import { showCreateProjectModal, renderProjectsTab } from './projects.js';
 import { showRequestDetailsModal } from './requests.js';
 
@@ -413,7 +413,22 @@ export function showClientDetailsModal(rowData, headers) {
         if (newProjectBtn) newProjectBtn.onclick = () => showCreateProjectModal(localState.currentRowData, headers);
         
         const deleteClientBtn = document.getElementById('modal-delete-client-btn');
-        if(deleteClientBtn) deleteClientBtn.onclick = () => showDeleteClientModal(localState.currentRowData, headers);
+        if (deleteClientBtn) {
+            deleteClientBtn.onclick = () => {
+                modal.style.display = 'none'; // Hide the details modal first
+                const clientId = localState.currentRowData[headers.indexOf('ClientID')];
+                const clientName = `${localState.currentRowData[headers.indexOf('First Name')]} ${localState.currentRowData[headers.indexOf('Last Name')]}`;
+
+                showDeleteConfirmationModal(
+                    `Delete Client: ${clientName}`,
+                    `This action is permanent and cannot be undone. All data associated with this client will be cleared.`,
+                    async () => {
+                        await clearSheetRow('Clients', 'ClientID', clientId);
+                        await refreshData();
+                    }
+                );
+            };
+        }
     }
     
     async function handleSaveClientUpdate() {
@@ -474,25 +489,4 @@ export function showClientDetailsModal(rowData, headers) {
     render();
     attachContentEventListeners();
     modal.style.display = 'block';
-}
-
-
-function showDeleteClientModal(rowData, headers) {
-    elements.clientDetailsModal.style.display = 'none';
-    elements.deleteClientModal.style.display = 'block';
-    const confirmInput = document.getElementById('delete-confirm-input');
-    const confirmBtn = document.getElementById('delete-confirm-btn');
-    confirmInput.value = ''; confirmBtn.disabled = true;
-    confirmInput.oninput = () => confirmBtn.disabled = confirmInput.value !== 'Delete';
-    confirmBtn.onclick = async () => {
-        const statusSpan = document.getElementById('delete-client-status');
-        statusSpan.textContent = 'Deleting...'; confirmBtn.disabled = true;
-        const clientId = rowData[headers.indexOf('ClientID')];
-        try {
-            await clearSheetRow('Clients', 'ClientID', clientId);
-            statusSpan.textContent = 'Client deleted.';
-            await refreshData();
-            setTimeout(() => { elements.deleteClientModal.style.display = 'none'; }, 1500);
-        } catch (err) { statusSpan.textContent = 'Error deleting client.'; console.error('Delete client error:', err); confirmBtn.disabled = false; }
-    };
 }

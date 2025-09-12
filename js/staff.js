@@ -3,7 +3,7 @@
 
 import { state, allStaff, updateState } from './state.js';
 import { updateSheetRow, writeData, uploadImageToDrive, clearSheetRow } from './api.js';
-import { elements } from './ui.js';
+import { elements, showDeleteConfirmationModal } from './ui.js';
 
 let refreshData;
 
@@ -217,7 +217,18 @@ function showStaffModal(rowData = null) {
         }
 
         deleteButton.style.display = 'block';
-        deleteButton.onclick = () => showDeleteStaffModal(staffId);
+        deleteButton.onclick = () => {
+            modal.style.display = 'none';
+            const staffName = rowData[headers.indexOf('Name')] || 'this staff member';
+            showDeleteConfirmationModal(
+                `Delete Staff: ${staffName}`,
+                'This action is permanent and cannot be undone. This will remove the staff member from the system.',
+                async () => {
+                    await clearSheetRow('Staff', 'StaffID', staffId);
+                    await refreshData();
+                }
+            );
+        };
 
     } else {
         modal.querySelector('#staff-modal-title').textContent = 'Add New Staff';
@@ -278,44 +289,3 @@ async function handleFormSubmit(event) {
         console.error('Staff save error:', err);
     }
 }
-
-// --- DELETE STAFF ---
-
-function showDeleteStaffModal(staffId) {
-    const modal = elements.deleteStaffModal;
-    if (!modal) return;
-    modal.style.display = 'block';
-
-    const confirmInput = document.getElementById('delete-staff-confirm-input');
-    const confirmBtn = document.getElementById('delete-staff-confirm-btn');
-    
-    confirmInput.value = '';
-    confirmBtn.disabled = true;
-
-    confirmInput.oninput = () => {
-        confirmBtn.disabled = confirmInput.value !== 'Delete';
-    };
-
-    confirmBtn.onclick = () => handleDeleteStaff(staffId);
-}
-
-async function handleDeleteStaff(staffId) {
-    const statusSpan = document.getElementById('delete-staff-status');
-    statusSpan.textContent = 'Deleting...';
-    document.getElementById('delete-staff-confirm-btn').disabled = true;
-
-    try {
-        await clearSheetRow('Staff', 'StaffID', staffId);
-        await refreshData();
-        statusSpan.textContent = 'Staff member deleted.';
-        setTimeout(() => {
-            elements.deleteStaffModal.style.display = 'none';
-            elements.staffModal.style.display = 'none'; // Also close the edit modal
-        }, 1500);
-    } catch (err) {
-        statusSpan.textContent = 'Error deleting staff member.';
-        console.error('Delete staff error:', err);
-        document.getElementById('delete-staff-confirm-btn').disabled = false;
-    }
-}
-

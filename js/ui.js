@@ -59,9 +59,7 @@ export function cacheDOMElements() {
     elements.clientDetailsModal = document.getElementById('client-details-modal');
     elements.createProjectModal = document.getElementById('create-project-modal');
     elements.taskDetailsModal = document.getElementById('task-details-modal');
-    elements.deleteClientModal = document.getElementById('delete-client-modal');
-    elements.deleteProjectModal = document.getElementById('delete-project-modal');
-    elements.deleteStaffModal = document.getElementById('delete-staff-modal');
+    elements.deleteConfirmationModal = document.getElementById('delete-confirmation-modal');
     elements.clientColumnModal = document.getElementById('client-column-modal');
     elements.gdriveLinkModal = document.getElementById('gdrive-link-modal');
     elements.addClientModal = document.getElementById('add-client-modal');
@@ -215,3 +213,55 @@ export function loadDataForActiveTab() {
     console.warn("loadDataForActiveTab() is deprecated and should be removed from imports.");
 }
 
+/**
+ * Shows the unified delete confirmation modal.
+ * @param {string} title - The title for the modal (e.g., "Delete Client").
+ * @param {string} message - The specific warning message.
+ * @param {Function} onConfirm - The async function to call when the delete button is clicked.
+ */
+export function showDeleteConfirmationModal(title, message, onConfirm) {
+    const modal = elements.deleteConfirmationModal;
+    if (!modal) return;
+
+    // Get elements
+    const modalTitle = document.getElementById('delete-modal-title');
+    const warningMessage = document.getElementById('delete-modal-warning-message');
+    const confirmInput = document.getElementById('delete-modal-confirm-input');
+    const confirmBtn = document.getElementById('delete-modal-confirm-btn');
+    const statusSpan = document.getElementById('delete-modal-status');
+
+    // Set content
+    modalTitle.textContent = title;
+    warningMessage.innerHTML = `<strong>Warning:</strong> ${message}`;
+    confirmBtn.textContent = title.split(' ')[0]; // e.g., "Delete" from "Delete Client"
+
+    // Reset state
+    confirmInput.value = '';
+    confirmBtn.disabled = true;
+    statusSpan.textContent = '';
+    confirmInput.oninput = () => {
+        confirmBtn.disabled = confirmInput.value === 'Delete';
+    };
+
+    // Set the confirm action
+    confirmBtn.onclick = async () => {
+        statusSpan.textContent = 'Deleting...';
+        confirmBtn.disabled = true;
+        confirmInput.disabled = true;
+        try {
+            await onConfirm();
+            statusSpan.textContent = 'Deleted successfully.';
+            setTimeout(() => {
+                modal.style.display = 'none';
+                confirmInput.disabled = false;
+            }, 1500);
+        } catch (err) {
+            statusSpan.textContent = `Error: ${err.message}`;
+            console.error('Deletion error:', err);
+            confirmBtn.disabled = false;
+            confirmInput.disabled = false;
+        }
+    };
+    
+    modal.style.display = 'block';
+}

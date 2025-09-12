@@ -3,7 +3,7 @@
 
 import { state, allProjects, allClients, allTasks, allRequests, updateState } from './state.js';
 import { updateSheetRow, writeData, clearSheetRow } from './api.js';
-import { elements } from './ui.js';
+import { elements, showDeleteConfirmationModal } from './ui.js';
 import { showRequestDetailsModal } from './requests.js';
 import { showClientDetailsModal } from './clients.js';
 import { renderTasksSection, setupDragAndDrop, setupTaskClickHandlers, initTaskManager } from './taskManager.js';
@@ -264,7 +264,24 @@ function attachProjectDetailsEventListeners(projectId) {
         actionsContainer.addEventListener('mouseleave', hideDropdown);
         actionsContainer.querySelector('#project-edit-action').onclick = (e) => { e.preventDefault(); showProjectDetails(projectId, true); };
         actionsContainer.querySelector('#project-archive-action').onclick = (e) => { e.preventDefault(); handleArchiveProject(projectId); };
-        actionsContainer.querySelector('#project-delete-action').onclick = (e) => { e.preventDefault(); showDeleteProjectModal(projectId); };
+        actionsContainer.querySelector('#project-delete-action').onclick = (e) => {
+            e.preventDefault();
+            const project = allProjects.rows.find(p => p[allProjects.headers.indexOf('ProjectID')] === projectId);
+            const projectName = project ? project[allProjects.headers.indexOf('Project Name')] : 'this project';
+
+            showDeleteConfirmationModal(
+                `Delete Project: ${projectName}`,
+                `This action is permanent and cannot be undone. This project and all of its associated tasks will be permanently deleted.`,
+                async () => {
+                    const tasksToDelete = allTasks.rows.filter(t => t[allTasks.headers.indexOf('ProjectID')] === projectId);
+                    const taskDeletionPromises = tasksToDelete.map(t => clearSheetRow('Tasks', 'TaskID', t[allTasks.headers.indexOf('TaskID')]));
+                    await Promise.all(taskDeletionPromises);
+                    await clearSheetRow('Projects', 'ProjectID', projectId);
+                    updateState({ selectedProjectId: null });
+                    await refreshData();
+                }
+            );
+        };
     }
     const saveProjectBtn = detailsColumn.querySelector('#project-save-btn');
     if (saveProjectBtn) saveProjectBtn.onclick = () => handleSaveProjectUpdate(projectId);
@@ -439,31 +456,6 @@ async function handleArchiveProject(projectId) {
         await updateSheetRow('Projects', 'ProjectID', projectId, { 'Status': 'Archived' });
         await refreshData();
     } catch(err) { console.error('Archive project error', err); alert('Could not archive project.'); }
-}
-
-function showDeleteProjectModal(projectId) {
-    elements.deleteProjectModal.style.display = 'block';
-    const confirmInput = document.getElementById('delete-project-confirm-input');
-    const confirmBtn = document.getElementById('delete-project-confirm-btn');
-    confirmInput.value = ''; confirmBtn.disabled = true;
-    confirmInput.oninput = () => confirmBtn.disabled = confirmInput.value !== 'Delete';
-    confirmBtn.onclick = () => handleDeleteProject(projectId);
-}
-
-async function handleDeleteProject(projectId) {
-    const statusSpan = document.getElementById('delete-project-status');
-    statusSpan.textContent = 'Deleting...';
-    document.getElementById('delete-project-confirm-btn').disabled = true;
-    try {
-        const tasksToDelete = allTasks.rows.filter(t => t[allTasks.headers.indexOf('ProjectID')] === projectId);
-        const taskDeletionPromises = tasksToDelete.map(t => clearSheetRow('Tasks', 'TaskID', t[allTasks.headers.indexOf('TaskID')]));
-        await Promise.all(taskDeletionPromises);
-        await clearSheetRow('Projects', 'ProjectID', projectId); 
-        updateState({ selectedProjectId: null });
-        await refreshData();
-        statusSpan.textContent = 'Project deleted.';
-        setTimeout(() => { elements.deleteProjectModal.style.display = 'none'; }, 1500);
-    } catch(err) { statusSpan.textContent = 'Error deleting project.'; console.error('Delete project error', err); }
 }
 
 async function handleSaveGDriveLink(event) {

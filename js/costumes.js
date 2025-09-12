@@ -3,7 +3,7 @@
 
 import { state, allCostumes, updateCostumeFilters } from './state.js';
 import { updateSheetRow, writeData, uploadImageToDrive, clearSheetRow } from './api.js';
-import { elements } from './ui.js';
+import { elements, showDeleteConfirmationModal } from './ui.js';
 
 let refreshData;
 
@@ -247,7 +247,18 @@ function showCostumeModal(rowData = null) {
 
         if (deleteButton) {
             deleteButton.style.display = 'block';
-            deleteButton.onclick = () => showDeleteCostumeModal(costumeId);
+            deleteButton.onclick = () => {
+                modal.style.display = 'none';
+                const costumeName = rowData[headers.indexOf('Name')] || 'this costume';
+                showDeleteConfirmationModal(
+                    `Delete Costume: ${costumeName}`,
+                    'This action is permanent and cannot be undone. This will remove the costume from the inventory.',
+                    async () => {
+                        await clearSheetRow('Costumes', 'CostumeID', costumeId);
+                        await refreshData();
+                    }
+                );
+            };
         }
 
     } else {
@@ -300,40 +311,5 @@ async function handleFormSubmit(event) {
     } catch (err) {
         statusSpan.textContent = `Error: ${err.message}`;
         console.error('Costume save error:', err);
-    }
-}
-
-// --- DELETE COSTUME ---
-function showDeleteCostumeModal(costumeId) {
-    const modal = elements.deleteCostumeModal;
-    if (!modal) return;
-    modal.style.display = 'block';
-
-    const confirmInput = document.getElementById('delete-costume-confirm-input');
-    const confirmBtn = document.getElementById('delete-costume-confirm-btn');
-    
-    confirmInput.value = '';
-    confirmBtn.disabled = true;
-    confirmInput.oninput = () => { confirmBtn.disabled = confirmInput.value !== 'Delete'; };
-    confirmBtn.onclick = () => handleDeleteCostume(costumeId);
-}
-
-async function handleDeleteCostume(costumeId) {
-    const statusSpan = document.getElementById('delete-costume-status');
-    statusSpan.textContent = 'Deleting...';
-    document.getElementById('delete-costume-confirm-btn').disabled = true;
-
-    try {
-        await clearSheetRow('Costumes', 'CostumeID', costumeId);
-        await refreshData();
-        statusSpan.textContent = 'Costume deleted.';
-        setTimeout(() => {
-            elements.deleteCostumeModal.style.display = 'none';
-            elements.costumeModal.style.display = 'none';
-        }, 1500);
-    } catch (err) {
-        statusSpan.textContent = 'Error deleting costume.';
-        console.error('Delete costume error:', err);
-        document.getElementById('delete-costume-confirm-btn').disabled = false;
     }
 }
