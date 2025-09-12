@@ -211,8 +211,18 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 .folder-link-container .card-main-content { gap: 8px; }
 .folder-link-container svg { width: 32px; height: 32px; fill: #5f6368; }
 .folder-link-container .card-main-content h4 { font-size: 16px; margin-top: 5px; }
-.line-item-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-.line-item-table th, .line-item-table td { text-align: left; padding: 8px; border-bottom: 1px solid #eee; }
+.line-item-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+    table-layout: fixed;
+}
+.line-item-table th, .line-item-table td {
+    text-align: left;
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+    word-break: break-word;
+}
 .line-item-table th:last-child, .line-item-table td:last-child { text-align: right; }
 .financials-total { text-align: right; font-size: 1.1em; font-weight: bold; padding: 10px; }
 .financials-total span { display: inline-block; min-width: 100px; }
@@ -541,3 +551,4 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
         grid-template-columns: 1fr;
     }
 }
+
