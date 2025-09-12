@@ -3,7 +3,6 @@
 
 import { CLIENT_ID, SCOPES } from './config.js';
 import { loadRequests, loadClients, loadProjects, loadTasks, loadCostumes, loadEquipment, loadStaff } from './api.js';
-import { templates } from './templates.js';
 import { 
     elements, 
     cacheDOMElements, 
@@ -31,10 +30,7 @@ let authLoadTimeout; // Variable to hold the timeout
 
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
-    // Inject all modals into the DOM
-    document.getElementById('modal-container').innerHTML = templates.modals;
-    
-    cacheDOMElements(); // This should be first after injection
+    cacheDOMElements(); // This should be first
     
     elements.authorizeButton.onclick = handleAuthClick;
     elements.signoutButton.onclick = handleSignoutClick;
@@ -51,47 +47,30 @@ function renderContentForActiveTab() {
     const activeTab = document.querySelector('.tab-button.active')?.dataset.tab;
     if (!activeTab) return;
 
-    const mainContentArea = document.getElementById('main-content-area');
-    const templateName = `${activeTab}Tab`;
-
-    if (templates[templateName]) {
-        mainContentArea.innerHTML = templates[templateName];
-    } else {
-        console.warn(`No template found for tab: ${activeTab}`);
-        mainContentArea.innerHTML = `<p>Content for ${activeTab} could not be loaded.</p>`;
-        return;
-    }
-
     switch (activeTab) {
         case 'requests':
-            initRequestsTab(loadInitialData);
             renderRequests();
             break;
         case 'analytics':
             renderAnalytics();
             break;
         case 'clients':
-            initClientsTab(loadInitialData);
             renderClients();
             break;
         case 'projects':
-            initProjectsTab(loadInitialData);
             renderProjectsTab();
             break;
         case 'costumes':
-            initCostumesTab(loadInitialData);
             renderCostumes();
             break;
         case 'equipment':
-            initEquipmentTab(loadInitialData);
             renderEquipment();
             break;
         case 'staff':
-            initStaffTab(loadInitialData);
             renderStaff();
             break;
         default:
-             console.warn(`No render function found for tab: ${activeTab}`);
+            console.warn(`No render function found for tab: ${activeTab}`);
     }
 }
 
@@ -99,7 +78,13 @@ function renderContentForActiveTab() {
 function initializeAppUI() {
     setupTabs(renderContentForActiveTab); // Pass the central render function to the tab setup.
     setupModalCloseButtons();
-    renderContentForActiveTab(); // Initial render
+    
+    initRequestsTab(loadInitialData);
+    initClientsTab(loadInitialData);
+    initProjectsTab(loadInitialData);
+    initCostumesTab(loadInitialData);
+    initEquipmentTab(loadInitialData);
+    initStaffTab(loadInitialData);
 }
 
 
@@ -221,11 +206,12 @@ function attemptSilentSignIn() {
 async function onSignInSuccess() {
     elements.landingContainer.style.display = 'none';
     elements.appContainer.style.display = 'block';
+    initializeAppUI();
     
     showLoadingIndicator();
     try {
         await loadInitialData();
-        initializeAppUI();
+        renderContentForActiveTab(); // Use the new central function for the initial render
     } catch (err) {
         showMainError(`Failed to load initial data: ${err.message}. Please check sheet permissions and try again.`);
     } finally {
@@ -281,3 +267,4 @@ function handleSignoutClick() {
         silentAuthAttempted = false; 
     }
 }
+

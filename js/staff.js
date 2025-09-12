@@ -1,295 +1,321 @@
 // js/staff.js
-// Description: This file contains all the functions for managing staff members.
+// Description: Contains all logic for the 'Staff' tab.
 
-import { allStaff } from './state.js';
-import { clearContainer, showModal, hideModal, sanitizeHTML } from './utils.js';
-import { updateSheetRow, writeData, clearSheetRow, uploadImageToDrive } from './api.js';
+import { state, allStaff, updateState } from './state.js';
+import { updateSheetRow, writeData, uploadImageToDrive, clearSheetRow } from './api.js';
+import { elements } from './ui.js';
 
+let refreshData;
 
-/**
- * Initializes the staff tab by setting up event listeners.
- */
-export function initStaffTab(refreshDataCallback) {
-    const searchBar = document.getElementById('staff-search-bar');
-    const skillsFilter = document.getElementById('staff-skills-filter');
-    const addBtn = document.getElementById('add-staff-btn');
-
-    if (searchBar) searchBar.addEventListener('input', renderStaff);
-    if (skillsFilter) skillsFilter.addEventListener('input', renderStaff);
-    if (addBtn) addBtn.addEventListener('click', () => openStaffModal());
-
-    const form = document.getElementById('staff-modal-form');
-    if (form) {
-        const newForm = form.cloneNode(true);
-        form.parentNode.replaceChild(newForm, form);
-        newForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await handleStaffFormSubmit();
-            await refreshDataCallback();
-        });
-    }
-
-    const deleteBtn = document.getElementById('delete-staff-btn');
-    if (deleteBtn) deleteBtn.addEventListener('click', handleDeleteStaffClick);
+// --- INITIALIZATION ---
+export function initStaffTab(refreshDataFn) {
+    refreshData = refreshDataFn;
     
-    const changePhotoBtn = document.getElementById('staff-change-photo-btn');
-    if(changePhotoBtn) changePhotoBtn.addEventListener('click', () => document.getElementById('staff-image-upload').click());
-
-    const imageUpload = document.getElementById('staff-image-upload');
-    if(imageUpload) imageUpload.addEventListener('change', handleImageUpload);
-
-    const imagePreviewContainer = document.getElementById('staff-image-preview-container');
-    if(imagePreviewContainer) imagePreviewContainer.addEventListener('click', () => document.getElementById('staff-image-upload').click());
+    if (elements.staffAddBtn) {
+        elements.staffAddBtn.onclick = () => showStaffModal(null);
+    }
+    if (elements.staffSearchBar) {
+        elements.staffSearchBar.oninput = (e) => { updateState({ staffFilters: { ...state.staffFilters, searchTerm: e.target.value.toLowerCase() } }); renderStaff(); };
+    }
+    if (elements.staffSkillsFilter) {
+        elements.staffSkillsFilter.oninput = (e) => { updateState({ staffFilters: { ...state.staffFilters, skill: e.target.value.toLowerCase() } }); renderStaff(); };
+    }
+    if (elements.staffModalForm) {
+        elements.staffModalForm.addEventListener('submit', handleFormSubmit);
+    }
 }
 
-
-/**
- * Populates the filter dropdowns for staff based on available skills.
- * Note: This version uses a text input for skills filtering, so this function is not strictly necessary
- * but is kept for potential future use with a dropdown.
- */
-function populateFilters() {
-    const staff = allStaff.rows || [];
-    const allSkills = new Set();
-    const skillsIndex = allStaff.headers.indexOf('Skills');
-    staff.forEach(s => {
-        const skills = s[skillsIndex] ? s[skillsIndex].split(',').map(sk => sk.trim()) : [];
-        skills.forEach(skill => allSkills.add(skill));
-    });
-    // This is where you would populate a <select> dropdown if you had one.
-}
-
-
-/**
- * Renders the staff list based on current filters.
- */
+// --- RENDERING ---
 export function renderStaff() {
+    renderStaffAsCards();
+}
+
+/**
+ * Extracts the Google Drive file ID from various URL formats.
+ * @param {string} url - The Google Drive URL.
+ * @returns {string|null} - The extracted file ID or null.
+ */
+function extractFileIdFromUrl(url) {
+    if (!url || typeof url !== 'string') return null;
+    const match = url.match(/([a-zA-Z0-9_-]{28,})/);
+    return match ? match[0] : null;
+}
+
+function renderStaffAsCards() {
     const container = document.getElementById('staff-container');
     if (!container) return;
+    container.innerHTML = '';
 
-    clearContainer(container);
-    populateFilters();
-
-    const staff = allStaff.rows || [];
-    const searchTerm = document.getElementById('staff-search-bar')?.value.toLowerCase() || '';
-    const skillsFilter = document.getElementById('staff-skills-filter')?.value.toLowerCase() || '';
-    const nameIndex = allStaff.headers.indexOf('Name');
-    const skillsIndex = allStaff.headers.indexOf('Skills');
-
-    const filteredStaff = staff.filter(member => {
-        const nameMatch = member[nameIndex]?.toLowerCase().includes(searchTerm);
-        const skillsMatch = skillsFilter === '' || member[skillsIndex]?.toLowerCase().includes(skillsFilter);
-        return nameMatch && skillsMatch;
-    });
-
-    if (filteredStaff.length === 0) {
-        container.innerHTML = '<p>No staff found matching your criteria.</p>';
+    if (!allStaff || !allStaff.rows) {
+        container.innerHTML = '<p>Staff data is not available.</p>';
         return;
     }
+    
+    const processedRows = getProcessedStaff();
 
+    if (processedRows.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state-container">
+                <h3>No Staff Found</h3>
+                <p>To get started, add a new staff member using the button above. If you have data in your sheet that isn't appearing, check the filter settings.</p>
+            </div>`;
+        return;
+    }
+    
+    if (!allStaff.headers || allStaff.headers.length === 0) {
+        console.warn("Staff headers not available yet, skipping render.");
+        container.innerHTML = `<p>Loading staff headers...</p>`;
+        return;
+    }
+    
+    const { headers } = allStaff;
     const cardContainer = document.createElement('div');
-    cardContainer.className = 'inventory-card-container';
+    cardContainer.className = 'card-container';
 
-    filteredStaff.forEach(memberRow => {
-        const member = {};
-        allStaff.headers.forEach((header, i) => {
-            member[header] = memberRow[i];
-        });
+    const [nameIndex, skillsIndex, imageIndex] = ['Name', 'Skills', 'Image URL'].map(h => headers.indexOf(h));
+
+    processedRows.forEach(row => {
         const card = document.createElement('div');
-        card.className = 'inventory-card staff-card';
-        card.dataset.staffId = member['Staff ID'];
-        card.addEventListener('click', () => openStaffModal(member));
+        card.className = 'info-card inventory-card';
+        card.onclick = () => showStaffModal(row);
 
-        const imageUrl = member['Image URL'] || 'img/placeholder';
-        const skills = member['Skills'] ? member['Skills'].split(',').map(s => `<span class="skill-tag">${sanitizeHTML(s.trim())}</span>`).join('') : 'No skills listed';
+        const imageDiv = document.createElement('div');
+        imageDiv.className = 'inventory-card-image';
+        
+        const rawImageUrl = row[imageIndex] || '';
+        const fileId = extractFileIdFromUrl(rawImageUrl);
 
-        card.innerHTML = `
-            <div class="inventory-card-image staff-card-image">
-                <img src="${sanitizeHTML(imageUrl)}" alt="${sanitizeHTML(member['Name'])}" onerror="this.onerror=null;this.src='img/placeholder';">
-            </div>
-            <div class="inventory-card-content">
-                <h3 class="inventory-card-title">${sanitizeHTML(member['Name'])}</h3>
-                <div class="staff-skills-container">
-                    ${skills}
-                </div>
-                <div class="inventory-card-footer">
-                    <span>Rate: $${sanitizeHTML(member['Standard Rate'] || 'N/A')}/hr</span>
-                </div>
+        if (fileId) {
+            const img = document.createElement('img');
+            img.alt = row[nameIndex] || 'Staff image';
+            img.src = `https://drive.google.com/thumbnail?id=${fileId}&sz=w300`;
+            img.onerror = () => { 
+                imageDiv.classList.add('no-image');
+                imageDiv.textContent = 'Image Error';
+                img.remove();
+            };
+            imageDiv.appendChild(img);
+        } else {
+            imageDiv.classList.add('no-image');
+            imageDiv.textContent = 'No Image';
+        }
+        
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'inventory-card-content';
+        
+        const skills = (row[skillsIndex] || '').split(',').map(s => s.trim()).filter(Boolean);
+        const skillChips = skills.map(skill => `<span class="skill-chip">${skill}</span>`).join('');
+
+        contentDiv.innerHTML = `
+            <h4>${row[nameIndex] || 'Unnamed Staff Member'}</h4>
+            <div class="skill-chips-container">
+                ${skillChips || '<p>No skills listed.</p>'}
             </div>
         `;
+
+        card.appendChild(imageDiv);
+        card.appendChild(contentDiv);
         cardContainer.appendChild(card);
     });
 
     container.appendChild(cardContainer);
 }
 
-/**
- * Opens the staff modal, optionally pre-filled with data for editing.
- * @param {Object|null} member - The staff member object to edit, or null for a new member.
- */
-export function openStaffModal(member = null) {
-    const form = document.getElementById('staff-modal-form');
-    form.reset();
-    
-    const modalTitle = document.getElementById('staff-modal-title');
-    const staffIdInput = document.getElementById('staff-id-input');
-    const deleteBtn = document.getElementById('delete-staff-btn');
-    const statusEl = document.getElementById('staff-modal-status');
-    const imagePreview = document.getElementById('staff-image-preview');
-    const imagePlaceholder = document.getElementById('staff-image-placeholder');
-    const imageUrlInput = document.getElementById('staff-image-url');
 
-    statusEl.textContent = '';
-    
-    if (member) {
-        modalTitle.textContent = 'Edit Staff Member';
-        staffIdInput.value = member['Staff ID'];
-        deleteBtn.style.display = 'inline-block';
+function getProcessedStaff() {
+    if (!allStaff || !allStaff.rows) return [];
+    let { headers, rows } = allStaff;
+    let processedRows = [...rows];
 
-        // Populate form fields
-        document.getElementById('staff-name').value = member['Name'] || '';
-        document.getElementById('staff-rate').value = member['Standard Rate'] || '';
-        document.getElementById('staff-skills').value = member['Skills'] || '';
-        document.getElementById('staff-start-date').value = member['Start Date'] || '';
-        document.getElementById('staff-notes').value = member['Notes'] || '';
-        imageUrlInput.value = member['Image URL'] || '';
-        
-        if (member['Image URL']) {
-            imagePreview.src = member['Image URL'];
-            imagePreview.style.display = 'block';
-            imagePlaceholder.style.display = 'none';
-        } else {
-            imagePreview.style.display = 'none';
-            imagePlaceholder.style.display = 'flex';
+    const { searchTerm, skill } = state.staffFilters || { searchTerm: '', skill: ''};
+
+    if (searchTerm) {
+        processedRows = processedRows.filter(row => row.some(cell => String(cell).toLowerCase().includes(searchTerm)));
+    }
+    
+    if (skill) {
+        const skillsIndex = headers.indexOf('Skills');
+        if (skillsIndex > -1) {
+            processedRows = processedRows.filter(row => (row[skillsIndex] || '').toLowerCase().includes(skill));
         }
+    }
+
+    return processedRows;
+}
+
+// --- MODAL & FORM HANDLING ---
+
+function safeSetValue(id, value) {
+    const element = document.getElementById(id);
+    if (element) {
+        element.value = value;
+    } else {
+        console.warn(`Element with ID '${id}' not found.`);
+    }
+}
+
+function showStaffModal(rowData = null) {
+    const modal = elements.staffModal;
+    const form = elements.staffModalForm;
+    
+    if (!modal || !form) {
+        console.error("Staff modal or form element not found in cache! Check `ui.js` and `index.html`.");
+        return;
+    }
+
+    form.reset();
+    document.getElementById('staff-modal-status').textContent = '';
+
+    const imagePreviewContainer = document.getElementById('staff-image-preview-container');
+    const imagePreview = document.getElementById('staff-image-preview');
+    const imageUploadInput = document.getElementById('staff-image-upload');
+    const changePhotoButton = document.getElementById('staff-change-photo-btn');
+    const deleteButton = document.getElementById('delete-staff-btn');
+    
+    imagePreview.src = '';
+    imagePreview.style.display = 'none';
+    imageUploadInput.value = '';
+    safeSetValue('staff-image-url', '');
+
+    // The entire preview container now triggers the file input
+    changePhotoButton.onclick = () => imageUploadInput.click();
+    imageUploadInput.onchange = (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                imagePreview.src = e.target.result;
+                imagePreview.style.display = 'block';
+                changePhotoButton.textContent = 'Change Photo';
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+    
+    if (rowData) {
+        modal.querySelector('#staff-modal-title').textContent = 'Edit Staff';
+        const { headers } = allStaff;
+        const staffId = rowData[headers.indexOf('StaffID')] || '';
+        
+        safeSetValue('staff-id-input', staffId);
+        safeSetValue('staff-name', rowData[headers.indexOf('Name')] || '');
+        safeSetValue('staff-rate', rowData[headers.indexOf('Standard Rate')] || '');
+        safeSetValue('staff-skills', rowData[headers.indexOf('Skills')] || '');
+        safeSetValue('staff-start-date', rowData[headers.indexOf('Start Date')] || '');
+        safeSetValue('staff-notes', rowData[headers.indexOf('Notes')] || '');
+        
+        const imageUrlFromSheet = rowData[headers.indexOf('Image URL')] || '';
+        safeSetValue('staff-image-url', imageUrlFromSheet);
+        const fileId = extractFileIdFromUrl(imageUrlFromSheet);
+
+        if (fileId) {
+            imagePreview.src = `https://drive.google.com/thumbnail?id=${fileId}&sz=w300`;
+            imagePreview.style.display = 'block';
+            changePhotoButton.textContent = 'Change Photo';
+        } else {
+            changePhotoButton.textContent = 'Add Photo';
+        }
+
+        deleteButton.style.display = 'block';
+        deleteButton.onclick = () => showDeleteStaffModal(staffId);
 
     } else {
-        modalTitle.textContent = 'Add New Staff Member';
-        staffIdInput.value = `S${Date.now()}`; // Generate new ID
-        deleteBtn.style.display = 'none';
-        document.getElementById('staff-start-date').value = new Date().toISOString().split('T')[0];
-        imagePreview.style.display = 'none';
-        imagePlaceholder.style.display = 'flex';
-        imageUrlInput.value = '';
+        modal.querySelector('#staff-modal-title').textContent = 'Add New Staff';
+        safeSetValue('staff-id-input', '');
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        safeSetValue('staff-start-date', `${year}-${month}-${day}`);
+        changePhotoButton.textContent = 'Add Photo';
+        deleteButton.style.display = 'none';
     }
 
-    showModal('staff-modal');
+    modal.style.display = 'block';
 }
 
-/**
- * Handles the submission of the staff form (for both adding and updating).
- */
-async function handleStaffFormSubmit() {
-    const statusEl = document.getElementById('staff-modal-status');
-    statusEl.textContent = 'Saving...';
-    
-    const staffId = document.getElementById('staff-id-input').value;
-    const isNewStaff = !allStaff.rows.some(s => s[allStaff.headers.indexOf('Staff ID')] === staffId);
+async function handleFormSubmit(event) {
+    event.preventDefault();
+    const statusSpan = document.getElementById('staff-modal-status');
+    statusSpan.textContent = 'Saving...';
 
-    const formData = {
-        'Staff ID': staffId,
-        'Name': document.getElementById('staff-name').value,
-        'Standard Rate': document.getElementById('staff-rate').value,
-        'Skills': document.getElementById('staff-skills').value,
-        'Start Date': document.getElementById('staff-start-date').value,
-        'Notes': document.getElementById('staff-notes').value,
-        'Image URL': document.getElementById('staff-image-url').value,
-    };
+    const imageFile = document.getElementById('staff-image-upload').files[0];
+    let imageUrl = document.getElementById('staff-image-url').value;
 
     try {
-        if (isNewStaff) {
-            await writeData('Staff', formData);
-        } else {
-            await updateSheetRow('Staff', 'Staff ID', staffId, formData);
+        if (imageFile) {
+            statusSpan.textContent = 'Uploading image...';
+            const uploadResult = await uploadImageToDrive(imageFile);
+            imageUrl = uploadResult.link;
         }
-        statusEl.textContent = 'Saved successfully!';
+
+        const staffId = document.getElementById('staff-id-input').value;
+        const staffData = {
+            'Name': document.getElementById('staff-name').value,
+            'Image URL': imageUrl,
+            'Standard Rate': document.getElementById('staff-rate').value,
+            'Skills': document.getElementById('staff-skills').value,
+            'Start Date': document.getElementById('staff-start-date').value,
+            'Notes': document.getElementById('staff-notes').value,
+        };
+
+        const sheetPromise = staffId 
+            ? updateSheetRow('Staff', 'StaffID', staffId, staffData)
+            : writeData('Staff', { ...staffData, StaffID: `S-${Date.now()}` });
+        
+        await sheetPromise; 
+        console.log("Google Sheet update successful.");
+        statusSpan.textContent = 'Staff member saved successfully!';
+
+        await refreshData();
+
         setTimeout(() => {
-            hideModal('staff-modal');
-            statusEl.textContent = '';
+            elements.staffModal.style.display = 'none';
         }, 1500);
-    } catch (error) {
-        console.error('Error saving staff member:', error);
-        statusEl.textContent = `Error: ${error.message}`;
+
+    } catch (err) {
+        statusSpan.textContent = `Error: ${err.message}`;
+        console.error('Staff save error:', err);
     }
 }
 
-/**
- * Handles the click event for deleting a staff member.
- */
-function handleDeleteStaffClick() {
-    const staffId = document.getElementById('staff-id-input').value;
-    if (!staffId) return;
+// --- DELETE STAFF ---
 
-    const modal = document.getElementById('delete-staff-modal');
+function showDeleteStaffModal(staffId) {
+    const modal = elements.deleteStaffModal;
+    if (!modal) return;
+    modal.style.display = 'block';
+
     const confirmInput = document.getElementById('delete-staff-confirm-input');
     const confirmBtn = document.getElementById('delete-staff-confirm-btn');
-    const statusEl = document.getElementById('delete-staff-status');
-
+    
     confirmInput.value = '';
     confirmBtn.disabled = true;
-    statusEl.textContent = '';
-    
-    showModal('delete-staff-modal');
 
     confirmInput.oninput = () => {
         confirmBtn.disabled = confirmInput.value !== 'Delete';
     };
 
-    const newConfirmBtn = confirmBtn.cloneNode(true);
-    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-
-    newConfirmBtn.onclick = async () => {
-        statusEl.textContent = 'Deleting...';
-        try {
-            await clearSheetRow('Staff', 'Staff ID', staffId);
-            statusEl.textContent = 'Deleted successfully.';
-            setTimeout(() => {
-                hideModal('delete-staff-modal');
-                hideModal('staff-modal');
-                statusEl.textContent = '';
-            }, 1500);
-        } catch (error) {
-            console.error('Error deleting staff member:', error);
-            statusEl.textContent = `Error: ${error.message}`;
-        }
-    };
+    confirmBtn.onclick = () => handleDeleteStaff(staffId);
 }
 
-/**
- * Handles the image upload process for staff photos.
- * @param {Event} event - The file input change event.
- */
-async function handleImageUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const statusEl = document.getElementById('staff-modal-status');
-    statusEl.textContent = 'Uploading photo...';
-
-    const imagePreview = document.getElementById('staff-image-preview');
-    const imagePlaceholder = document.getElementById('staff-image-placeholder');
-    const imageUrlInput = document.getElementById('staff-image-url');
+async function handleDeleteStaff(staffId) {
+    const statusSpan = document.getElementById('delete-staff-status');
+    statusSpan.textContent = 'Deleting...';
+    document.getElementById('delete-staff-confirm-btn').disabled = true;
 
     try {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            imagePreview.src = e.target.result;
-            imagePreview.style.display = 'block';
-            imagePlaceholder.style.display = 'none';
-        };
-        reader.readAsDataURL(file);
-
-        const { link } = await uploadImageToDrive(file);
-        
-        imageUrlInput.value = link;
-        statusEl.textContent = 'Photo uploaded!';
-
-    } catch (error) {
-        console.error('Image upload failed:', error);
-        statusEl.textContent = `Upload failed: ${error.message}`;
-        imagePreview.src = '';
-        imagePreview.style.display = 'none';
-        imagePlaceholder.style.display = 'flex';
-        imageUrlInput.value = '';
+        await clearSheetRow('Staff', 'StaffID', staffId);
+        await refreshData();
+        statusSpan.textContent = 'Staff member deleted.';
+        setTimeout(() => {
+            elements.deleteStaffModal.style.display = 'none';
+            elements.staffModal.style.display = 'none'; // Also close the edit modal
+        }, 1500);
+    } catch (err) {
+        statusSpan.textContent = 'Error deleting staff member.';
+        console.error('Delete staff error:', err);
+        document.getElementById('delete-staff-confirm-btn').disabled = false;
     }
 }
+
