@@ -74,13 +74,13 @@ function renderTaskList(container, projectId) {
     }
 
     const { headers } = allTasks;
-    const [titleIdx, assigneeIdx, dueDateIdx, statusIdx, taskIdIdx] = ['Title', 'Assignee', 'Due Date', 'Status', 'TaskID'].map(h => headers.indexOf(h));
+    const [titleIdx, assigneeIdx, dueDateIdx, statusIdx, taskIdIdx] = ['Task Name', 'Assignee', 'Due Date', 'Status', 'TaskID'].map(h => headers.indexOf(h));
     
     let tableHtml = `
         <table class="data-table task-list-view">
             <thead>
                 <tr>
-                    <th>Title</th>
+                    <th>Task Name</th>
                     <th>Assignee</th>
                     <th>Due Date</th>
                     <th>Status</th>
@@ -139,7 +139,7 @@ function renderTaskBoard(container, projectId) {
         tasksInBucket.forEach(task => {
             const { headers } = allTasks;
             const [title, taskId, subtasksJson] = [
-                task[headers.indexOf('Title')] || 'Untitled',
+                task[headers.indexOf('Task Name')] || 'Untitled',
                 task[headers.indexOf('TaskID')],
                 task[headers.indexOf('Subtasks')] || '[]'
             ];
@@ -176,7 +176,7 @@ function showTaskDetailsModal(taskData = null, projectId, bucketName = 'To Do') 
 
     // Populate standard fields
     if (taskData) {
-        document.getElementById('task-title').value = taskData[headers.indexOf('Title')] || '';
+        document.getElementById('task-title').value = taskData[headers.indexOf('Task Name')] || '';
         document.getElementById('task-description').value = taskData[headers.indexOf('Description')] || '';
         document.getElementById('task-due-date').value = taskData[headers.indexOf('Due Date')] || '';
         document.getElementById('task-assignee').value = taskData[headers.indexOf('Assignee')] || '';
@@ -270,7 +270,7 @@ async function handleTaskFormSubmit(event) {
 
     const taskData = {
         'ProjectID': document.getElementById('task-project-id-input').value,
-        'Title': document.getElementById('task-title').value,
+        'Task Name': document.getElementById('task-title').value,
         'Description': document.getElementById('task-description').value,
         'Due Date': document.getElementById('task-due-date').value,
         'Assignee': document.getElementById('task-assignee').value,
@@ -323,3 +323,4 @@ export function setupDragAndDrop(container) {
     // Placeholder for drag and drop logic
     console.log("Drag and drop setup initiated.");
 }
+
