@@ -1,272 +1,47 @@
 // js/staff.js
-// Description: Contains all logic for the 'Staff' tab.
+// Description: Contains all logic for the 'Staff' tab using the generic resource manager.
 
-import { state, allStaff, updateState } from './state.js';
-import { updateSheetRow, writeData, uploadImageToDrive, clearSheetRow } from './api.js';
-import { elements, showDeleteConfirmationModal } from './ui.js';
-import { extractFileIdFromUrl, safeSetValue } from './utils.js';
+import { allStaff } from './state.js';
+import { createResourceManager } from './resourceManager.js';
 
-let refreshData;
+// --- CONFIGURATION ---
+const staffCardRenderer = (row, headers) => {
+    const name = row[headers.indexOf('Name')] || 'Unnamed Staff Member';
+    const skills = (row[headers.indexOf('Skills')] || '').split(',').map(s => s.trim()).filter(Boolean);
+    const skillChips = skills.map(skill => `<span class="skill-chip">${skill}</span>`).join('');
 
-// --- INITIALIZATION ---
-export function initStaffTab(refreshDataFn) {
-    refreshData = refreshDataFn;
-    
-    if (elements.staffAddBtn) {
-        elements.staffAddBtn.onclick = () => showStaffModal(null);
-    }
-    if (elements.staffSearchBar) {
-        elements.staffSearchBar.oninput = (e) => { updateState({ staffFilters: { ...state.staffFilters, searchTerm: e.target.value.toLowerCase() } }); renderStaff(); };
-    }
-    if (elements.staffSkillsFilter) {
-        elements.staffSkillsFilter.oninput = (e) => { updateState({ staffFilters: { ...state.staffFilters, skill: e.target.value.toLowerCase() } }); renderStaff(); };
-    }
-    if (elements.staffModalForm) {
-        elements.staffModalForm.addEventListener('submit', handleFormSubmit);
-    }
-}
+    return `
+        <h4>${name}</h4>
+        <div class="skill-chips-container">
+            ${skillChips || '<p>No skills listed.</p>'}
+        </div>
+    `;
+};
 
-// --- RENDERING ---
-export function renderStaff() {
-    renderStaffAsCards();
-}
-
-function renderStaffAsCards() {
-    const container = document.getElementById('staff-container');
-    if (!container) return;
-    container.innerHTML = '';
-
-    if (!allStaff || !allStaff.rows) {
-        container.innerHTML = '<p>Staff data is not available.</p>';
-        return;
-    }
-    
-    const processedRows = getProcessedStaff();
-
-    if (processedRows.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state-container">
-                <h3>No Staff Found</h3>
-                <p>To get started, add a new staff member using the button above. If you have data in your sheet that isn't appearing, check the filter settings.</p>
-            </div>`;
-        return;
-    }
-    
-    if (!allStaff.headers || allStaff.headers.length === 0) {
-        console.warn("Staff headers not available yet, skipping render.");
-        container.innerHTML = `<p>Loading staff headers...</p>`;
-        return;
-    }
-    
-    const { headers } = allStaff;
-    const cardContainer = document.createElement('div');
-    cardContainer.className = 'card-container';
-
-    const [nameIndex, skillsIndex, imageIndex] = ['Name', 'Skills', 'Image URL'].map(h => headers.indexOf(h));
-
-    processedRows.forEach(row => {
-        const card = document.createElement('div');
-        card.className = 'info-card inventory-card';
-        card.onclick = () => showStaffModal(row);
-
-        const imageDiv = document.createElement('div');
-        imageDiv.className = 'inventory-card-image';
-        
-        const rawImageUrl = row[imageIndex] || '';
-        const fileId = extractFileIdFromUrl(rawImageUrl);
-
-        if (fileId) {
-            const img = document.createElement('img');
-            img.alt = row[nameIndex] || 'Staff image';
-            img.src = `https://drive.google.com/thumbnail?id=${fileId}&sz=w300`;
-            img.onerror = () => { 
-                imageDiv.classList.add('no-image');
-                imageDiv.textContent = 'Image Error';
-                img.remove();
-            };
-            imageDiv.appendChild(img);
-        } else {
-            imageDiv.classList.add('no-image');
-            imageDiv.textContent = 'No Image';
-        }
-        
-        const contentDiv = document.createElement('div');
-        contentDiv.className = 'inventory-card-content';
-        
-        const skills = (row[skillsIndex] || '').split(',').map(s => s.trim()).filter(Boolean);
-        const skillChips = skills.map(skill => `<span class="skill-chip">${skill}</span>`).join('');
-
-        contentDiv.innerHTML = `
-            <h4>${row[nameIndex] || 'Unnamed Staff Member'}</h4>
-            <div class="skill-chips-container">
-                ${skillChips || '<p>No skills listed.</p>'}
-            </div>
-        `;
-
-        card.appendChild(imageDiv);
-        card.appendChild(contentDiv);
-        cardContainer.appendChild(card);
-    });
-
-    container.appendChild(cardContainer);
-}
+const staffConfig = {
+    name: 'staff',
+    resourceName: 'Staff',
+    sheetName: 'Staff',
+    idPrefix: 'S-',
+    stateData: () => allStaff,
+    stateFilterKey: 'staffFilters',
+    cardRenderer: staffCardRenderer,
+    filters: [
+        { uiId: 'staff-skills-filter', sheetColumn: 'Skills', stateKey: 'skill' }
+    ],
+    formFields: [
+        { id: 'name', sheetColumn: 'Name' },
+        { id: 'rate', sheetColumn: 'Standard Rate', type: 'number' },
+        { id: 'skills', sheetColumn: 'Skills' },
+        { id: 'start-date', sheetColumn: 'Start Date', type: 'date' },
+        { id: 'notes', sheetColumn: 'Notes', type: 'textarea' },
+    ]
+};
 
 
-function getProcessedStaff() {
-    if (!allStaff || !allStaff.rows) return [];
-    let { headers, rows } = allStaff;
-    let processedRows = [...rows];
+// --- MANAGER INSTANCE ---
+const staffManager = createResourceManager(staffConfig);
 
-    const { searchTerm, skill } = state.staffFilters || { searchTerm: '', skill: ''};
-
-    if (searchTerm) {
-        processedRows = processedRows.filter(row => row.some(cell => String(cell).toLowerCase().includes(searchTerm)));
-    }
-    
-    if (skill) {
-        const skillsIndex = headers.indexOf('Skills');
-        if (skillsIndex > -1) {
-            processedRows = processedRows.filter(row => (row[skillsIndex] || '').toLowerCase().includes(skill));
-        }
-    }
-
-    return processedRows;
-}
-
-// --- MODAL & FORM HANDLING ---
-
-function showStaffModal(rowData = null) {
-    const modal = elements.staffModal;
-    const form = elements.staffModalForm;
-    
-    if (!modal || !form) {
-        console.error("Staff modal or form element not found in cache! Check `ui.js` and `index.html`.");
-        return;
-    }
-
-    form.reset();
-    document.getElementById('staff-modal-status').textContent = '';
-
-    const imagePreviewContainer = document.getElementById('staff-image-preview-container');
-    const imagePreview = document.getElementById('staff-image-preview');
-    const imageUploadInput = document.getElementById('staff-image-upload');
-    const changePhotoButton = document.getElementById('staff-change-photo-btn');
-    const deleteButton = document.getElementById('delete-staff-btn');
-    
-    imagePreview.src = '';
-    imagePreview.style.display = 'none';
-    imageUploadInput.value = '';
-    safeSetValue('staff-image-url', '');
-
-    // The entire preview container now triggers the file input
-    changePhotoButton.onclick = () => imageUploadInput.click();
-    imageUploadInput.onchange = (event) => {
-        const file = event.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                imagePreview.src = e.target.result;
-                imagePreview.style.display = 'block';
-                changePhotoButton.textContent = 'Change Photo';
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-    
-    if (rowData) {
-        modal.querySelector('#staff-modal-title').textContent = 'Edit Staff';
-        const { headers } = allStaff;
-        const staffId = rowData[headers.indexOf('StaffID')] || '';
-        
-        safeSetValue('staff-id-input', staffId);
-        safeSetValue('staff-name', rowData[headers.indexOf('Name')] || '');
-        safeSetValue('staff-rate', rowData[headers.indexOf('Standard Rate')] || '');
-        safeSetValue('staff-skills', rowData[headers.indexOf('Skills')] || '');
-        safeSetValue('staff-start-date', rowData[headers.indexOf('Start Date')] || '');
-        safeSetValue('staff-notes', rowData[headers.indexOf('Notes')] || '');
-        
-        const imageUrlFromSheet = rowData[headers.indexOf('Image URL')] || '';
-        safeSetValue('staff-image-url', imageUrlFromSheet);
-        const fileId = extractFileIdFromUrl(imageUrlFromSheet);
-
-        if (fileId) {
-            imagePreview.src = `https://drive.google.com/thumbnail?id=${fileId}&sz=w300`;
-            imagePreview.style.display = 'block';
-            changePhotoButton.textContent = 'Change Photo';
-        } else {
-            changePhotoButton.textContent = 'Add Photo';
-        }
-
-        deleteButton.style.display = 'block';
-        deleteButton.onclick = () => {
-            modal.style.display = 'none';
-            const staffName = rowData[headers.indexOf('Name')] || 'this staff member';
-            showDeleteConfirmationModal(
-                `Delete Staff: ${staffName}`,
-                'This action is permanent and cannot be undone. This will remove the staff member from the system.',
-                async () => {
-                    await clearSheetRow('Staff', 'StaffID', staffId);
-                    await refreshData();
-                }
-            );
-        };
-
-    } else {
-        modal.querySelector('#staff-modal-title').textContent = 'Add New Staff';
-        safeSetValue('staff-id-input', '');
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
-        safeSetValue('staff-start-date', `${year}-${month}-${day}`);
-        changePhotoButton.textContent = 'Add Photo';
-        deleteButton.style.display = 'none';
-    }
-
-    modal.style.display = 'block';
-}
-
-async function handleFormSubmit(event) {
-    event.preventDefault();
-    const statusSpan = document.getElementById('staff-modal-status');
-    statusSpan.textContent = 'Saving...';
-
-    const imageFile = document.getElementById('staff-image-upload').files[0];
-    let imageUrl = document.getElementById('staff-image-url').value;
-
-    try {
-        if (imageFile) {
-            statusSpan.textContent = 'Uploading image...';
-            const uploadResult = await uploadImageToDrive(imageFile);
-            imageUrl = uploadResult.link;
-        }
-
-        const staffId = document.getElementById('staff-id-input').value;
-        const staffData = {
-            'Name': document.getElementById('staff-name').value,
-            'Image URL': imageUrl,
-            'Standard Rate': document.getElementById('staff-rate').value,
-            'Skills': document.getElementById('staff-skills').value,
-            'Start Date': document.getElementById('staff-start-date').value,
-            'Notes': document.getElementById('staff-notes').value,
-        };
-
-        const sheetPromise = staffId 
-            ? updateSheetRow('Staff', 'StaffID', staffId, staffData)
-            : writeData('Staff', { ...staffData, StaffID: `S-${Date.now()}` });
-        
-        await sheetPromise; 
-        console.log("Google Sheet update successful.");
-        statusSpan.textContent = 'Staff member saved successfully!';
-
-        await refreshData();
-
-        setTimeout(() => {
-            elements.staffModal.style.display = 'none';
-        }, 1500);
-
-    } catch (err) {
-        statusSpan.textContent = `Error: ${err.message}`;
-        console.error('Staff save error:', err);
-    }
-}
+// --- EXPORTS ---
+export const initStaffTab = staffManager.init;
+export const renderStaff = staffManager.render;
