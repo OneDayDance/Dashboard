@@ -1,9 +1,9 @@
 // js/costumes.js
 // Description: This file contains all the functions for managing the costume inventory.
 
-import { appState } from './state.js';
+import { allCostumes } from './state.js';
 import { clearContainer, showModal, hideModal, sanitizeHTML } from './utils.js';
-import { updateSheetData, addSheetRow, deleteSheetRow, uploadFileToDrive, getFileViewLink } from './api.js';
+import { updateSheetRow, writeData, clearSheetRow, uploadImageToDrive } from './api.js';
 
 /**
  * Initializes the costumes tab by setting up event listeners.
@@ -47,12 +47,15 @@ export function initCostumesTab(refreshDataCallback) {
  * Populates the filter dropdowns for costumes.
  */
 function populateFilters() {
-    const costumes = appState.costumes || [];
+    const costumes = allCostumes.rows || [];
     const statusFilter = document.getElementById('costume-status-filter');
     const categoryFilter = document.getElementById('costume-category-filter');
+    const statusIndex = allCostumes.headers.indexOf('Status');
+    const categoryIndex = allCostumes.headers.indexOf('Category');
 
-    const statuses = [...new Set(costumes.map(c => c['Status']).filter(Boolean))];
-    const categories = [...new Set(costumes.map(c => c['Category']).filter(Boolean))];
+
+    const statuses = [...new Set(costumes.map(c => c[statusIndex]).filter(Boolean))];
+    const categories = [...new Set(costumes.map(c => c[categoryIndex]).filter(Boolean))];
 
     // Clear existing options except the first "All" option
     statusFilter.length = 1;
@@ -80,17 +83,19 @@ export function renderCostumes() {
     clearContainer(container);
     populateFilters();
 
-    const costumes = appState.costumes || [];
+    const costumes = allCostumes.rows || [];
     const searchTerm = document.getElementById('costume-search-bar')?.value.toLowerCase() || '';
     const statusFilter = document.getElementById('costume-status-filter')?.value || 'all';
     const categoryFilter = document.getElementById('costume-category-filter')?.value || 'all';
+    const statusIndex = allCostumes.headers.indexOf('Status');
+    const categoryIndex = allCostumes.headers.indexOf('Category');
 
     const filteredCostumes = costumes.filter(costume => {
-        const matchesSearch = Object.values(costume).some(val =>
+        const matchesSearch = costume.some(val =>
             String(val).toLowerCase().includes(searchTerm)
         );
-        const matchesStatus = statusFilter === 'all' || costume['Status'] === statusFilter;
-        const matchesCategory = categoryFilter === 'all' || costume['Category'] === categoryFilter;
+        const matchesStatus = statusFilter === 'all' || costume[statusIndex] === statusFilter;
+        const matchesCategory = categoryFilter === 'all' || costume[categoryIndex] === categoryFilter;
         return matchesSearch && matchesStatus && matchesCategory;
     });
 
@@ -102,7 +107,11 @@ export function renderCostumes() {
     const cardContainer = document.createElement('div');
     cardContainer.className = 'inventory-card-container';
 
-    filteredCostumes.forEach(costume => {
+    filteredCostumes.forEach(costumeRow => {
+        const costume = {};
+        allCostumes.headers.forEach((header, i) => {
+            costume[header] = costumeRow[i];
+        });
         const card = document.createElement('div');
         card.className = 'inventory-card';
         card.dataset.costumeId = costume['Costume ID'];
@@ -199,7 +208,7 @@ async function handleCostumeFormSubmit() {
     statusEl.textContent = 'Saving...';
     
     const costumeId = document.getElementById('costume-id-input').value;
-    const isNewCostume = !appState.costumes.some(c => c['Costume ID'] === costumeId);
+    const isNewCostume = !allCostumes.rows.some(c => c[allCostumes.headers.indexOf('Costume ID')] === costumeId);
 
     const formData = {
         'Costume ID': costumeId,
@@ -220,9 +229,9 @@ async function handleCostumeFormSubmit() {
 
     try {
         if (isNewCostume) {
-            await addSheetRow('Costumes', formData);
+            await writeData('Costumes', formData);
         } else {
-            await updateSheetData('Costumes', 'Costume ID', costumeId, formData);
+            await updateSheetRow('Costumes', 'Costume ID', costumeId, formData);
         }
         statusEl.textContent = 'Saved successfully!';
         setTimeout(() => {
@@ -264,7 +273,7 @@ function handleDeleteCostumeClick() {
     newConfirmBtn.onclick = async () => {
         statusEl.textContent = 'Deleting...';
         try {
-            await deleteSheetRow('Costumes', 'Costume ID', costumeId);
+            await clearSheetRow('Costumes', 'Costume ID', costumeId);
             statusEl.textContent = 'Deleted successfully.';
             setTimeout(() => {
                 hideModal('delete-costume-modal');
@@ -305,10 +314,9 @@ async function handleImageUpload(event) {
         reader.readAsDataURL(file);
 
         // Upload to Drive and get link
-        const fileId = await uploadFileToDrive(file);
-        const viewLink = await getFileViewLink(fileId);
+        const { link } = await uploadImageToDrive(file);
         
-        imageUrlInput.value = viewLink;
+        imageUrlInput.value = link;
         statusEl.textContent = 'Image uploaded!';
 
     } catch (error) {
@@ -321,4 +329,3 @@ async function handleImageUpload(event) {
         imageUrlInput.value = '';
     }
 }
-

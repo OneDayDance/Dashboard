@@ -1,9 +1,9 @@
 // js/staff.js
 // Description: This file contains all the functions for managing staff members.
 
-import { appState } from './state.js';
+import { allStaff } from './state.js';
 import { clearContainer, showModal, hideModal, sanitizeHTML } from './utils.js';
-import { updateSheetData, addSheetRow, deleteSheetRow, uploadFileToDrive, getFileViewLink } from './api.js';
+import { updateSheetRow, writeData, clearSheetRow, uploadImageToDrive } from './api.js';
 
 
 /**
@@ -49,10 +49,11 @@ export function initStaffTab(refreshDataCallback) {
  * but is kept for potential future use with a dropdown.
  */
 function populateFilters() {
-    const staff = appState.staff || [];
+    const staff = allStaff.rows || [];
     const allSkills = new Set();
+    const skillsIndex = allStaff.headers.indexOf('Skills');
     staff.forEach(s => {
-        const skills = s['Skills'] ? s['Skills'].split(',').map(sk => sk.trim()) : [];
+        const skills = s[skillsIndex] ? s[skillsIndex].split(',').map(sk => sk.trim()) : [];
         skills.forEach(skill => allSkills.add(skill));
     });
     // This is where you would populate a <select> dropdown if you had one.
@@ -69,13 +70,15 @@ export function renderStaff() {
     clearContainer(container);
     populateFilters();
 
-    const staff = appState.staff || [];
+    const staff = allStaff.rows || [];
     const searchTerm = document.getElementById('staff-search-bar')?.value.toLowerCase() || '';
     const skillsFilter = document.getElementById('staff-skills-filter')?.value.toLowerCase() || '';
+    const nameIndex = allStaff.headers.indexOf('Name');
+    const skillsIndex = allStaff.headers.indexOf('Skills');
 
     const filteredStaff = staff.filter(member => {
-        const nameMatch = member['Name']?.toLowerCase().includes(searchTerm);
-        const skillsMatch = skillsFilter === '' || member['Skills']?.toLowerCase().includes(skillsFilter);
+        const nameMatch = member[nameIndex]?.toLowerCase().includes(searchTerm);
+        const skillsMatch = skillsFilter === '' || member[skillsIndex]?.toLowerCase().includes(skillsFilter);
         return nameMatch && skillsMatch;
     });
 
@@ -87,7 +90,11 @@ export function renderStaff() {
     const cardContainer = document.createElement('div');
     cardContainer.className = 'inventory-card-container';
 
-    filteredStaff.forEach(member => {
+    filteredStaff.forEach(memberRow => {
+        const member = {};
+        allStaff.headers.forEach((header, i) => {
+            member[header] = memberRow[i];
+        });
         const card = document.createElement('div');
         card.className = 'inventory-card staff-card';
         card.dataset.staffId = member['Staff ID'];
@@ -177,7 +184,7 @@ async function handleStaffFormSubmit() {
     statusEl.textContent = 'Saving...';
     
     const staffId = document.getElementById('staff-id-input').value;
-    const isNewStaff = !appState.staff.some(s => s['Staff ID'] === staffId);
+    const isNewStaff = !allStaff.rows.some(s => s[allStaff.headers.indexOf('Staff ID')] === staffId);
 
     const formData = {
         'Staff ID': staffId,
@@ -191,9 +198,9 @@ async function handleStaffFormSubmit() {
 
     try {
         if (isNewStaff) {
-            await addSheetRow('Staff', formData);
+            await writeData('Staff', formData);
         } else {
-            await updateSheetData('Staff', 'Staff ID', staffId, formData);
+            await updateSheetRow('Staff', 'Staff ID', staffId, formData);
         }
         statusEl.textContent = 'Saved successfully!';
         setTimeout(() => {
@@ -234,7 +241,7 @@ function handleDeleteStaffClick() {
     newConfirmBtn.onclick = async () => {
         statusEl.textContent = 'Deleting...';
         try {
-            await deleteSheetRow('Staff', 'Staff ID', staffId);
+            await clearSheetRow('Staff', 'Staff ID', staffId);
             statusEl.textContent = 'Deleted successfully.';
             setTimeout(() => {
                 hideModal('delete-staff-modal');
@@ -272,10 +279,9 @@ async function handleImageUpload(event) {
         };
         reader.readAsDataURL(file);
 
-        const fileId = await uploadFileToDrive(file);
-        const viewLink = await getFileViewLink(fileId);
+        const { link } = await uploadImageToDrive(file);
         
-        imageUrlInput.value = viewLink;
+        imageUrlInput.value = link;
         statusEl.textContent = 'Photo uploaded!';
 
     } catch (error) {
@@ -287,4 +293,3 @@ async function handleImageUpload(event) {
         imageUrlInput.value = '';
     }
 }
-

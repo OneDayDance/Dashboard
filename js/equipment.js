@@ -1,9 +1,9 @@
 // js/equipment.js
 // Description: This file contains all the functions for managing the equipment inventory.
 
-import { appState } from './state.js';
+import { allEquipment } from './state.js';
 import { clearContainer, showModal, hideModal, sanitizeHTML } from './utils.js';
-import { updateSheetData, addSheetRow, deleteSheetRow, uploadFileToDrive, getFileViewLink } from './api.js';
+import { updateSheetRow, writeData, clearSheetRow, uploadImageToDrive } from './api.js';
 
 /**
  * Initializes the equipment tab by setting up event listeners.
@@ -47,12 +47,14 @@ export function initEquipmentTab(refreshDataCallback) {
  * Populates the filter dropdowns for equipment.
  */
 function populateFilters() {
-    const equipment = appState.equipment || [];
+    const equipment = allEquipment.rows || [];
     const statusFilter = document.getElementById('equipment-status-filter');
     const categoryFilter = document.getElementById('equipment-category-filter');
+    const statusIndex = allEquipment.headers.indexOf('Status');
+    const categoryIndex = allEquipment.headers.indexOf('Category');
 
-    const statuses = [...new Set(equipment.map(e => e['Status']).filter(Boolean))];
-    const categories = [...new Set(equipment.map(e => e['Category']).filter(Boolean))];
+    const statuses = [...new Set(equipment.map(e => e[statusIndex]).filter(Boolean))];
+    const categories = [...new Set(equipment.map(e => e[categoryIndex]).filter(Boolean))];
 
     // Clear existing options except the first "All" option
     statusFilter.length = 1;
@@ -80,17 +82,19 @@ export function renderEquipment() {
     clearContainer(container);
     populateFilters();
 
-    const equipment = appState.equipment || [];
+    const equipment = allEquipment.rows || [];
     const searchTerm = document.getElementById('equipment-search-bar')?.value.toLowerCase() || '';
     const statusFilter = document.getElementById('equipment-status-filter')?.value || 'all';
     const categoryFilter = document.getElementById('equipment-category-filter')?.value || 'all';
+    const statusIndex = allEquipment.headers.indexOf('Status');
+    const categoryIndex = allEquipment.headers.indexOf('Category');
 
     const filteredEquipment = equipment.filter(item => {
-        const matchesSearch = Object.values(item).some(val =>
+        const matchesSearch = item.some(val =>
             String(val).toLowerCase().includes(searchTerm)
         );
-        const matchesStatus = statusFilter === 'all' || item['Status'] === statusFilter;
-        const matchesCategory = categoryFilter === 'all' || item['Category'] === categoryFilter;
+        const matchesStatus = statusFilter === 'all' || item[statusIndex] === statusFilter;
+        const matchesCategory = categoryFilter === 'all' || item[categoryIndex] === categoryFilter;
         return matchesSearch && matchesStatus && matchesCategory;
     });
 
@@ -102,7 +106,12 @@ export function renderEquipment() {
     const cardContainer = document.createElement('div');
     cardContainer.className = 'inventory-card-container';
 
-    filteredEquipment.forEach(item => {
+    filteredEquipment.forEach(itemRow => {
+        const item = {};
+        allEquipment.headers.forEach((header, i) => {
+            item[header] = itemRow[i];
+        });
+
         const card = document.createElement('div');
         card.className = 'inventory-card';
         card.dataset.equipmentId = item['Equipment ID'];
@@ -195,7 +204,7 @@ async function handleEquipmentFormSubmit() {
     statusEl.textContent = 'Saving...';
     
     const equipmentId = document.getElementById('equipment-id-input').value;
-    const isNewItem = !appState.equipment.some(e => e['Equipment ID'] === equipmentId);
+    const isNewItem = !allEquipment.rows.some(e => e[allEquipment.headers.indexOf('Equipment ID')] === equipmentId);
 
     const formData = {
         'Equipment ID': equipmentId,
@@ -214,9 +223,9 @@ async function handleEquipmentFormSubmit() {
 
     try {
         if (isNewItem) {
-            await addSheetRow('Equipment', formData);
+            await writeData('Equipment', formData);
         } else {
-            await updateSheetData('Equipment', 'Equipment ID', equipmentId, formData);
+            await updateSheetRow('Equipment', 'Equipment ID', equipmentId, formData);
         }
         statusEl.textContent = 'Saved successfully!';
         setTimeout(() => {
@@ -257,7 +266,7 @@ function handleDeleteEquipmentClick() {
     newConfirmBtn.onclick = async () => {
         statusEl.textContent = 'Deleting...';
         try {
-            await deleteSheetRow('Equipment', 'Equipment ID', equipmentId);
+            await clearSheetRow('Equipment', 'Equipment ID', equipmentId);
             statusEl.textContent = 'Deleted successfully.';
             setTimeout(() => {
                 hideModal('delete-equipment-modal');
@@ -296,10 +305,9 @@ async function handleImageUpload(event) {
         };
         reader.readAsDataURL(file);
 
-        const fileId = await uploadFileToDrive(file);
-        const viewLink = await getFileViewLink(fileId);
+        const { link } = await uploadImageToDrive(file);
         
-        imageUrlInput.value = viewLink;
+        imageUrlInput.value = link;
         statusEl.textContent = 'Image uploaded!';
 
     } catch (error) {
@@ -311,4 +319,3 @@ async function handleImageUpload(event) {
         imageUrlInput.value = '';
     }
 }
-

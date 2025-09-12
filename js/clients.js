@@ -2,10 +2,9 @@
 // Description: This file contains all the functions for managing clients in the dashboard.
 
 import { SPREADSHEET_ID } from './config.js';
-import { getSheetData, getClientById, updateClientData, deleteClientById, createSheet, addClient } from './api.js';
+import { updateSheetRow, writeData, clearSheetRow } from './api.js';
 import { showModal, hideModal, createTable, createCard, clearContainer, formatDate, sanitizeHTML } from './utils.js';
-import { appState } from './state.js';
-import { renderProjectsTab } from './projects.js';
+import { state, allClients } from './state.js';
 
 // --- STATE ---
 let currentView = 'table'; // 'table' or 'card'
@@ -97,7 +96,7 @@ async function addNewClient() {
             'Notes': '',
             'Client ID': `C${Date.now()}` // Generate a unique ID
         };
-        await addClient(newClient);
+        await writeData('Clients', newClient);
         elements.addClientModalStatus.textContent = 'Client added successfully!';
         elements.addClientForm.reset();
         setTimeout(() => {
@@ -115,7 +114,7 @@ async function addNewClient() {
  */
 export function renderClients() {
     cacheDOMElements();
-    const clients = appState.clients;
+    const clients = allClients.rows;
     if (!clients) {
         console.warn("Client data is not available yet.");
         return;
@@ -128,7 +127,7 @@ export function renderClients() {
         const matchesSearch = Object.values(client).some(val =>
             String(val).toLowerCase().includes(searchTerm)
         );
-        const matchesStatus = statusFilter === 'all' || client['Status'] === statusFilter;
+        const matchesStatus = statusFilter === 'all' || client[allClients.headers.indexOf('Status')] === statusFilter;
         return matchesSearch && matchesStatus;
     });
 
@@ -151,14 +150,17 @@ function renderClientTable(clients) {
     
     // Combine First Name and Last Name for display if 'Name' is a visible column
     const displayData = clients.map(client => {
-        const clientCopy = { ...client };
+        const clientCopy = { };
+        for(let i=0; i < allClients.headers.length; i++) {
+            clientCopy[allClients.headers[i]] = client[i];
+        }
         if (visibleColumns.includes('Name')) {
-            clientCopy['Name'] = `${client['First Name'] || ''} ${client['Last Name'] || ''}`.trim();
+            clientCopy['Name'] = `${client[allClients.headers.indexOf('First Name')] || ''} ${client[allClients.headers.indexOf('Last Name')] || ''}`.trim();
         }
         return clientCopy;
     });
     
-    const table = createTable(displayData, visibleColumns, 'client-id', openClientDetailsModal);
+    const table = createTable(displayData, visibleColumns, 'Client ID', openClientDetailsModal);
     elements.clientTableContainer.appendChild(table);
 }
 
@@ -177,13 +179,17 @@ function renderClientCards(clients) {
     cardContainer.className = 'card-view-container';
 
     clients.forEach(client => {
-        const title = `${client['First Name']} ${client['Last Name']}`;
+        const clientObj = {};
+         for(let i=0; i < allClients.headers.length; i++) {
+            clientObj[allClients.headers[i]] = client[i];
+        }
+        const title = `${clientObj['First Name']} ${clientObj['Last Name']}`;
         const details = {
-            'Email': client['Email'],
-            'Phone': client['Phone'],
-            'Status': `<span class="status-badge status-${client['Status']?.toLowerCase().replace(/\s+/g, '-')}">${client['Status']}</span>`
+            'Email': clientObj['Email'],
+            'Phone': clientObj['Phone'],
+            'Status': `<span class="status-badge status-${clientObj['Status']?.toLowerCase().replace(/\s+/g, '-')}">${clientObj['Status']}</span>`
         };
-        const card = createCard(title, details, 'client-id', client['Client ID'], openClientDetailsModal);
+        const card = createCard(title, details, 'client-id', clientObj['Client ID'], openClientDetailsModal);
         cardContainer.appendChild(card);
     });
 
@@ -201,6 +207,16 @@ function toggleClientView() {
     renderClients();
 }
 
+async function getClientById(clientId) {
+    const clientRow = allClients.rows.find(client => client[allClients.headers.indexOf('Client ID')] === clientId);
+    if (!clientRow) return null;
+    const clientObj = {};
+    for(let i=0; i < allClients.headers.length; i++) {
+        clientObj[allClients.headers[i]] = clientRow[i];
+    }
+    return clientObj;
+}
+
 /**
  * Opens the client details modal and populates it with data.
  * @param {string} clientId - The ID of the client to display.
@@ -213,7 +229,7 @@ export async function openClientDetailsModal(clientId) {
         return;
     }
 
-    appState.currentClient = client;
+    state.currentClient = client;
     elements.clientModalName.textContent = `${client['First Name']} ${client['Last Name']}`;
     
     // Reset tabs to the default 'details' view
@@ -245,7 +261,7 @@ export async function openClientDetailsModal(clientId) {
  */
 function renderClientDetailsPane(tabName) {
     cacheDOMElements();
-    const client = appState.currentClient;
+    const client = state.currentClient;
     if (!client) return;
 
     clearContainer(elements.clientModalPaneContent);
@@ -316,12 +332,17 @@ function renderClientDetails(client) {
         const updatedData = Object.fromEntries(formData.entries());
 
         try {
-            await updateClientData(client['Client ID'], updatedData);
+            await updateSheetRow('Clients', 'Client ID', client['Client ID'], updatedData);
             statusEl.textContent = 'Saved successfully!';
             // Refresh local state
-            const clientIndex = appState.clients.findIndex(c => c['Client ID'] === client['Client ID']);
+            const clientIndex = allClients.rows.findIndex(c => c[allClients.headers.indexOf('Client ID')] === client['Client ID']);
             if(clientIndex > -1) {
-                appState.clients[clientIndex] = {...appState.clients[clientIndex], ...updatedData};
+                for(const key in updatedData) {
+                    const headerIndex = allClients.headers.indexOf(key);
+                    if(headerIndex > -1) {
+                        allClients.rows[clientIndex][headerIndex] = updatedData[key];
+                    }
+                }
             }
             renderClients(); // Re-render the main client list
             setTimeout(() => statusEl.textContent = '', 2000);
@@ -337,14 +358,18 @@ function renderClientDetails(client) {
  */
 function renderClientHistory(client) {
     cacheDOMElements();
-    const clientProjects = appState.projects.filter(p => p['Client ID'] === client['Client ID']);
-    const clientRequests = appState.requests.filter(r => r['Email Address'] === client['Email']);
+    const clientProjects = allProjects.rows.filter(p => p[allProjects.headers.indexOf('Client ID')] === client['Client ID']);
+    const clientRequests = allRequests.rows.filter(r => r[allRequests.headers.indexOf('Email')] === client['Email']);
 
     let historyHTML = '<h3>Associated Projects</h3>';
     if (clientProjects.length > 0) {
         historyHTML += '<ul>';
         clientProjects.forEach(p => {
-            historyHTML += `<li><strong>${sanitizeHTML(p['Project Name'])}</strong> - Status: ${sanitizeHTML(p['Status'])} (Value: $${p['Project Value'] || 0})</li>`;
+            const projectObj = {};
+            for(let i=0; i < allProjects.headers.length; i++) {
+                projectObj[allProjects.headers[i]] = p[i];
+            }
+            historyHTML += `<li><strong>${sanitizeHTML(projectObj['Project Name'])}</strong> - Status: ${sanitizeHTML(projectObj['Status'])} (Value: $${projectObj['Project Value'] || 0})</li>`;
         });
         historyHTML += '</ul>';
     } else {
@@ -355,7 +380,11 @@ function renderClientHistory(client) {
     if (clientRequests.length > 0) {
         historyHTML += '<ul>';
         clientRequests.forEach(r => {
-            historyHTML += `<li><strong>${sanitizeHTML(r['Service'])}</strong> - Submitted: ${formatDate(r['Timestamp'])}</li>`;
+             const requestObj = {};
+            for(let i=0; i < allRequests.headers.length; i++) {
+                requestObj[allRequests.headers[i]] = r[i];
+            }
+            historyHTML += `<li><strong>${sanitizeHTML(requestObj['Primary Service Category'])}</strong> - Submitted: ${formatDate(requestObj['Submission Date'])}</li>`;
         });
         historyHTML += '</ul>';
     } else {
@@ -387,7 +416,7 @@ function renderClientNotes(client) {
         statusEl.textContent = 'Saving...';
         const newNotes = document.getElementById('client-notes-textarea').value;
         try {
-            await updateClientData(client['Client ID'], { 'Notes': newNotes });
+            await updateSheetRow('Clients', 'Client ID', client['Client ID'], { 'Notes': newNotes });
             statusEl.textContent = 'Notes saved!';
             // Update local state
             client['Notes'] = newNotes;
@@ -405,8 +434,8 @@ function renderClientNotes(client) {
  */
 function renderClientFinancials(client) {
     cacheDOMElements();
-    const clientProjects = appState.projects.filter(p => p['Client ID'] === client['Client ID']);
-    const totalValue = clientProjects.reduce((sum, p) => sum + (parseFloat(p['Project Value']) || 0), 0);
+    const clientProjects = allProjects.rows.filter(p => p[allProjects.headers.indexOf('Client ID')] === client['Client ID']);
+    const totalValue = clientProjects.reduce((sum, p) => sum + (parseFloat(p[allProjects.headers.indexOf('Project Value')]) || 0), 0);
 
     const financialsHTML = `
         <h3>Financial Overview</h3>
@@ -427,14 +456,19 @@ function renderClientFinancials(client) {
                     <tr><th>Project Name</th><th>Status</th><th>Value</th><th>Start Date</th></tr>
                 </thead>
                 <tbody>
-                    ${clientProjects.map(p => `
+                    ${clientProjects.map(p => {
+                         const projectObj = {};
+                        for(let i=0; i < allProjects.headers.length; i++) {
+                            projectObj[allProjects.headers[i]] = p[i];
+                        }
+                        return `
                         <tr>
-                            <td>${sanitizeHTML(p['Project Name'])}</td>
-                            <td>${sanitizeHTML(p['Status'])}</td>
-                            <td>$${(parseFloat(p['Project Value']) || 0).toFixed(2)}</td>
-                            <td>${formatDate(p['Start Date'])}</td>
+                            <td>${sanitizeHTML(projectObj['Project Name'])}</td>
+                            <td>${sanitizeHTML(projectObj['Status'])}</td>
+                            <td>$${(parseFloat(projectObj['Project Value']) || 0).toFixed(2)}</td>
+                            <td>${formatDate(projectObj['Start Date'])}</td>
                         </tr>
-                    `).join('')}
+                    `}).join('')}
                 </tbody>
             </table>
         </div>
@@ -491,11 +525,11 @@ function handleDeleteClientClick(clientId) {
     elements.deleteConfirmBtn.onclick = async () => {
         elements.deleteClientStatus.textContent = 'Deleting...';
         try {
-            await deleteClientById(clientId);
+            await clearSheetRow('Clients', 'Client ID', clientId);
             elements.deleteClientStatus.textContent = 'Client deleted successfully.';
             
             // Remove from local state
-            appState.clients = appState.clients.filter(c => c['Client ID'] !== clientId);
+            allClients.rows = allClients.rows.filter(c => c[allClients.headers.indexOf('Client ID')] !== clientId);
             
             setTimeout(() => {
                 hideModal('delete-client-modal');
@@ -552,4 +586,3 @@ function setupClientColumnSelector() {
         hideModal('client-column-modal');
     };
 }
-
