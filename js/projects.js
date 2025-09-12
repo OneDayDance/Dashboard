@@ -8,6 +8,7 @@ import { showRequestDetailsModal } from './requests.js';
 import { showClientDetailsModal } from './clients.js';
 import { renderAssignedEquipmentSection, showAssignEquipmentModal, initAssignEquipment } from './assignEquipmentModal.js';
 import { renderAssignedStaffSection, showAssignStaffModal, initAssignStaff } from './assignStaffModal.js';
+import { initTaskManager, renderTasksSection, setupTaskClickHandlers, setupDragAndDrop } from './taskManager.js';
 
 
 let refreshData;
