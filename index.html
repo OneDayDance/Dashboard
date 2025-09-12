@@ -519,53 +519,28 @@
             </form>
         </div>
     </div>
-
-    <!-- Assign Equipment Modal -->
-    <div id="assign-equipment-modal" class="modal">
+    
+    <!-- Assign Resource Modal -->
+    <div id="assign-resource-modal" class="modal">
         <div class="modal-content large">
              <div class="modal-header">
-                <h2>Assign Equipment to Project</h2>
+                <h2 id="assign-resource-modal-title">Assign Resource</h2>
                 <span class="close-button">&times;</span>
             </div>
-            <div class="modal-body assign-equipment-body">
-                <div class="equipment-selection-pane">
-                    <h3>Available Equipment</h3>
-                    <input type="text" id="equipment-search-input" placeholder="Search equipment...">
-                    <div id="equipment-search-results" class="equipment-list"></div>
+            <div class="modal-body assign-resource-body">
+                <div class="resource-selection-pane">
+                    <h3 id="assign-resource-available-title">Available Resources</h3>
+                    <input type="text" id="resource-search-input" placeholder="Search...">
+                    <div id="resource-search-results" class="resource-list"></div>
                 </div>
-                <div class="equipment-selected-pane">
-                    <h3>Assigned to Project</h3>
-                    <div id="selected-equipment-list" class="equipment-list"></div>
+                <div class="resource-selected-pane">
+                    <h3 id="assign-resource-selected-title">Assigned to Project</h3>
+                    <div id="selected-resource-list" class="resource-list"></div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button id="save-assigned-equipment-btn" class="btn btn-primary">Save Changes</button>
-                <span id="assign-equipment-status"></span>
-            </div>
-        </div>
-    </div>
-
-    <!-- Assign Staff Modal -->
-    <div id="assign-staff-modal" class="modal">
-        <div class="modal-content large">
-             <div class="modal-header">
-                <h2>Assign Staff to Project</h2>
-                <span class="close-button">&times;</span>
-            </div>
-            <div class="modal-body assign-staff-body">
-                <div class="staff-selection-pane">
-                    <h3>Available Staff</h3>
-                    <input type="text" id="staff-search-input" placeholder="Search staff...">
-                    <div id="staff-search-results" class="staff-list"></div>
-                </div>
-                <div class="staff-selected-pane">
-                    <h3>Assigned to Project</h3>
-                    <div id="selected-staff-list" class="staff-list"></div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button id="save-assigned-staff-btn" class="btn btn-primary">Save Changes</button>
-                <span id="assign-staff-status"></span>
+                <button id="save-assigned-resource-btn" class="btn btn-primary">Save Changes</button>
+                <span id="assign-resource-status"></span>
             </div>
         </div>
     </div>
@@ -845,4 +820,3 @@
     <script type="module" src="js/main.js"></script>
 </body>
 </html>
-

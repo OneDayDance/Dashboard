@@ -1,24 +1,222 @@
 // js/projects.js
 // Description: Contains all logic for the 'Projects' tab shell and project-level actions.
 
-import { state, allProjects, allClients, allTasks, allRequests, updateState } from './state.js';
+import { state, allProjects, allClients, allTasks, allRequests, allEquipment, allStaff, updateState } from './state.js';
 import { updateSheetRow, writeData, clearSheetRow } from './api.js';
 import { elements, showDeleteConfirmationModal } from './ui.js';
 import { showRequestDetailsModal } from './requests.js';
 import { showClientDetailsModal } from './clients.js';
-import { renderAssignedEquipmentSection, showAssignEquipmentModal, initAssignEquipment } from './assignEquipmentModal.js';
-import { renderAssignedStaffSection, showAssignStaffModal, initAssignStaff } from './assignStaffModal.js';
+import { initAssignResourceModal, createResourceHandler } from './assignResourceModal.js';
 import { initTaskManager, renderTasksSection, setupTaskClickHandlers, setupDragAndDrop } from './taskManager.js';
-
+import { extractFileIdFromUrl } from './utils.js';
 
 let refreshData;
+let equipmentAssigner, staffAssigner;
+
+// --- CONFIGS FOR ASSIGNABLE RESOURCES ---
+
+const equipmentAssignerConfig = {
+    resourceType: 'equipment',
+    resourceNameSingular: 'Equipment',
+    resourceNamePlural: 'Equipment',
+    allResourcesState: allEquipment,
+    idKey: 'EquipmentID',
+    projectSheetColumn: 'Assigned Equipment',
+    isComplex: false,
+
+    getAssignments: (project, headers) => {
+        const json = project[headers.indexOf('Assigned Equipment')] || '[]';
+        try { return JSON.parse(json); } catch (e) { return []; }
+    },
+
+    formatForSave: (localSelected) => JSON.stringify(Array.from(localSelected)),
+
+    renderAssignedItemCard: (resource, assignment, indices) => {
+        const fileId = extractFileIdFromUrl(resource[indices.imageIndex] || '');
+        const thumbHtml = fileId 
+            ? `<img src="https://drive.google.com/thumbnail?id=${fileId}&sz=w100" alt="${resource[indices.nameIndex]}">`
+            : `<span>No Image</span>`;
+        return `
+            <div class="assigned-resource-card">
+                <div class="resource-item-thumb">${thumbHtml}</div>
+                <div class="resource-item-details">
+                    <p>${resource[indices.nameIndex]}</p>
+                    <span>${resource[indices.idIndex]}</span>
+                </div>
+            </div>
+        `;
+    },
+
+    createModalItemElement: (item, isSelected, assignment, { localSelected, render }) => {
+        const [idIndex, nameIndex, imageIndex] = ['EquipmentID', 'Name', 'Image URL'].map(h => allEquipment.headers.indexOf(h));
+        const element = document.createElement('div');
+        const itemId = item[idIndex];
+        element.className = isSelected ? 'selected-resource-item' : 'resource-search-item';
+        element.dataset.resourceId = itemId;
+
+        if (!isSelected && localSelected.has(itemId)) {
+            element.classList.add('selected');
+        }
+
+        const fileId = extractFileIdFromUrl(item[imageIndex] || '');
+        const thumbHtml = fileId 
+            ? `<img src="https://drive.google.com/thumbnail?id=${fileId}&sz=w100" alt="${item[nameIndex]}">`
+            : '';
+
+        element.innerHTML = `
+            <div class="resource-item-thumb">${thumbHtml}</div>
+            <div class="resource-item-details">
+                <p>${item[nameIndex]}</p>
+                <span>${itemId}</span>
+            </div>
+        `;
+        
+        element.onclick = () => {
+            if (localSelected.has(itemId)) {
+                localSelected.delete(itemId);
+            } else {
+                localSelected.add(itemId);
+            }
+            render();
+        };
+        return element;
+    }
+};
+
+const staffAssignerConfig = {
+    resourceType: 'staff',
+    resourceNameSingular: 'Staff',
+    resourceNamePlural: 'Staff',
+    allResourcesState: allStaff,
+    idKey: 'StaffID',
+    projectSheetColumn: 'Assigned Staff',
+    isComplex: true,
+
+    getAssignments: (project, headers) => {
+        const json = project[headers.indexOf('Assigned Staff')] || '[]';
+        try {
+            return JSON.parse(json).map(staff => ({
+                ...staff,
+                roles: Array.isArray(staff.roles) ? staff.roles : (staff.role ? [staff.role] : [])
+            }));
+        } catch (e) { return []; }
+    },
+
+    formatForSave: (localSelected) => JSON.stringify(localSelected),
+
+    renderAssignedItemCard: (resource, assignment, indices) => {
+        const fileId = extractFileIdFromUrl(resource[indices.imageIndex] || '');
+        const thumbHtml = fileId 
+            ? `<img src="https://drive.google.com/thumbnail?id=${fileId}&sz=w100" alt="${resource[indices.nameIndex]}">`
+            : `<span>No Photo</span>`;
+        const rolesHtml = (assignment.roles || []).map(role => `<span class="skill-chip">${role}</span>`).join('');
+        return `
+            <div class="assigned-resource-card">
+                <div class="resource-item-thumb">${thumbHtml}</div>
+                <div class="resource-item-details">
+                    <p>${resource[indices.nameIndex]}</p>
+                    <div class="skill-chips-container">${rolesHtml || 'No role assigned'}</div>
+                </div>
+            </div>
+        `;
+    },
+
+    createModalItemElement: (item, isSelected, assignment, { localSelected, render }) => {
+        const [idIndex, nameIndex, imageIndex] = ['StaffID', 'Name', 'Image URL'].map(h => allStaff.headers.indexOf(h));
+        const element = document.createElement('div');
+        const itemId = item[idIndex];
+        element.className = isSelected ? 'selected-resource-item' : 'resource-search-item';
+        element.dataset.resourceId = itemId;
+
+        if (!isSelected && localSelected.some(s => s.id === itemId)) {
+            element.classList.add('selected');
+        }
+
+        const fileId = extractFileIdFromUrl(item[imageIndex] || '');
+        const thumbHtml = fileId ? `<img src="https://drive.google.com/thumbnail?id=${fileId}&sz=w100" alt="${item[nameIndex]}">` : '';
+        
+        let rolesHtml = '';
+        if (isSelected) {
+            const currentAssignment = assignment || { roles: [] };
+            rolesHtml = '<div class="staff-role-input-container">';
+            currentAssignment.roles.forEach((role, i) => {
+                rolesHtml += `<div class="role-entry"><input type="text" class="staff-role-input" placeholder="Role..." value="${role}" data-index="${i}"><button type="button" class="btn btn-danger btn-small remove-role-btn" data-index="${i}">&times;</button></div>`;
+            });
+            rolesHtml += '<button type="button" class="btn btn-secondary btn-small add-role-btn">+ Role</button></div>';
+        }
+
+        element.innerHTML = `
+            <div class="resource-item-thumb">${thumbHtml}</div>
+            <div class="resource-item-details">
+                <p>${item[nameIndex]}</p>
+                <span>${itemId}</span>
+                ${rolesHtml}
+            </div>
+        `;
+        
+        if (!isSelected) {
+            element.onclick = () => {
+                if (!localSelected.some(s => s.id === itemId)) {
+                    localSelected.push({ id: itemId, roles: [''] });
+                    render();
+                }
+            };
+        } else {
+             const removeButton = document.createElement('button');
+             removeButton.className = 'btn btn-danger btn-small';
+             removeButton.innerHTML = '&times;';
+             removeButton.style.alignSelf = 'center';
+             removeButton.onclick = (e) => {
+                e.stopPropagation();
+                localSelected = localSelected.filter(s => s.id !== itemId);
+                render();
+             };
+             element.appendChild(removeButton);
+
+             element.querySelector('.add-role-btn').onclick = (e) => {
+                 e.stopPropagation();
+                 const currentAssignment = localSelected.find(s => s.id === itemId);
+                 currentAssignment.roles.push('');
+                 render();
+             };
+
+             element.querySelectorAll('.remove-role-btn').forEach(btn => {
+                 btn.onclick = (e) => {
+                     e.stopPropagation();
+                     const currentAssignment = localSelected.find(s => s.id === itemId);
+                     currentAssignment.roles.splice(btn.dataset.index, 1);
+                     render();
+                 };
+             });
+        }
+
+        return element;
+    },
+    
+    updateStateBeforeSave: (selectedContainer, localSelected) => {
+        selectedContainer.querySelectorAll('.selected-resource-item').forEach(itemEl => {
+            const resourceId = itemEl.dataset.resourceId;
+            const assignment = localSelected.find(s => s.id === resourceId);
+            if (assignment) {
+                const roles = [];
+                itemEl.querySelectorAll('.staff-role-input').forEach(input => {
+                    const roleValue = input.value.trim();
+                    if (roleValue) roles.push(roleValue);
+                });
+                assignment.roles = roles;
+            }
+        });
+    }
+};
 
 // --- INITIALIZATION ---
 export function initProjectsTab(refreshDataFn) {
     refreshData = refreshDataFn;
     initTaskManager(refreshDataFn);
-    initAssignEquipment(refreshDataFn);
-    initAssignStaff(refreshDataFn);
+    initAssignResourceModal(refreshDataFn);
+
+    equipmentAssigner = createResourceHandler(equipmentAssignerConfig);
+    staffAssigner = createResourceHandler(staffAssignerConfig);
 
     document.getElementById('project-search-bar').oninput = (e) => {
         updateState({ projectSearchTerm: e.target.value });
@@ -122,8 +320,8 @@ function showProjectDetails(projectId, isEditingProject = false) {
         <div class="project-details-body">
             ${renderCoreDetails(project, allProjects.headers, isEditingProject)}
             ${renderFinancialsSection(project, allProjects.headers)}
-            ${renderAssignedStaffSection(project, allProjects.headers)}
-            ${renderAssignedEquipmentSection(project, allProjects.headers)}
+            ${staffAssigner.renderAssignedSection(project, allProjects.headers)}
+            ${equipmentAssigner.renderAssignedSection(project, allProjects.headers)}
             ${renderTasksSection(projectId)}
             ${renderAdvancedDetails(project, allProjects.headers)}
         </div>
@@ -326,9 +524,9 @@ function attachProjectDetailsEventListeners(projectId) {
 
     // Assign Modals
     const assignEquipmentBtn = detailsColumn.querySelector('#assign-equipment-btn');
-    if (assignEquipmentBtn) assignEquipmentBtn.onclick = () => showAssignEquipmentModal(projectId);
+    if (assignEquipmentBtn) assignEquipmentBtn.onclick = () => equipmentAssigner.showAssignModal(projectId);
     const assignStaffBtn = detailsColumn.querySelector('#assign-staff-btn');
-    if (assignStaffBtn) assignStaffBtn.onclick = () => showAssignStaffModal(projectId);
+    if (assignStaffBtn) assignStaffBtn.onclick = () => staffAssigner.showAssignModal(projectId);
 
     // Advanced Details
     detailsColumn.querySelectorAll('.collapsible-header').forEach(header => header.onclick = () => {

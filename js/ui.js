@@ -66,24 +66,24 @@ export function cacheDOMElements() {
     elements.costumeModal = document.getElementById('costume-modal');
     elements.equipmentModal = document.getElementById('equipment-modal');
     elements.staffModal = document.getElementById('staff-modal');
-    elements.assignEquipmentModal = document.getElementById('assign-equipment-modal');
-    elements.assignStaffModal = document.getElementById('assign-staff-modal');
+    
+    // Generic Assign Resource Modal
+    elements.assignResourceModal = document.getElementById('assign-resource-modal');
+    elements.assignResourceModalTitle = document.getElementById('assign-resource-modal-title');
+    elements.assignResourceAvailableTitle = document.getElementById('assign-resource-available-title');
+    elements.assignResourceSelectedTitle = document.getElementById('assign-resource-selected-title');
+    elements.resourceSearchInput = document.getElementById('resource-search-input');
+    elements.resourceSearchResults = document.getElementById('resource-search-results');
+    elements.selectedResourceList = document.getElementById('selected-resource-list');
+    elements.saveAssignedResourceBtn = document.getElementById('save-assigned-resource-btn');
+    elements.assignResourceStatus = document.getElementById('assign-resource-status');
+
 
     // Modal Forms & Inputs
     elements.addClientForm = document.getElementById('add-client-form');
     elements.costumeModalForm = document.getElementById('costume-modal-form');
     elements.equipmentModalForm = document.getElementById('equipment-modal-form');
     elements.staffModalForm = document.getElementById('staff-modal-form');
-
-    elements.equipmentSearchInput = document.getElementById('equipment-search-input');
-    elements.equipmentSearchResults = document.getElementById('equipment-search-results');
-    elements.selectedEquipmentList = document.getElementById('selected-equipment-list');
-    elements.saveAssignedEquipmentBtn = document.getElementById('save-assigned-equipment-btn');
-
-    elements.staffSearchInput = document.getElementById('staff-search-input');
-    elements.staffSearchResults = document.getElementById('staff-search-results');
-    elements.selectedStaffList = document.getElementById('selected-staff-list');
-    elements.saveAssignedStaffBtn = document.getElementById('save-assigned-staff-btn');
 }
 
 /**
@@ -265,4 +265,3 @@ export function showDeleteConfirmationModal(title, message, onConfirm) {
     
     modal.style.display = 'block';
 }
-

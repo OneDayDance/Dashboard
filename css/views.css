@@ -247,13 +247,13 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 .project-details-section .add-task-to-bucket-btn { display: block; margin: 10px auto; width: fit-content; opacity: 0.5; transition: opacity 0.2s ease-in-out; }
 .task-bucket:hover .add-task-to-bucket-btn, .task-board-column:hover .add-task-to-bucket-btn { opacity: 1; }
 
-/* Assigned Equipment/Staff Section */
-#assigned-equipment-container, #assigned-staff-container {
+/* Assigned Resource Section */
+.assigned-resource-container {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 15px;
 }
-.assigned-equipment-card, .assigned-staff-card {
+.assigned-resource-card {
     display: flex;
     align-items: center;
     gap: 15px;
@@ -263,7 +263,7 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
     border: 1px solid #eee;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
-.assigned-equipment-thumb, .assigned-staff-thumb {
+.resource-item-thumb {
     width: 60px;
     height: 60px;
     flex-shrink: 0;
@@ -276,24 +276,23 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
     color: #6c757d;
     overflow: hidden;
 }
-.assigned-equipment-thumb img, .assigned-staff-thumb img {
+.resource-item-thumb img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
-.assigned-equipment-details, .assigned-staff-details {
+.resource-item-details {
     flex-grow: 1;
 }
-.assigned-equipment-details p, .assigned-staff-details p {
+.resource-item-details p {
     margin: 0;
     font-size: 16px;
     font-weight: 500;
 }
-.assigned-equipment-details span, .assigned-staff-details span {
+.resource-item-details span {
     font-size: 14px;
     color: #6c757d;
 }
-
 
 /* Item Tags (used in modals) */
 .item-tag a { color: #FF9D76; }
@@ -308,33 +307,31 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 #task-details-modal .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 #task-details-modal .add-item-form .btn { flex-shrink: 0; } /* Prevent add button from shrinking */
 
-/* --- Assign Modals (Equipment & Staff) --- */
-.assign-equipment-body, .assign-staff-body {
+/* --- Assign Resource Modal --- */
+.assign-resource-body {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 20px;
     min-height: 50vh;
 }
-.equipment-selection-pane, .equipment-selected-pane,
-.staff-selection-pane, .staff-selected-pane {
+.resource-selection-pane, .resource-selected-pane {
     display: flex;
     flex-direction: column;
     gap: 10px;
 }
-.equipment-selected-pane, .staff-selected-pane {
+.resource-selected-pane {
     background-color: #f8f9fa;
     padding: 10px;
     border-radius: 8px;
 }
-.equipment-list, .staff-list {
+.resource-list {
     flex-grow: 1;
     overflow-y: auto;
     border: 1px solid #ddd;
     border-radius: 6px;
     padding: 5px;
 }
-.equipment-search-item, .selected-equipment-item,
-.staff-search-item, .selected-staff-item {
+.resource-search-item, .selected-resource-item {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -343,43 +340,26 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
     cursor: pointer;
     transition: background-color 0.2s;
 }
-.equipment-search-item:hover, .staff-search-item:hover {
+.resource-search-item:hover {
     background-color: #e9ecef;
 }
-.equipment-search-item.selected, .staff-search-item.selected {
+.resource-search-item.selected {
     background-color: #d4f4ff;
     opacity: 0.6;
     cursor: not-allowed;
 }
-.selected-equipment-item, .selected-staff-item {
+.selected-resource-item {
     background-color: #fff;
     border: 1px solid #eee;
     margin-bottom: 5px;
     cursor: default;
 }
-.equipment-item-thumb, .staff-item-thumb {
+.resource-search-item .resource-item-thumb, .selected-resource-item .resource-item-thumb {
     width: 40px;
     height: 40px;
-    flex-shrink: 0;
-    border-radius: 50%;
-    background-color: #e9ecef;
-    overflow: hidden;
 }
-.equipment-item-thumb img, .staff-item-thumb img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-.equipment-item-details, .staff-item-details {
+.resource-search-item .resource-item-details, .selected-resource-item .resource-item-details {
     flex-grow: 1;
-}
-.equipment-item-details p, .staff-item-details p {
-    margin: 0;
-    font-weight: 500;
-}
-.equipment-item-details span, .staff-item-details span {
-    font-size: 0.8em;
-    color: #6c757d;
 }
 .staff-role-input-container {
     margin-top: 5px;
@@ -396,7 +376,7 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
     padding: 4px 6px;
     flex-grow: 1;
 }
-.selected-staff-item .btn-small {
+.selected-resource-item .btn-small {
     padding: 2px 6px;
     font-size: 12px;
     flex-shrink: 0;
@@ -557,7 +537,7 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
         max-width: 200px; /* Limit uploader size */
         margin: 0 auto; /* Center it */
     }
-    .assign-equipment-body, .assign-staff-body {
+    .assign-resource-body {
         grid-template-columns: 1fr;
     }
 }
