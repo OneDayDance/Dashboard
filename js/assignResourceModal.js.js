@@ -156,3 +156,4 @@ export function createResourceHandler(config) {
 
     return { renderAssignedSection, showAssignModal };
 }
+
