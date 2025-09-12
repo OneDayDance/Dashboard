@@ -183,7 +183,7 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 .project-list-item.active { background-color: #d4f4ff; font-weight: bold; }
 .project-list-item h4 { margin: 0 0 5px 0; }
 .project-list-item p { margin: 0; font-size: 12px; color: #555; }
-#project-details-column { display: flex; flex-direction: column; gap: 20px; }
+#project-details-column { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 #project-details-column h3 { margin-top: 0; }
 .project-details-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;}
 .project-actions-dropdown { position: relative; }
