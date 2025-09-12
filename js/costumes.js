@@ -4,6 +4,7 @@
 import { state, allCostumes, updateCostumeFilters } from './state.js';
 import { updateSheetRow, writeData, uploadImageToDrive, clearSheetRow } from './api.js';
 import { elements, showDeleteConfirmationModal } from './ui.js';
+import { extractFileIdFromUrl, safeSetValue } from './utils.js';
 
 let refreshData;
 
@@ -34,17 +35,6 @@ export function initCostumesTab(refreshDataFn) {
 export function renderCostumes() {
     renderCostumesAsCards();
     updateFilterDropdowns();
-}
-
-/**
- * Extracts the Google Drive file ID from various URL formats.
- * @param {string} url - The Google Drive URL.
- * @returns {string|null} - The extracted file ID or null.
- */
-function extractFileIdFromUrl(url) {
-    if (!url || typeof url !== 'string') return null;
-    const match = url.match(/([a-zA-Z0-9_-]{28,})/);
-    return match ? match[0] : null;
 }
 
 function renderCostumesAsCards() {
@@ -169,11 +159,6 @@ function updateFilterDropdowns() {
 
 
 // --- MODAL & FORM HANDLING ---
-
-function safeSetValue(id, value) {
-    const element = document.getElementById(id);
-    if (element) element.value = value;
-}
 
 function showCostumeModal(rowData = null) {
     const modal = elements.costumeModal;
