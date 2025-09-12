@@ -4,7 +4,6 @@
 import { state, allProjects, allStaff } from './state.js';
 import { updateSheetRow } from './api.js';
 import { elements } from './ui.js';
-import { extractFileIdFromUrl } from './utils.js';
 
 let refreshData;
 

@@ -6,7 +6,6 @@ import { updateSheetRow, writeData, clearSheetRow } from './api.js';
 import { elements, showDeleteConfirmationModal } from './ui.js';
 import { showRequestDetailsModal } from './requests.js';
 import { showClientDetailsModal } from './clients.js';
-import { renderTasksSection, setupDragAndDrop, setupTaskClickHandlers, initTaskManager } from './taskManager.js';
 import { renderAssignedEquipmentSection, showAssignEquipmentModal, initAssignEquipment } from './assignEquipmentModal.js';
 import { renderAssignedStaffSection, showAssignStaffModal, initAssignStaff } from './assignStaffModal.js';
 
