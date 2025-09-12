@@ -7,7 +7,7 @@ import { elements, showDeleteConfirmationModal } from './ui.js';
 import { showRequestDetailsModal } from './requests.js';
 import { showClientDetailsModal } from './clients.js';
 import { initAssignResourceModal, createResourceHandler } from './assignResourceModal.js';
-import { initTaskManager, renderTasksSection, setupTaskClickHandlers, setupDragAndDrop } from './taskManager.js';
+import { initTaskManager, renderTasks, setupDragAndDrop } from './taskManager.js';
 import { extractFileIdFromUrl } from './utils.js';
 
 let refreshData;
@@ -19,8 +19,6 @@ const equipmentAssignerConfig = {
     resourceType: 'equipment',
     resourceNameSingular: 'Equipment',
     resourceNamePlural: 'Equipment',
-    // FIX: Pass a function that returns the current state, not the state object itself.
-    // This prevents the config from holding a stale reference to the initial empty state.
     allResourcesState: () => allEquipment,
     idKey: 'EquipmentID',
     projectSheetColumn: 'Assigned Equipment',
@@ -49,8 +47,6 @@ const equipmentAssignerConfig = {
         `;
     },
 
-    // FIX: Updated to accept `currentResources` from the modal handler.
-    // This ensures it uses fresh data instead of the stale module-level import.
     createModalItemElement: (item, isSelected, assignment, { localSelected, render, currentResources }) => {
         const { headers } = currentResources;
         const [idIndex, nameIndex, imageIndex] = ['EquipmentID', 'Name', 'Image URL'].map(h => headers.indexOf(h));
@@ -92,7 +88,6 @@ const staffAssignerConfig = {
     resourceType: 'staff',
     resourceNameSingular: 'Staff',
     resourceNamePlural: 'Staff',
-    // FIX: Pass a function that returns the current state.
     allResourcesState: () => allStaff,
     idKey: 'StaffID',
     projectSheetColumn: 'Assigned Staff',
@@ -127,7 +122,6 @@ const staffAssignerConfig = {
         `;
     },
 
-    // FIX: Updated to accept `currentResources` from the modal handler.
     createModalItemElement: (item, isSelected, assignment, { localSelected, render, currentResources }) => {
         const { headers } = currentResources;
         const [idIndex, nameIndex, imageIndex] = ['StaffID', 'Name', 'Image URL'].map(h => headers.indexOf(h));
@@ -176,8 +170,8 @@ const staffAssignerConfig = {
              removeButton.style.alignSelf = 'center';
              removeButton.onclick = (e) => {
                 e.stopPropagation();
-                localSelected = localSelected.filter(s => s.id !== itemId);
-                render();
+                const currentLocalSelected = localSelected.filter(s => s.id !== itemId);
+                render(currentLocalSelected);
              };
              element.appendChild(removeButton);
 
@@ -444,6 +438,25 @@ function renderFinancialsSection(project, headers, isEditMode = false) {
         </div>`;
 }
 
+function renderTasksSection(projectId) {
+    const isListView = state.projectTaskView === 'list';
+    return `
+        <div class="project-details-section content-section">
+            <div class="project-details-section-header">
+                <h4>Tasks</h4>
+                <div class="view-controls">
+                    <button id="task-view-list-btn" class="btn btn-subtle ${isListView ? 'active' : ''}">List</button>
+                    <button id="task-view-board-btn" class="btn btn-subtle ${!isListView ? 'active' : ''}">Board</button>
+                    <button id="add-task-btn" type="button" class="btn btn-secondary">Add Task</button>
+                </div>
+            </div>
+            <div id="task-board-container">
+                <!-- Task content will be rendered here by taskManager.js -->
+            </div>
+        </div>
+    `;
+}
+
 function renderAdvancedDetails(data, headers) {
     const reqId = data[headers.indexOf('Source Request ID')];
     return `<div class="project-details-section collapsible-header collapsed"><h4>Advanced Details</h4><span class="toggle-arrow">&#9662;</span></div>
@@ -535,6 +548,27 @@ function attachProjectDetailsEventListeners(projectId) {
     if (assignEquipmentBtn) assignEquipmentBtn.onclick = () => equipmentAssigner.showAssignModal(projectId);
     const assignStaffBtn = detailsColumn.querySelector('#assign-staff-btn');
     if (assignStaffBtn) assignStaffBtn.onclick = () => staffAssigner.showAssignModal(projectId);
+    
+    // Task Section
+    const taskContainer = detailsColumn.querySelector('#task-board-container');
+    if (taskContainer) {
+        renderTasks(taskContainer, projectId);
+    }
+    const addTaskBtn = detailsColumn.querySelector('#add-task-btn');
+    if (addTaskBtn) {
+        addTaskBtn.onclick = () => {
+            const bucket = state.projectTaskView === 'board' ? 'To Do' : undefined;
+            window.showTaskDetailsModal(null, projectId, bucket);
+        };
+    }
+    const setTaskView = (view) => {
+        updateState({ projectTaskView: view });
+        showProjectDetails(projectId);
+    };
+    const listViewBtn = detailsColumn.querySelector('#task-view-list-btn');
+    const boardViewBtn = detailsColumn.querySelector('#task-view-board-btn');
+    if (listViewBtn) listViewBtn.onclick = () => setTaskView('list');
+    if (boardViewBtn) boardViewBtn.onclick = () => setTaskView('board');
 
     // Advanced Details
     detailsColumn.querySelectorAll('.collapsible-header').forEach(header => header.onclick = () => {
@@ -549,7 +583,6 @@ function attachProjectDetailsEventListeners(projectId) {
     };
     
     setupDragAndDrop(detailsColumn);
-    setupTaskClickHandlers(detailsColumn, projectId);
 }
 
 // --- PROJECT-LEVEL ACTIONS ---

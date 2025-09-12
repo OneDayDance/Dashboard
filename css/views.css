@@ -229,33 +229,18 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 .financials-edit-actions { display: flex; justify-content: space-between; margin-top: 10px; }
 
 /* Task Section Styles */
-.project-details-section .task-bucket { cursor: grab; transition: all 0.2s ease-in-out; border: 2px solid transparent; padding: 5px; }
-.project-details-section .task-bucket:hover { border-color: #76F1FF; }
-.project-details-section .task-bucket h5 { background-color: #f0f0f0; padding: 5px 10px; border-radius: 4px; margin: 15px 0 5px; }
-.project-details-section .task-list { list-style-type: none; padding: 0; }
-.project-details-section .task-item { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; background-color: white; border-radius: 4px; margin-bottom: 5px; transition: all 0.2s ease-in-out; }
-.project-details-section .task-item:hover { transform: scale(1.02); box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
-.project-details-section .task-main { display: flex; align-items: center; gap: 10px; width: 100%;}
-.project-details-section .task-main input[type="checkbox"] { width: 20px; height: 20px; flex-shrink: 0;}
-.project-details-section .task-main label { flex-grow: 1; }
-.project-details-section .task-main.completed label { text-decoration: line-through; color: #888; }
-.project-details-section .subtask-list { list-style: none; padding-left: 30px; margin-top: 5px; width: 100%;}
-.project-details-section .subtask-item { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 2px 0;}
-.project-details-section .subtask-item input { cursor: pointer; }
-.project-details-section .task-progress { width: 100%; background-color: #eee; border-radius: 4px; height: 6px; margin-top: 4px;}
-.project-details-section .task-progress-bar { background-color: #76F1FF; height: 100%; border-radius: 4px; }
-.project-details-section .task-board { display: flex; gap: 15px; padding: 10px 0; min-height: 200px; overflow-x: auto; }
-.project-details-section .task-board-column { flex: 0 0 300px; background: #f4f5f7; border-radius: 8px; padding: 10px; cursor: grab; transition: all 0.2s ease-in-out; border: 2px solid transparent; }
-.project-details-section .task-board-column:hover { border-color: #76F1FF; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-.project-details-section .task-board-column h5 { text-align: center; margin: 5px 0 15px; }
-.project-details-section .task-card { background: #fff; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); padding: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s ease-in-out; }
-.project-details-section .task-card:hover { transform: scale(1.03); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
-.project-details-section .subtask-summary { font-size: 12px; color: #555; margin: 5px 0 0; }
-.project-details-section .dragging { opacity: 0.4 !important; background: #cceeff !important; transform: scale(1.0) !important; box-shadow: none !important; }
-.project-details-section .task-placeholder, .project-details-section .bucket-placeholder { background-color: rgba(118, 241, 255, 0.3); border: 2px dashed #76F1FF; border-radius: 4px; margin-bottom: 5px; box-sizing: border-box; transition: all 0.1s ease; pointer-events: none; }
-.project-details-section .bucket-placeholder { border-radius: 8px; flex: 0 0 300px; }
-.project-details-section .add-task-to-bucket-btn { display: block; margin: 10px auto; width: fit-content; opacity: 0.5; transition: opacity 0.2s ease-in-out; }
-.task-bucket:hover .add-task-to-bucket-btn, .task-board-column:hover .add-task-to-bucket-btn { opacity: 1; }
+.task-list-view { min-width: 0; } /* Override data-table min-width for tasks */
+.task-list-view .status-badge { background: #eee; padding: 3px 8px; border-radius: 12px; font-size: 12px; }
+.task-board { display: flex; gap: 15px; padding: 10px 0; min-height: 200px; overflow-x: auto; }
+.task-board-column { flex: 0 0 300px; background: #f4f5f7; border-radius: 8px; padding: 10px; }
+.task-board-column-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.task-board-column h5 { margin: 0; }
+.delete-bucket-btn { background: none; border: none; cursor: pointer; font-size: 18px; color: #aaa; }
+.delete-bucket-btn:hover { color: #dc3545; }
+.task-card { background: #fff; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); padding: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s ease-in-out; }
+.task-card:hover { transform: scale(1.03); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+.task-card p { margin: 0; }
+.subtask-summary { font-size: 12px; color: #555; margin-top: 8px; }
 
 /* Assigned Resource Section */
 .assigned-resource-container {
@@ -315,7 +300,11 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 #task-details-modal .form-field { margin-bottom: 15px; }
 #task-details-modal .form-field label { display: block; margin-bottom: 5px; font-weight: bold; }
 #task-details-modal .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+#task-details-modal .add-item-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; }
 #task-details-modal .add-item-form .btn { flex-shrink: 0; } /* Prevent add button from shrinking */
+.subtask-item-modal, .link-item-modal { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.subtask-item-modal input[type="text"] { flex-grow: 1; }
+.link-item-modal a { flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* --- Assign Resource Modal --- */
 .assign-resource-body {
@@ -551,4 +540,3 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
         grid-template-columns: 1fr;
     }
 }
-

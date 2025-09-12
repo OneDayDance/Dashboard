@@ -469,7 +469,7 @@
                         </div>
                         <div class="form-field">
                             <label for="task-bucket">Bucket</label>
-                            <select id="task-bucket"></select>
+                            <input type="text" id="task-bucket">
                         </div>
                     </div>
                     <div class="form-field">
@@ -484,7 +484,8 @@
                         <label>Links</label>
                         <div id="links-container"></div>
                         <div class="add-item-form">
-                            <input type="text" id="new-link-url" placeholder="https://example.com">
+                            <input type="text" id="new-link-name" placeholder="Link Name (optional)">
+                            <input type="url" id="new-link-url" placeholder="https://example.com" required>
                             <button type="button" id="add-link-btn" class="btn btn-secondary">Add</button>
                         </div>
                     </div>
