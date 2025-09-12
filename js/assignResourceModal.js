@@ -47,12 +47,15 @@ export function createResourceHandler(config) {
     function renderAssignedSection(project, headers) {
         const assignedData = getAssignments(project, headers);
         let itemsHtml = '';
-        const [idIndex, nameIndex, imageIndex] = [idKey, 'Name', 'Image URL'].map(h => allResourcesState.headers.indexOf(h));
+        // FIX: Call the state function to get the latest resource data.
+        const currentResources = allResourcesState();
+        const [idIndex, nameIndex, imageIndex] = [idKey, 'Name', 'Image URL'].map(h => currentResources.headers.indexOf(h));
         
         if (assignedData && assignedData.length > 0) {
             assignedData.forEach(assignment => {
                 const resourceId = isComplex ? assignment.id : assignment;
-                const resource = allResourcesState.rows.find(row => row[idIndex] === resourceId);
+                // FIX: Use the fetched currentResources, not the potentially stale module-level import.
+                const resource = currentResources.rows.find(row => row[idIndex] === resourceId);
                 if (resource) {
                     itemsHtml += renderAssignedItemCard(resource, assignment, { idIndex, nameIndex, imageIndex });
                 }
@@ -102,26 +105,31 @@ export function createResourceHandler(config) {
             searchResultsContainer.innerHTML = '';
             selectedContainer.innerHTML = '';
 
+            // FIX: Get the current resource state each time the modal content is rendered.
+            const currentResources = allResourcesState();
+
             // Render selected items
             const renderCollection = isComplex ? localSelected : Array.from(localSelected);
             renderCollection.forEach(assignmentOrId => {
                 const id = isComplex ? assignmentOrId.id : assignmentOrId;
-                const item = allResourcesState.rows.find(row => row[allResourcesState.headers.indexOf(idKey)] === id);
+                const item = currentResources.rows.find(row => row[currentResources.headers.indexOf(idKey)] === id);
                 if (item) {
-                    selectedContainer.appendChild(createModalItemElement(item, true, assignmentOrId, { localSelected, render }));
+                    // FIX: Pass the fresh `currentResources` data to the element creator function.
+                    selectedContainer.appendChild(createModalItemElement(item, true, assignmentOrId, { localSelected, render, currentResources }));
                 }
             });
             
             // Render search results
-            const [nameIndex, idIndex] = ['Name', idKey].map(h => allResourcesState.headers.indexOf(h));
-            const availableItems = allResourcesState.rows.filter(row => {
+            const [nameIndex, idIndex] = ['Name', idKey].map(h => currentResources.headers.indexOf(h));
+            const availableItems = currentResources.rows.filter(row => {
                 const name = (row[nameIndex] || '').toLowerCase();
                 const id = (row[idIndex] || '').toLowerCase();
                 return name.includes(searchTerm) || id.includes(searchTerm);
             });
 
             availableItems.forEach(item => {
-                 searchResultsContainer.appendChild(createModalItemElement(item, false, null, { localSelected, render }));
+                 // FIX: Pass the fresh `currentResources` data to the element creator function.
+                 searchResultsContainer.appendChild(createModalItemElement(item, false, null, { localSelected, render, currentResources }));
             });
         };
 
@@ -156,4 +164,3 @@ export function createResourceHandler(config) {
 
     return { renderAssignedSection, showAssignModal };
 }
-

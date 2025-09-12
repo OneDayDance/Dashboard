@@ -13,8 +13,9 @@ let refreshData; // This will hold the main data refresh function.
 export function initClientsTab(refreshDataFn) {
     refreshData = refreshDataFn;
     
-    if (elements.clientAddBtn) {
-        elements.clientAddBtn.onclick = () => showAddClientModal();
+    // FIX: Corrected element ID from clientAddBtn to addClientBtn to match the UI cache.
+    if (elements.addClientBtn) {
+        elements.addClientBtn.onclick = () => showAddClientModal();
     }
     if (elements.clientSearchBar) {
         elements.clientSearchBar.oninput = (e) => { updateState({ clientSearchTerm: e.target.value.toLowerCase() }); renderClients(); };
@@ -25,7 +26,6 @@ export function initClientsTab(refreshDataFn) {
     if (elements.clientViewToggleBtn) {
         elements.clientViewToggleBtn.onclick = () => setClientView(state.clientCurrentView === 'list' ? 'card' : 'list');
     }
-    // FIX: Corrected event listener logic
     if (elements.clientColumnSelectBtn) {
         elements.clientColumnSelectBtn.onclick = () => showColumnModal(allClients.headers, state.visibleClientColumns, 'client-column-checkboxes');
     }

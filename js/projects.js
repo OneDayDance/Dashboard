@@ -19,7 +19,9 @@ const equipmentAssignerConfig = {
     resourceType: 'equipment',
     resourceNameSingular: 'Equipment',
     resourceNamePlural: 'Equipment',
-    allResourcesState: allEquipment,
+    // FIX: Pass a function that returns the current state, not the state object itself.
+    // This prevents the config from holding a stale reference to the initial empty state.
+    allResourcesState: () => allEquipment,
     idKey: 'EquipmentID',
     projectSheetColumn: 'Assigned Equipment',
     isComplex: false,
@@ -47,8 +49,11 @@ const equipmentAssignerConfig = {
         `;
     },
 
-    createModalItemElement: (item, isSelected, assignment, { localSelected, render }) => {
-        const [idIndex, nameIndex, imageIndex] = ['EquipmentID', 'Name', 'Image URL'].map(h => allEquipment.headers.indexOf(h));
+    // FIX: Updated to accept `currentResources` from the modal handler.
+    // This ensures it uses fresh data instead of the stale module-level import.
+    createModalItemElement: (item, isSelected, assignment, { localSelected, render, currentResources }) => {
+        const { headers } = currentResources;
+        const [idIndex, nameIndex, imageIndex] = ['EquipmentID', 'Name', 'Image URL'].map(h => headers.indexOf(h));
         const element = document.createElement('div');
         const itemId = item[idIndex];
         element.className = isSelected ? 'selected-resource-item' : 'resource-search-item';
@@ -87,7 +92,8 @@ const staffAssignerConfig = {
     resourceType: 'staff',
     resourceNameSingular: 'Staff',
     resourceNamePlural: 'Staff',
-    allResourcesState: allStaff,
+    // FIX: Pass a function that returns the current state.
+    allResourcesState: () => allStaff,
     idKey: 'StaffID',
     projectSheetColumn: 'Assigned Staff',
     isComplex: true,
@@ -121,8 +127,10 @@ const staffAssignerConfig = {
         `;
     },
 
-    createModalItemElement: (item, isSelected, assignment, { localSelected, render }) => {
-        const [idIndex, nameIndex, imageIndex] = ['StaffID', 'Name', 'Image URL'].map(h => allStaff.headers.indexOf(h));
+    // FIX: Updated to accept `currentResources` from the modal handler.
+    createModalItemElement: (item, isSelected, assignment, { localSelected, render, currentResources }) => {
+        const { headers } = currentResources;
+        const [idIndex, nameIndex, imageIndex] = ['StaffID', 'Name', 'Image URL'].map(h => headers.indexOf(h));
         const element = document.createElement('div');
         const itemId = item[idIndex];
         element.className = isSelected ? 'selected-resource-item' : 'resource-search-item';
