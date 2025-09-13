@@ -52,16 +52,23 @@ function getBucketsForProject(projectTasks) {
     const bucketIdx = headers.indexOf('Bucket');
     
     const buckets = projectTasks.reduce((acc, task) => {
-        const bucketName = task[bucketIdx] || 'To Do';
+        const bucketName = (task[bucketIdx] || 'Uncategorized').trim();
         if (!acc[bucketName]) acc[bucketName] = [];
         acc[bucketName].push(task);
         return acc;
     }, {});
 
-    const defaultBuckets = ['To Do', 'In Progress', 'Done'];
-    const customBuckets = Object.keys(buckets).filter(b => !defaultBuckets.includes(b)).sort();
+    // The bucket order is now simply the sorted list of keys from the buckets object.
+    const bucketOrder = Object.keys(buckets).sort();
     
-    return { buckets, bucketOrder: [...defaultBuckets, ...customBuckets] };
+    // Ensure "Uncategorized" is first if it exists.
+    const uncategorizedIndex = bucketOrder.indexOf('Uncategorized');
+    if (uncategorizedIndex > 0) {
+        bucketOrder.splice(uncategorizedIndex, 1);
+        bucketOrder.unshift('Uncategorized');
+    }
+    
+    return { buckets, bucketOrder };
 }
 
 // --- MAIN RENDERER ---
@@ -148,17 +155,23 @@ function renderTaskList(container, projectId) {
 
 function renderTaskBoard(container, projectId) {
     const projectTasks = getProjectTasks(projectId);
+    if (projectTasks.length === 0) {
+        container.innerHTML = '<div class="empty-state-container"><p>No tasks yet. Click "Add Task" to get started.</p></div>';
+        return;
+    }
+    
     const { headers } = allTasks;
-    const [nameIdx, taskIdIdx, subtasksIdx] = ['Task Name', 'TaskID', 'Subtasks'].map(h => headers.indexOf(h));
+    const [nameIdx, taskIdIdx, subtasksIdx, statusIdx] = ['Task Name', 'TaskID', 'Subtasks', 'Status'].map(h => headers.indexOf(h));
     const { buckets, bucketOrder } = getBucketsForProject(projectTasks);
     
     let boardHtml = '<div class="task-board">';
     bucketOrder.forEach(bucketName => {
         const tasksInBucket = buckets[bucketName] || [];
-        // Only render default buckets or custom buckets that have tasks.
-        if (tasksInBucket.length === 0 && !['To Do', 'In Progress', 'Done'].includes(bucketName)) return;
+        
+        // Don't show empty buckets on the board
+        if (tasksInBucket.length === 0) return;
 
-        const deleteBtnHtml = !['To Do', 'In Progress', 'Done'].includes(bucketName)
+        const deleteBtnHtml = bucketName !== 'Uncategorized'
             ? `<button class="delete-bucket-btn" data-bucket="${bucketName}" title="Delete Bucket">&times;</button>`
             : '';
             
@@ -168,12 +181,22 @@ function renderTaskBoard(container, projectId) {
                 <div class="task-list">`;
         
         tasksInBucket.forEach(task => {
+            const isCompleted = task[statusIdx] === 'Done';
             let subtasks = [];
             try { subtasks = JSON.parse(task[subtasksIdx] || '[]'); } catch(e) {}
-            const completed = subtasks.filter(s => s.completed).length;
-            const subtaskSummary = subtasks.length > 0 ? `<div class="subtask-summary">${completed}/${subtasks.length} subtasks</div>` : '';
+            const completedSubtasks = subtasks.filter(s => s.completed).length;
+            const subtaskSummary = subtasks.length > 0 ? `<div class="subtask-summary">${completedSubtasks}/${subtasks.length} subtasks</div>` : '';
 
-            boardHtml += `<div class="task-card" data-task-id="${task[taskIdIdx]}"><p>${task[nameIdx] || 'Untitled'}</p>${subtaskSummary}</div>`;
+            boardHtml += `
+                <div class="task-card" data-task-id="${task[taskIdIdx]}">
+                    <button class="complete-task-btn ${isCompleted ? 'completed' : ''}" data-task-id="${task[taskIdIdx]}">
+                        <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                    </button>
+                    <div class="task-card-content">
+                        <p>${task[nameIdx] || 'Untitled'}</p>
+                        ${subtaskSummary}
+                    </div>
+                </div>`;
         });
 
         boardHtml += `</div><button class="add-task-in-bucket-btn" data-bucket="${bucketName}">+ Add task</button></div>`;
@@ -184,7 +207,7 @@ function renderTaskBoard(container, projectId) {
 
 // --- MODAL & FORM HANDLING ---
 
-function showTaskDetailsModal(taskData = null, projectId, bucketName = 'To Do') {
+function showTaskDetailsModal(taskData = null, projectId, bucketName = 'Uncategorized') {
     const modal = elements.taskDetailsModal;
     const form = document.getElementById('task-details-form');
     form.reset();
@@ -207,7 +230,7 @@ function showTaskDetailsModal(taskData = null, projectId, bucketName = 'To Do') 
         document.getElementById('task-status').value = 'To Do';
     }
     
-    // Populate Subtasks
+    // Populate Subtasks & Links
     const subtasksContainer = document.getElementById('subtasks-container-modal');
     subtasksContainer.innerHTML = '';
     try { JSON.parse((taskData && taskData[headers.indexOf('Subtasks')]) || '[]').forEach(renderSubtaskItem); } catch(e) {}
@@ -232,7 +255,7 @@ function showTaskDetailsModal(taskData = null, projectId, bucketName = 'To Do') 
 
     // Set the initial value for the bucket input
     if (taskData) {
-        bucketInput.value = taskData[headers.indexOf('Bucket')] || 'To Do';
+        bucketInput.value = taskData[headers.indexOf('Bucket')] || 'Uncategorized';
     } else {
         bucketInput.value = bucketName;
     }
@@ -318,14 +341,26 @@ async function handleToggleTaskComplete(taskId, currentStatus) {
 }
 
 async function handleDeleteBucket(bucketName, projectId) {
+    // The delete button for "Uncategorized" is not rendered, so this is an extra safeguard.
+    if (bucketName === 'Uncategorized') {
+        console.warn("Attempted to delete the default 'Uncategorized' bucket.");
+        return;
+    }
+    
     showDeleteConfirmationModal(
         `Delete Bucket: ${bucketName}`,
-        `This will move all tasks in this bucket to 'To Do'. This action cannot be undone.`,
+        `This will move all tasks in this bucket to 'Uncategorized'. This action cannot be undone.`,
         async () => {
             const { headers, rows } = allTasks;
             const [projIdIdx, bucketIdx, taskIdIdx] = ['ProjectID', 'Bucket', 'TaskID'].map(h => headers.indexOf(h));
+            
             const tasksToMove = rows.filter(t => t[projIdIdx] === projectId && t[bucketIdx] === bucketName);
-            const updatePromises = tasksToMove.map(task => updateSheetRow('Tasks', 'TaskID', task[taskIdIdx], { 'Bucket': 'To Do' }));
+
+            const updatePromises = tasksToMove.map(task => {
+                const taskId = task[taskIdIdx];
+                return updateSheetRow('Tasks', 'TaskID', taskId, { 'Bucket': 'Uncategorized' });
+            });
+            
             await Promise.all(updatePromises);
             await refreshData();
         }
@@ -336,5 +371,7 @@ export function setupDragAndDrop(container) {
     // Placeholder for drag and drop logic
     console.log("Drag and drop setup initiated.");
 }
+
+
 
 
