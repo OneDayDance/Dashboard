@@ -230,9 +230,6 @@ export function initProjectsTab(refreshDataFn) {
         e.currentTarget.classList.toggle('collapsed');
         document.getElementById('archived-projects-list').classList.toggle('collapsed');
     };
-    
-    // Make showProjectDetails globally accessible for taskManager to prevent circular dependencies
-    window.showProjectDetails = showProjectDetails;
 }
 
 // --- TAB RENDERING ---
@@ -450,7 +447,7 @@ function renderTasksSection(projectId) {
                     <button id="add-task-btn" type="button" class="btn btn-secondary">Add Task</button>
                 </div>
             </div>
-            <div id="task-board-container">
+            <div id="task-container">
                 <!-- Task content will be rendered here by taskManager.js -->
             </div>
         </div>
@@ -550,7 +547,7 @@ function attachProjectDetailsEventListeners(projectId) {
     if (assignStaffBtn) assignStaffBtn.onclick = () => staffAssigner.showAssignModal(projectId);
     
     // Task Section
-    const taskContainer = detailsColumn.querySelector('#task-board-container');
+    const taskContainer = detailsColumn.querySelector('#task-container');
     if (taskContainer) {
         renderTasks(taskContainer, projectId);
     }
@@ -711,3 +708,4 @@ async function handleSaveGDriveLink(event) {
         setTimeout(() => { elements.gdriveLinkModal.style.display = 'none'; }, 1000);
     } catch (err) { statusSpan.textContent = 'Error saving link.'; console.error('GDrive link save error:', err); }
 }
+
