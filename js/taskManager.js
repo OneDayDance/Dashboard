@@ -186,7 +186,9 @@ function renderTaskBoard(container, projectId) {
 
 function showTaskDetailsModal(taskData = null, projectId, bucketName = 'To Do') {
     const modal = elements.taskDetailsModal;
+    const form = document.getElementById('task-details-form');
     form.reset();
+
     document.getElementById('task-modal-title').textContent = taskData ? 'Edit Task' : 'New Task';
     document.getElementById('task-project-id-input').value = projectId;
     
@@ -201,13 +203,11 @@ function showTaskDetailsModal(taskData = null, projectId, bucketName = 'To Do') 
         document.getElementById('task-due-date').value = taskData[headers.indexOf('Due Date')] || '';
         document.getElementById('task-assignee').value = taskData[headers.indexOf('Assignee')] || '';
         document.getElementById('task-status').value = taskData[headers.indexOf('Status')] || 'To Do';
-        document.getElementById('task-bucket').value = taskData[headers.indexOf('Bucket')] || 'To Do';
     } else {
         document.getElementById('task-status').value = 'To Do';
-        document.getElementById('task-bucket').value = bucketName;
     }
     
-    // Populate Subtasks & Links
+    // Populate Subtasks
     const subtasksContainer = document.getElementById('subtasks-container-modal');
     subtasksContainer.innerHTML = '';
     try { JSON.parse((taskData && taskData[headers.indexOf('Subtasks')]) || '[]').forEach(renderSubtaskItem); } catch(e) {}
@@ -216,15 +216,27 @@ function showTaskDetailsModal(taskData = null, projectId, bucketName = 'To Do') 
     linksContainer.innerHTML = '';
     try { JSON.parse((taskData && taskData[headers.indexOf('Links')]) || '[]').forEach(renderLinkItem); } catch(e) {}
 
-    // Populate bucket dropdown
-    const bucketSelect = document.getElementById('task-bucket');
+    // Populate bucket datalist for suggestions
+    const bucketInput = document.getElementById('task-bucket');
+    const bucketDatalist = document.getElementById('bucket-suggestions');
     const { bucketOrder } = getBucketsForProject(getProjectTasks(projectId));
-    bucketSelect.innerHTML = '';
-    bucketOrder.forEach(b => {
-        const option = new Option(b, b, false, b === (taskData ? taskData[headers.indexOf('Bucket')] : bucketName));
-        bucketSelect.add(option);
-    });
     
+    if (bucketDatalist) {
+        bucketDatalist.innerHTML = '';
+        bucketOrder.forEach(b => {
+            const option = document.createElement('option');
+            option.value = b;
+            bucketDatalist.appendChild(option);
+        });
+    }
+
+    // Set the initial value for the bucket input
+    if (taskData) {
+        bucketInput.value = taskData[headers.indexOf('Bucket')] || 'To Do';
+    } else {
+        bucketInput.value = bucketName;
+    }
+
     modal.style.display = 'block';
 }
 
@@ -324,4 +336,5 @@ export function setupDragAndDrop(container) {
     // Placeholder for drag and drop logic
     console.log("Drag and drop setup initiated.");
 }
+
 
