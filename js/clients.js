@@ -278,6 +278,17 @@ export function showClientDetailsModal(rowData, headers) {
                         <option value="On Hold" ${val === 'On Hold' ? 'selected' : ''}>On Hold</option>
                         <option value="Past" ${val === 'Past' ? 'selected' : ''}>Past</option>
                     </select>`;
+                } else if (h === 'Lead Source') {
+                    const leadSourceHeaderIndex = allClients.headers.indexOf('Lead Source');
+                    const uniqueLeadSources = [...new Set(allClients.rows.map(row => row[leadSourceHeaderIndex]).filter(Boolean))];
+                    
+                    let datalistHtml = `<datalist id="lead-source-list">`;
+                    uniqueLeadSources.forEach(source => {
+                        datalistHtml += `<option value="${source}">`;
+                    });
+                    datalistHtml += `</datalist>`;
+                    
+                    fieldHtml += `<input type="text" id="${inputId}" value="${val}" list="lead-source-list"> ${datalistHtml}`;
                 } else if (h === 'Birthday' || h === 'Intake Date') {
                      fieldHtml += `<input type="date" id="${inputId}" value="${val}">`;
                 } else {
@@ -352,17 +363,59 @@ export function showClientDetailsModal(rowData, headers) {
     function populateClientFinancialsTab() {
         const clientEmail = localState.currentRowData[headers.indexOf('Email')];
         let contentHtml = '<h3>Year-to-Date Income</h3>';
-        if (allProjects.headers.length > 0) {
-            const [emailIdx, valIdx, dateIdx] = ['Client Email', 'Value', 'Start Date'].map(h => allProjects.headers.indexOf(h));
-            const currentYear = new Date().getFullYear();
-            let ytdIncome = 0;
-            allProjects.rows.forEach(row => {
-                if (row[dateIdx] && row[emailIdx] === clientEmail && new Date(row[dateIdx]).getFullYear() === currentYear) {
-                    ytdIncome += parseFloat(row[valIdx]) || 0;
-                }
-            });
-            contentHtml += `<p class="financial-total">$${ytdIncome.toFixed(2)}</p>`;
-        } else { contentHtml += '<p>Project data is not available.</p>'; }
+
+        if (allProjects?.rows && allProjects.headers.length > 0) {
+            const [emailIdx, breakdownIdx, dateIdx] = ['Client Email', 'Cost Breakdown', 'Start Date'].map(h => allProjects.headers.indexOf(h));
+
+            if (emailIdx > -1 && breakdownIdx > -1 && dateIdx > -1) {
+                const currentYear = new Date().getFullYear();
+                let ytdIncome = 0;
+                
+                allProjects.rows.forEach(row => {
+                    if (row[emailIdx] === clientEmail && row[dateIdx] && new Date(row[dateIdx]).getFullYear() === currentYear) {
+                        try {
+                            const breakdown = JSON.parse(row[breakdownIdx] || '[]');
+                            const projectTotal = breakdown.reduce((sum, item) => sum + (parseFloat(item.cost) || 0), 0);
+                            ytdIncome += projectTotal;
+                        } catch (e) {
+                            console.error("Could not parse cost breakdown for a project:", row, e);
+                        }
+                    }
+                });
+                contentHtml += `<p class="financial-total">$${ytdIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>`;
+            } else {
+                 contentHtml += '<p>Project data is missing required columns (Client Email, Cost Breakdown, or Start Date).</p>';
+            }
+        } else { 
+            contentHtml += '<p>Project data is not available.</p>'; 
+        }
+
+        contentHtml += '<h3>Total Lifetime Income</h3>';
+        if (allProjects?.rows && allProjects.headers.length > 0) {
+            const [emailIdx, breakdownIdx] = ['Client Email', 'Cost Breakdown'].map(h => allProjects.headers.indexOf(h));
+
+            if (emailIdx > -1 && breakdownIdx > -1) {
+                let totalIncome = 0;
+                
+                allProjects.rows.forEach(row => {
+                    if (row[emailIdx] === clientEmail) {
+                         try {
+                            const breakdown = JSON.parse(row[breakdownIdx] || '[]');
+                            const projectTotal = breakdown.reduce((sum, item) => sum + (parseFloat(item.cost) || 0), 0);
+                            totalIncome += projectTotal;
+                        } catch (e) {
+                             console.error("Could not parse cost breakdown for a project:", row, e);
+                        }
+                    }
+                });
+                contentHtml += `<p class="financial-total">$${totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>`;
+            } else {
+                 contentHtml += '<p>Project data is missing required columns (Client Email or Cost Breakdown).</p>';
+            }
+        } else {
+             contentHtml += '<p>Project data is not available.</p>'; 
+        }
+
         return contentHtml;
     }
 

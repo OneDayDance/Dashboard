@@ -19,7 +19,7 @@ export let state = {
     clientSortColumn: 'First Name',
     clientSortDirection: 'asc',
     clientCurrentView: 'list',
-    visibleClientColumns: ['First Name', 'Last Name', 'Email', 'Status', 'Client Type'],
+    visibleClientColumns: ['First Name', 'Last Name', 'Email', 'Status'],
     clientFilters: { status: 'all', type: 'all' },
     // projects tab state
     selectedProjectId: null,
