@@ -7,6 +7,21 @@ import { showDeleteConfirmationModal } from './ui.js';
 import { extractFileIdFromUrl, safeSetValue } from './utils.js';
 
 /**
+ * A simple pluralization helper for UI labels.
+ * @param {string} word - The word to pluralize.
+ * @returns {string} - The pluralized word.
+ */
+function pluralize(word) {
+    if (word.endsWith('y')) {
+        return word.slice(0, -1) + 'ies';
+    }
+    if (word.endsWith('s')) {
+        return word + 'es';
+    }
+    return word + 's';
+}
+
+/**
  * Creates a resource manager instance with a specific configuration.
  * @param {object} config - The configuration object for the resource.
  * @returns {object} An object with init and render methods.
@@ -196,7 +211,8 @@ export function createResourceManager(config) {
 
                 const uniqueValues = [...new Set(rows.map(row => row[columnIndex]).filter(Boolean))];
                 const currentValue = filterElement.value;
-                filterElement.innerHTML = `<option value="all">All ${filter.sheetColumn}s</option>`;
+                // FIX: Use the pluralize helper for better grammar.
+                filterElement.innerHTML = `<option value="all">All ${pluralize(filter.sheetColumn)}</option>`;
                 uniqueValues.sort().forEach(value => {
                     const option = document.createElement('option');
                     option.value = value.toLowerCase();
@@ -291,4 +307,3 @@ export function createResourceManager(config) {
 
     return { init, render };
 }
-

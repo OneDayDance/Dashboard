@@ -143,6 +143,35 @@
 .close-button:hover, .close-button:focus { color: black; }
 .warning-box { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 10px; border-radius: 5px; margin-bottom: 15px; }
 
+/* --- Modal Navigation & Panes --- */
+.modal-nav {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #eee;
+    padding-right: 20px;
+}
+
+.modal-nav .nav-link {
+    display: block;
+    padding: 10px 15px;
+    text-decoration: none;
+    color: #333;
+    border-radius: 6px;
+    margin-bottom: 5px;
+    border: 1px solid transparent;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.modal-nav .nav-link:hover {
+    background-color: #f0f0f0;
+}
+
+.modal-nav .nav-link.active {
+    background-color: #d4f4ff;
+    border-color: #76F1FF;
+    font-weight: bold;
+}
+
 /* --- Image Uploader in Modals --- */
 .image-uploader { margin-bottom: 15px; }
 .image-uploader label { display: block; margin-bottom: 5px; font-weight: bold; }
@@ -224,12 +253,12 @@
         grid-template-columns: 1fr;
     }
     .modal-nav {
+        flex-direction: row; /* Ensure horizontal layout on mobile */
         border-right: none;
         border-bottom: 1px solid #eee;
         padding-right: 0;
         padding-bottom: 10px;
         margin-bottom: 10px;
-        display: flex;
         overflow-x: auto;
     }
     .modal-nav .nav-link {
@@ -237,4 +266,3 @@
         white-space: nowrap;
     }
 }
-
