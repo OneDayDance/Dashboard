@@ -66,6 +66,7 @@ export function cacheDOMElements() {
     elements.costumeModal = document.getElementById('costume-modal');
     elements.equipmentModal = document.getElementById('equipment-modal');
     elements.staffModal = document.getElementById('staff-modal');
+    elements.assignClientModal = document.getElementById('assign-client-modal');
     
     // Generic Assign Resource Modal
     elements.assignResourceModal = document.getElementById('assign-resource-modal');
@@ -84,6 +85,7 @@ export function cacheDOMElements() {
     elements.costumeModalForm = document.getElementById('costume-modal-form');
     elements.equipmentModalForm = document.getElementById('equipment-modal-form');
     elements.staffModalForm = document.getElementById('staff-modal-form');
+    elements.assignClientForm = document.getElementById('assign-client-form');
 }
 
 /**

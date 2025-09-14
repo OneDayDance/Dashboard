@@ -521,6 +521,29 @@
             </form>
         </div>
     </div>
+
+    <!-- Assign Client Modal -->
+    <div id="assign-client-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Assign Client to Project</h2>
+                <span class="close-button">&times;</span>
+            </div>
+            <form id="assign-client-form">
+                <div class="modal-body">
+                    <input type="hidden" id="assign-client-project-id-input">
+                    <div class="form-field">
+                        <label for="assign-client-select">Select a Client</label>
+                        <select id="assign-client-select" required></select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Save Client</button>
+                    <span id="assign-client-status"></span>
+                </div>
+            </form>
+        </div>
+    </div>
     
     <!-- Assign Resource Modal -->
     <div id="assign-resource-modal" class="modal">
@@ -822,5 +845,3 @@
     <script type="module" src="js/main.js"></script>
 </body>
 </html>
-
-

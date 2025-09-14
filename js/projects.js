@@ -231,6 +231,7 @@ export function initProjectsTab(refreshDataFn) {
         renderProjectsTab();
     };
     document.getElementById('create-project-form').addEventListener('submit', handleCreateProjectSubmit);
+    document.getElementById('assign-client-form').addEventListener('submit', handleAssignClientSubmit);
     document.getElementById('gdrive-link-form').addEventListener('submit', handleSaveGDriveLink);
     document.getElementById('archived-projects-toggle').onclick = (e) => {
         e.currentTarget.classList.toggle('collapsed');
@@ -371,7 +372,7 @@ function renderProjectHeader(project, headers, isEditing) {
 function renderCoreDetails(project, headers, isEditing) {
     const clientEmail = project[headers.indexOf('Client Email')];
     const client = allClients.rows.find(c => c[allClients.headers.indexOf('Email')] === clientEmail);
-    const clientName = client ? `${client[allClients.headers.indexOf('First Name')]} ${client[allClients.headers.indexOf('Last Name')]}` : 'Unknown Client';
+    const clientName = client ? `${client[allClients.headers.indexOf('First Name')]} ${client[allClients.headers.indexOf('Last Name')]}` : 'No Client Assigned';
     const clientPhone = client ? client[allClients.headers.indexOf('Phone')] || 'N/A' : 'N/A';
     const folderLink = project[headers.indexOf('Google Folder Link')] || '';
     const projectId = project[headers.indexOf('ProjectID')];
@@ -392,9 +393,9 @@ function renderCoreDetails(project, headers, isEditing) {
         ${createDetailItem('Location', isEditing)}
     </ul></div>`;
 
-    const clientCardHtml = `<div class="project-client-card interactive-card info-card" data-client-email="${clientEmail}">
+    const clientCardHtml = `<div class="project-client-card interactive-card info-card" data-client-email="${clientEmail || ''}" data-project-id="${projectId}">
         <div class="card-main-content"><h4>Client</h4><p>${clientName}</p></div>
-        <div class="card-hover-content"><p>Email: <span>${clientEmail}</span></p><p>Phone: <span>${clientPhone}</span></p></div>
+        <div class="card-hover-content"><p>${client ? `Email: <span>${clientEmail}</span></p><p>Phone: <span>${clientPhone}</span>` : 'Click to assign a client'}</p></div>
     </div>`;
 
     const hasLink = !!folderLink;
@@ -533,10 +534,18 @@ function attachProjectDetailsEventListeners(projectId) {
         }
     };
     const clientCard = detailsColumn.querySelector('.project-client-card');
-    if (clientCard) clientCard.onclick = () => {
-        const client = allClients.rows.find(c => c[allClients.headers.indexOf('Email')] === clientCard.dataset.clientEmail);
-        if (client) showClientDetailsModal(client, allClients.headers);
-    };
+    if (clientCard) {
+        clientCard.onclick = () => {
+            const clientEmail = clientCard.dataset.clientEmail;
+            if (clientEmail) {
+                const client = allClients.rows.find(c => c[allClients.headers.indexOf('Email')] === clientEmail);
+                if (client) showClientDetailsModal(client, allClients.headers);
+            } else {
+                // No client email, so open the assign client modal
+                showAssignClientModal(clientCard.dataset.projectId);
+            }
+        };
+    }
 
     // Financials
     const editFinancialsBtn = detailsColumn.querySelector('#edit-financials-btn');
@@ -754,4 +763,47 @@ async function handleSaveGDriveLink(event) {
     } catch (err) { statusSpan.textContent = 'Error saving link.'; console.error('GDrive link save error:', err); }
 }
 
+function showAssignClientModal(projectId) {
+    const modal = elements.assignClientModal;
+    if (!modal) return;
+    modal.style.display = 'block';
+    
+    document.getElementById('assign-client-project-id-input').value = projectId;
+    const clientSelect = document.getElementById('assign-client-select');
+    clientSelect.innerHTML = '<option value="" disabled selected>Select a client...</option>';
 
+    allClients.rows.forEach(client => {
+        const email = client[allClients.headers.indexOf('Email')];
+        const name = `${client[allClients.headers.indexOf('First Name')]} ${client[allClients.headers.indexOf('Last Name')]}`;
+        const option = new Option(name, email);
+        clientSelect.add(option);
+    });
+
+    document.getElementById('assign-client-status').textContent = '';
+}
+
+async function handleAssignClientSubmit(event) {
+    event.preventDefault();
+    const statusSpan = document.getElementById('assign-client-status');
+    statusSpan.textContent = 'Saving...';
+
+    const projectId = document.getElementById('assign-client-project-id-input').value;
+    const clientEmail = document.getElementById('assign-client-select').value;
+
+    if (!clientEmail) {
+        statusSpan.textContent = 'Please select a client.';
+        return;
+    }
+
+    try {
+        await updateSheetRow('Projects', 'ProjectID', projectId, { 'Client Email': clientEmail });
+        statusSpan.textContent = 'Client assigned!';
+        await refreshData();
+        setTimeout(() => {
+            elements.assignClientModal.style.display = 'none';
+        }, 1500);
+    } catch (err) {
+        statusSpan.textContent = 'Error assigning client.';
+        console.error('Assign client error:', err);
+    }
+}
