@@ -380,8 +380,21 @@ function renderCoreDetails(project, headers, isEditing) {
     const createDetailItem = (header, isEditing) => {
         const val = project[headers.indexOf(header)] || '';
         const id = `project-edit-${header.replace(/\s+/g, '')}`;
-        return `<li><strong>${header}:</strong> ${isEditing ? `<input type="text" id="${id}" value="${val}">` : val}</li>`;
+        return `<li><strong>${header}:</strong> ${isEditing ? `<input type="text" id="${id}" value="${val}">` : (val || 'N/A')}</li>`;
     };
+
+    let locationHtml = '';
+    const locationValue = project[headers.indexOf('Location')] || '';
+    if (isEditing) {
+        locationHtml = `<li><strong>Location:</strong> <input type="text" id="project-edit-Location" value="${locationValue}"></li>`;
+    } else {
+        if (locationValue) {
+            const encodedLocation = encodeURIComponent(locationValue);
+            locationHtml = `<li><strong>Location:</strong> <a href="https://www.google.com/maps/search/?api=1&query=${encodedLocation}" target="_blank" class="location-link">${locationValue} <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg></a></li>`;
+        } else {
+            locationHtml = `<li><strong>Location:</strong> N/A</li>`;
+        }
+    }
 
     let coreDetailsHtml = `<div class="project-details-section content-section"><h4>Core Details</h4><ul>
         ${createDetailItem('Status', isEditing)}
@@ -390,7 +403,7 @@ function renderCoreDetails(project, headers, isEditing) {
     
     let personnelDetailsHtml = `<div class="project-details-section content-section"><h4>Personnel & Location</h4><ul>
         ${createDetailItem('Service Provider', isEditing)}
-        ${createDetailItem('Location', isEditing)}
+        ${locationHtml}
     </ul></div>`;
 
     const clientCardHtml = `<div class="project-client-card interactive-card info-card" data-client-email="${clientEmail || ''}" data-project-id="${projectId}">
