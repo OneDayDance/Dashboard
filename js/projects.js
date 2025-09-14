@@ -249,6 +249,18 @@ export function renderProjectsTab() {
     activeList.innerHTML = '';
     archivedList.innerHTML = '';
 
+    // Add "Add Project" button dynamically to the header
+    const projectListHeader = document.querySelector('.project-list-header');
+    if (projectListHeader && !projectListHeader.querySelector('#add-project-btn')) {
+        const addProjectBtn = document.createElement('button');
+        addProjectBtn.id = 'add-project-btn';
+        addProjectBtn.className = 'btn btn-primary';
+        addProjectBtn.textContent = 'Add Project';
+        addProjectBtn.onclick = () => showCreateProjectModal(null);
+        projectListHeader.appendChild(addProjectBtn);
+    }
+
+
     if (!allProjects.rows) {
         activeList.innerHTML = '<p>Loading projects...</p>';
         return;
@@ -583,14 +595,11 @@ async function handleSaveFinancials(projectId) {
     } catch (err) { alert('Error saving financials.'); console.error(err); }
 }
 
-export function showCreateProjectModal(clientRow, clientHeaders, sourceRequestId = null) {
-    elements.createProjectModal.style.display = 'block';
-    const clientEmail = clientRow[clientHeaders.indexOf('Email')];
-    const clientName = `${clientRow[clientHeaders.indexOf('First Name')]} ${clientRow[clientHeaders.indexOf('Last Name')]}`;
-    document.getElementById('project-client-name').value = clientName;
+function populateSourceRequests(clientEmail) {
     const sourceRequestSelect = document.getElementById('project-source-request');
     sourceRequestSelect.innerHTML = '<option value="">Start from scratch</option>';
-    sourceRequestSelect.dataset.clientEmail = clientEmail;
+    if (!clientEmail) return;
+
     const activeClientRequests = allRequests.rows.filter(r => r[allRequests.headers.indexOf('Email')] === clientEmail && r[allRequests.headers.indexOf('Status')] !== 'Archived');
     activeClientRequests.forEach(req => {
         const date = req[allRequests.headers.indexOf('Submission Date')] || 'No Date';
@@ -598,10 +607,45 @@ export function showCreateProjectModal(clientRow, clientHeaders, sourceRequestId
         const id = req[allRequests.headers.indexOf('Submission ID')];
         sourceRequestSelect.add(new Option(`${date} - ${service}`, id));
     });
-    if (sourceRequestId) sourceRequestSelect.value = sourceRequestId;
+}
+
+export function showCreateProjectModal(clientRow = null, clientHeaders = allClients.headers, sourceRequestId = null) {
+    elements.createProjectModal.style.display = 'block';
+    const clientContainer = document.getElementById('project-client-container');
+    const sourceRequestSelect = document.getElementById('project-source-request');
+    document.getElementById('create-project-form').reset();
+    
+    if (clientRow) {
+        const clientEmail = clientRow[clientHeaders.indexOf('Email')];
+        const clientName = `${clientRow[clientHeaders.indexOf('First Name')]} ${clientRow[clientHeaders.indexOf('Last Name')]}`;
+        clientContainer.innerHTML = `<input type="text" id="project-client-name" value="${clientName}" data-client-email="${clientEmail}" readonly>`;
+        populateSourceRequests(clientEmail);
+        if (sourceRequestId) {
+            sourceRequestSelect.value = sourceRequestId;
+        }
+    } else {
+        let clientSelectHTML = `<select id="project-client-select" required><option value="" disabled selected>Select a client...</option>`;
+        allClients.rows.forEach(client => {
+            const email = client[allClients.headers.indexOf('Email')];
+            const name = `${client[allClients.headers.indexOf('First Name')]} ${client[allClients.headers.indexOf('Last Name')]}`;
+            clientSelectHTML += `<option value="${email}">${name}</option>`;
+        });
+        clientSelectHTML += `</select>`;
+        clientContainer.innerHTML = clientSelectHTML;
+
+        populateSourceRequests(null); // Clear it initially
+
+        const clientSelect = document.getElementById('project-client-select');
+        clientSelect.onchange = () => populateSourceRequests(clientSelect.value);
+    }
+    
     sourceRequestSelect.onchange = (e) => {
         const selectedRequestId = e.target.value;
-        if (!selectedRequestId) { document.getElementById('project-name').value = ''; document.getElementById('project-value').value = ''; return; }
+        if (!selectedRequestId) {
+            document.getElementById('project-name').value = '';
+            document.getElementById('project-value').value = '';
+            return;
+        }
         const selectedRequest = allRequests.rows.find(r => r[allRequests.headers.indexOf('Submission ID')] === selectedRequestId);
         if (selectedRequest) {
             document.getElementById('project-name').value = selectedRequest[allRequests.headers.indexOf('Primary Service Category')] || '';
@@ -615,6 +659,20 @@ async function handleCreateProjectSubmit(event) {
     event.preventDefault();
     const statusSpan = document.getElementById('create-project-status');
     statusSpan.textContent = 'Creating project...';
+
+    let clientEmail = '';
+    const clientSelect = document.getElementById('project-client-select');
+    if (clientSelect) { // Mode: adding from Projects tab
+        clientEmail = clientSelect.value;
+        if (!clientEmail) {
+            statusSpan.textContent = 'Please select a client.';
+            return;
+        }
+    } else { // Mode: adding from Client details
+        const clientNameInput = document.getElementById('project-client-name');
+        clientEmail = clientNameInput.dataset.clientEmail;
+    }
+
     const sourceRequestSelect = document.getElementById('project-source-request');
     const sourceRequestId = sourceRequestSelect.value;
     let costBreakdown = '[]';
@@ -695,4 +753,5 @@ async function handleSaveGDriveLink(event) {
         setTimeout(() => { elements.gdriveLinkModal.style.display = 'none'; }, 1000);
     } catch (err) { statusSpan.textContent = 'Error saving link.'; console.error('GDrive link save error:', err); }
 }
+
 

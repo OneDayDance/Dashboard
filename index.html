@@ -383,8 +383,10 @@
             <form id="create-project-form">
                 <div class="modal-body">
                     <div class="form-field">
-                        <label for="project-client-name">Client</label>
-                        <input type="text" id="project-client-name" readonly>
+                        <label for="project-client-select">Client</label>
+                        <div id="project-client-container">
+                             <!-- JS will populate this with a readonly input or a select dropdown -->
+                        </div>
                     </div>
                     <div class="form-field">
                         <label for="project-source-request">Source Request (Optional)</label>
@@ -820,4 +822,5 @@
     <script type="module" src="js/main.js"></script>
 </body>
 </html>
+
 
