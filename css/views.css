@@ -228,32 +228,40 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 .financials-total span { display: inline-block; min-width: 100px; }
 .financials-edit-actions { display: flex; justify-content: space-between; margin-top: 10px; }
 
-/* --- NEW ASANA-LIKE TASK STYLES --- */
+/* Task Section Styles */
 .task-list-asana-container {
-    padding: 10px;
+    display: flex;
+    flex-direction: column;
 }
 .task-bucket-header {
-    padding: 8px;
-    border-bottom: 1px solid #ddd;
-    margin: 15px 0 5px 0;
-}
-.task-bucket-header h4 {
-    margin: 0;
-    font-size: 1em;
-}
-.task-list-item-asana {
-    display: grid;
-    grid-template-columns: auto 1fr auto auto;
-    gap: 15px;
-    align-items: center;
-    padding: 10px 8px;
-    border-radius: 4px;
-    cursor: pointer;
+    padding: 10px 0;
+    margin-top: 15px;
     border-bottom: 1px solid #eee;
 }
-.task-list-item-asana:hover {
-    background-color: #f5f5f5;
+.task-bucket-header:first-child {
+    margin-top: 0;
 }
+.task-bucket-header h4 { margin: 0; }
+.task-list-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 5px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+}
+.task-list-item:hover {
+    background-color: #f8f9fa;
+}
+.task-list-item label {
+    flex-grow: 1;
+    cursor: pointer;
+}
+.task-list-item.completed label {
+    text-decoration: line-through;
+    color: #888;
+}
+
 .complete-task-btn {
     width: 20px;
     height: 20px;
@@ -261,50 +269,35 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
     border: 2px solid #ccc;
     background-color: transparent;
     cursor: pointer;
-    padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s ease;
+    padding: 0;
+    flex-shrink: 0;
 }
 .complete-task-btn svg {
-    fill: white;
-    width: 14px;
-    height: 14px;
+    fill: #fff;
+    width: 16px;
+    height: 16px;
     opacity: 0;
-    transform: scale(0.5);
-    transition: all 0.2s ease;
+    transition: opacity 0.2s ease;
 }
 .complete-task-btn:hover {
-    border-color: #4CAF50;
+    border-color: #76F1FF;
 }
 .complete-task-btn.completed {
-    background-color: #4CAF50;
-    border-color: #4CAF50;
+    background-color: #76F1FF;
+    border-color: #76F1FF;
 }
 .complete-task-btn.completed svg {
     opacity: 1;
-    transform: scale(1);
-}
-.task-list-item-asana .task-name {
-    font-weight: 500;
-}
-.task-list-item-asana .task-assignee,
-.task-list-item-asana .task-due-date {
-    font-size: 0.85em;
-    color: #555;
-    background: #f0f0f0;
-    padding: 2px 8px;
-    border-radius: 10px;
 }
 
-/* Task Board Styles */
 .task-board { display: flex; gap: 15px; padding: 10px 0; min-height: 200px; overflow-x: auto; }
-.task-board-column { flex: 0 0 300px; background: #f4f5f7; border-radius: 8px; padding: 0 10px 10px 10px; display: flex; flex-direction: column; }
-.task-board-column-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; }
+.task-board-column { flex: 0 0 300px; background: #f4f5f7; border-radius: 8px; padding: 10px; cursor: default; transition: all 0.2s ease-in-out; border: 2px solid transparent; display: flex; flex-direction: column; }
+.task-board-column:hover { border-color: #76F1FF; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+.task-board-column-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 0 5px; }
 .task-board-column h5 { margin: 0; }
-.delete-bucket-btn { background: none; border: none; cursor: pointer; font-size: 18px; color: #aaa; }
-.delete-bucket-btn:hover { color: #dc3545; }
 .task-board .task-list { flex-grow: 1; overflow-y: auto; min-height: 50px; }
 .task-card { 
     background: #fff; 
@@ -337,18 +330,34 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 .add-task-in-bucket-btn {
     background: transparent;
     border: none;
-    color: #555;
+    color: #888;
     cursor: pointer;
     padding: 8px;
-    border-radius: 4px;
-    width: 100%;
     text-align: left;
-    margin-top: 5px;
+    width: 100%;
+    border-radius: 4px;
 }
 .add-task-in-bucket-btn:hover {
-    background-color: #e0e0e0;
+    background-color: rgba(0,0,0,0.05);
+    color: #333;
 }
 
+
+.dragging { opacity: 0.4 !important; background: #cceeff !important; transform: scale(1.0) !important; box-shadow: none !important; }
+.task-placeholder, .bucket-placeholder { 
+    background-color: rgba(118, 241, 255, 0.3); 
+    border: 2px dashed #76F1FF; 
+    border-radius: 4px; 
+    margin-bottom: 10px; 
+    box-sizing: border-box; 
+    transition: all 0.1s ease; 
+    pointer-events: none; 
+}
+.bucket-placeholder { 
+    border-radius: 8px; 
+    flex: 0 0 300px; 
+    margin-right: 15px;
+}
 
 /* Assigned Resource Section */
 .assigned-resource-container {
@@ -408,11 +417,25 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
 #task-details-modal .form-field { margin-bottom: 15px; }
 #task-details-modal .form-field label { display: block; margin-bottom: 5px; font-weight: bold; }
 #task-details-modal .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-#task-details-modal .add-item-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; }
-#task-details-modal .add-item-form .btn { flex-shrink: 0; } /* Prevent add button from shrinking */
-.subtask-item-modal, .link-item-modal { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
-.subtask-item-modal input[type="text"] { flex-grow: 1; }
-.link-item-modal a { flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#task-details-modal .add-item-form .btn { flex-shrink: 0; }
+#subtasks-container-modal, #links-container { margin-bottom: 10px; }
+.subtask-item-modal, .link-item-modal {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+    border-bottom: 1px solid #eee;
+}
+.subtask-item-modal input[type="text"] {
+    flex-grow: 1;
+    border: none;
+    background: transparent;
+}
+.subtask-item-modal input[type="text"]:focus {
+    outline: none;
+    background: #f8f9fa;
+}
+.link-item-modal a { flex-grow: 1; }
 
 /* --- Assign Resource Modal --- */
 .assign-resource-body {
@@ -648,5 +671,4 @@ p.financial-total { font-size: 2.5em; font-weight: bold; margin: 10px 0; color: 
         grid-template-columns: 1fr;
     }
 }
-
 

@@ -443,7 +443,7 @@
                     <input type="hidden" id="task-id-input">
                     <input type="hidden" id="task-project-id-input">
                     <div class="form-field">
-                        <label for="task-title">Title</label>
+                        <label for="task-title">Task Name</label>
                         <input type="text" id="task-title" required>
                     </div>
                     <div class="form-field">
@@ -469,17 +469,14 @@
                         </div>
                         <div class="form-field">
                             <label for="task-bucket">Bucket</label>
-                            <input type="text" id="task-bucket" list="bucket-suggestions">
+                            <input list="bucket-suggestions" id="task-bucket" />
                             <datalist id="bucket-suggestions"></datalist>
                         </div>
                     </div>
                     <div class="form-field">
                         <label>Subtasks</label>
-                        <div id="subtasks-container-modal" class="subtasks-container"></div>
-                        <div class="add-item-form">
-                            <input type="text" id="new-subtask-name" placeholder="New subtask...">
-                            <button type="button" id="add-subtask-btn" class="btn btn-secondary">Add</button>
-                        </div>
+                        <div id="subtasks-container-modal"></div>
+                        <button type="button" id="add-subtask-btn" class="btn btn-secondary">Add Subtask</button>
                     </div>
                     <div class="form-field">
                         <label>Links</label>
@@ -492,6 +489,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
+                    <button type="button" id="task-delete-btn" class="btn btn-danger" style="margin-right: auto;">Delete Task</button>
                     <button type="submit" class="btn btn-primary">Save Task</button>
                     <span id="task-modal-status"></span>
                 </div>

@@ -10,113 +10,105 @@ let refreshData;
 // --- INITIALIZATION ---
 export function initTaskManager(refreshDataFn) {
     refreshData = refreshDataFn;
-    window.showTaskDetailsModal = showTaskDetailsModal; // Expose to global scope for projects.js
-
     document.getElementById('task-details-form').addEventListener('submit', handleTaskFormSubmit);
-    
-    document.getElementById('add-subtask-btn').addEventListener('click', () => {
-        const input = document.getElementById('new-subtask-name');
-        if (input.value.trim()) {
-            renderSubtaskItem({ text: input.value.trim(), completed: false });
-            input.value = '';
-        }
-    });
-
-    document.getElementById('add-link-btn').addEventListener('click', () => {
-        const urlInput = document.getElementById('new-link-url');
-        const nameInput = document.getElementById('new-link-name');
-        if (urlInput.value.trim()) {
-            renderLinkItem({ url: urlInput.value.trim(), name: nameInput.value.trim() || urlInput.value.trim() });
-            urlInput.value = '';
-            nameInput.value = '';
-        }
-    });
+    document.getElementById('add-subtask-btn').addEventListener('click', () => renderSubtaskItem({ name: '', completed: false }, true));
+    document.getElementById('add-link-btn').addEventListener('click', handleAddLink);
 }
 
-// --- DATA PREPARATION ---
+
+// --- DATA HELPERS ---
 function getProjectTasks(projectId) {
     const { headers, rows } = allTasks;
-    const [projIdIdx, sortIdx] = ['ProjectID', 'SortIndex'].map(h => headers.indexOf(h));
-
-    const tasks = rows.filter(t => t[projIdIdx] === projectId);
+    const projIdIdx = headers.indexOf('ProjectID');
+    const sortIdx = headers.indexOf('SortIndex');
     
-    // Sort tasks by SortIndex if it exists, otherwise leave as is.
-    if (sortIdx > -1) {
-        tasks.sort((a, b) => (parseFloat(a[sortIdx]) || 0) - (parseFloat(b[sortIdx]) || 0));
-    }
-    return tasks;
+    if (projIdIdx === -1) return [];
+
+    return rows
+        .filter(t => t[projIdIdx] === projectId)
+        .sort((a, b) => {
+            const sortA = parseFloat(a[sortIdx]) || 0;
+            const sortB = parseFloat(b[sortIdx]) || 0;
+            return sortA - sortB;
+        });
 }
 
 function getBucketsForProject(projectTasks) {
     const { headers } = allTasks;
     const bucketIdx = headers.indexOf('Bucket');
     
+    // Use a Map to preserve insertion order, which is now sorted by SortIndex
     const buckets = projectTasks.reduce((acc, task) => {
         const bucketName = (task[bucketIdx] || 'Uncategorized').trim();
-        if (!acc[bucketName]) acc[bucketName] = [];
-        acc[bucketName].push(task);
+        if (!acc.has(bucketName)) acc.set(bucketName, []);
+        acc.get(bucketName).push(task);
         return acc;
-    }, {});
+    }, new Map());
 
-    // The bucket order is now simply the sorted list of keys from the buckets object.
-    const bucketOrder = Object.keys(buckets).sort();
+    const bucketOrder = Array.from(buckets.keys());
+    const bucketsObject = Object.fromEntries(buckets);
     
-    // Ensure "Uncategorized" is first if it exists.
-    const uncategorizedIndex = bucketOrder.indexOf('Uncategorized');
-    if (uncategorizedIndex > 0) {
-        bucketOrder.splice(uncategorizedIndex, 1);
-        bucketOrder.unshift('Uncategorized');
-    }
-    
-    return { buckets, bucketOrder };
+    return { buckets: bucketsObject, bucketOrder };
 }
+
 
 // --- MAIN RENDERER ---
-export function renderTasks(container, projectId) {
-    if (!container) return;
+function renderTasksForProject(container, projectId) {
+    const view = state.projectTaskView || 'list';
+    const renderFn = view === 'list' ? renderTaskList : renderTaskBoard;
+    renderFn(container, projectId);
+}
 
-    if (state.projectTaskView === 'list') {
-        renderTaskList(container, projectId);
-    } else {
-        renderTaskBoard(container, projectId);
+export function setupTaskClickHandlers(container, projectId) {
+    const taskContainer = container.querySelector('#task-board-container');
+    if (!taskContainer) return;
+
+    // View Toggle
+    const viewToggleBtn = container.querySelector('#task-view-toggle-btn');
+    if (viewToggleBtn) {
+        viewToggleBtn.textContent = state.projectTaskView === 'list' ? 'Board View' : 'List View';
+        viewToggleBtn.onclick = () => {
+            updateState({ projectTaskView: state.projectTaskView === 'list' ? 'board' : 'list' });
+            renderTasksForProject(taskContainer, projectId);
+            setupTaskClickHandlers(container, projectId); // Re-attach handlers for the new view
+        };
     }
     
-    // Use event delegation for dynamically created elements
-    container.addEventListener('click', (e) => {
-        const taskItem = e.target.closest('.task-card, .task-list-item-asana');
-        if (taskItem && !e.target.closest('a, button, input')) {
-            const taskId = taskItem.dataset.taskId;
-            const taskData = allTasks.rows.find(t => t[allTasks.headers.indexOf('TaskID')] === taskId);
-            if (taskData) showTaskDetailsModal(taskData, projectId);
-            return;
-        }
+    // Add Task Button
+    const addTaskBtn = container.querySelector('#add-task-btn');
+    if (addTaskBtn) {
+        addTaskBtn.onclick = () => showTaskDetailsModal(null, projectId);
+    }
 
-        const completeBtn = e.target.closest('.complete-task-btn');
+    renderTasksForProject(taskContainer, projectId);
+
+    // Event Delegation for dynamic content
+    taskContainer.addEventListener('click', (e) => {
+        const target = e.target;
+        const taskCard = target.closest('.task-card, .task-list-item');
+        const completeBtn = target.closest('.complete-task-btn');
+        const addTaskInBucketBtn = target.closest('.add-task-in-bucket-btn');
+        const deleteBucketBtn = target.closest('.delete-bucket-btn');
+
         if (completeBtn) {
             e.stopPropagation();
-            const taskId = completeBtn.dataset.taskId;
-            const currentStatus = allTasks.rows.find(t => t[allTasks.headers.indexOf('TaskID')] === taskId)[allTasks.headers.indexOf('Status')];
-            handleToggleTaskComplete(taskId, currentStatus);
-            return;
-        }
-
-        const deleteBtn = e.target.closest('.delete-bucket-btn');
-        if (deleteBtn) {
-            e.stopPropagation();
-            const bucketName = deleteBtn.dataset.bucket;
-            handleDeleteBucket(bucketName, projectId);
-            return;
-        }
-
-        const addTaskInBucketBtn = e.target.closest('.add-task-in-bucket-btn');
-        if (addTaskInBucketBtn) {
-            e.stopPropagation();
-            const bucketName = addTaskInBucketBtn.dataset.bucket;
-            showTaskDetailsModal(null, projectId, bucketName);
-            return;
+            handleToggleComplete(completeBtn.dataset.taskId);
+        } else if (addTaskInBucketBtn) {
+            showTaskDetailsModal(null, projectId, addTaskInBucketBtn.dataset.bucket);
+        } else if (deleteBucketBtn) {
+            handleDeleteBucket(deleteBucketBtn.dataset.bucket, projectId);
+        } else if (taskCard) {
+            const taskId = taskCard.dataset.taskId;
+            const taskData = allTasks.rows.find(t => t[allTasks.headers.indexOf('TaskID')] === taskId);
+            if (taskData) showTaskDetailsModal(taskData, projectId);
         }
     });
+
+    if (state.projectTaskView === 'board') {
+        setupDragAndDrop(taskContainer, projectId);
+    }
 }
+
 
 // --- VIEW-SPECIFIC RENDERERS ---
 
@@ -128,7 +120,7 @@ function renderTaskList(container, projectId) {
     }
     
     const { headers } = allTasks;
-    const [taskIdIdx, nameIdx, assigneeIdx, dueDateIdx, statusIdx] = ['TaskID', 'Task Name', 'Assignee', 'Due Date', 'Status'].map(h => headers.indexOf(h));
+    const [nameIdx, taskIdIdx, statusIdx] = ['Task Name', 'TaskID', 'Status'].map(h => headers.indexOf(h));
     const { buckets, bucketOrder } = getBucketsForProject(projectTasks);
     
     let listHtml = '<div class="task-list-asana-container">';
@@ -139,19 +131,18 @@ function renderTaskList(container, projectId) {
         buckets[bucketName].forEach(task => {
             const isCompleted = task[statusIdx] === 'Done';
             listHtml += `
-                <div class="task-list-item-asana" data-task-id="${task[taskIdIdx]}">
+                <div class="task-list-item ${isCompleted ? 'completed' : ''}" data-task-id="${task[taskIdIdx]}">
                     <button class="complete-task-btn ${isCompleted ? 'completed' : ''}" data-task-id="${task[taskIdIdx]}">
                         <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                     </button>
-                    <span class="task-name">${task[nameIdx] || 'Untitled'}</span>
-                    <span class="task-assignee">${task[assigneeIdx] || 'N/A'}</span>
-                    <span class="task-due-date">${task[dueDateIdx] || 'N/A'}</span>
+                    <label>${task[nameIdx] || 'Untitled'}</label>
                 </div>`;
         });
     });
     listHtml += '</div>';
     container.innerHTML = listHtml;
 }
+
 
 function renderTaskBoard(container, projectId) {
     const projectTasks = getProjectTasks(projectId);
@@ -168,15 +159,12 @@ function renderTaskBoard(container, projectId) {
     bucketOrder.forEach(bucketName => {
         const tasksInBucket = buckets[bucketName] || [];
         
-        // Don't show empty buckets on the board
-        if (tasksInBucket.length === 0) return;
-
         const deleteBtnHtml = bucketName !== 'Uncategorized'
-            ? `<button class="delete-bucket-btn" data-bucket="${bucketName}" title="Delete Bucket">&times;</button>`
+            ? `<button class="btn btn-danger btn-small delete-bucket-btn" data-bucket="${bucketName}" title="Delete Bucket">&times;</button>`
             : '';
             
         boardHtml += `
-            <div class="task-board-column" data-bucket="${bucketName}">
+            <div class="task-board-column" data-bucket="${bucketName}" draggable="true">
                 <div class="task-board-column-header"><h5>${bucketName}</h5>${deleteBtnHtml}</div>
                 <div class="task-list">`;
         
@@ -188,7 +176,7 @@ function renderTaskBoard(container, projectId) {
             const subtaskSummary = subtasks.length > 0 ? `<div class="subtask-summary">${completedSubtasks}/${subtasks.length} subtasks</div>` : '';
 
             boardHtml += `
-                <div class="task-card" data-task-id="${task[taskIdIdx]}">
+                <div class="task-card" data-task-id="${task[taskIdIdx]}" draggable="true">
                     <button class="complete-task-btn ${isCompleted ? 'completed' : ''}" data-task-id="${task[taskIdIdx]}">
                         <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                     </button>
@@ -204,6 +192,7 @@ function renderTaskBoard(container, projectId) {
     boardHtml += '</div>';
     container.innerHTML = boardHtml;
 }
+
 
 // --- MODAL & FORM HANDLING ---
 
@@ -233,7 +222,7 @@ function showTaskDetailsModal(taskData = null, projectId, bucketName = 'Uncatego
     // Populate Subtasks & Links
     const subtasksContainer = document.getElementById('subtasks-container-modal');
     subtasksContainer.innerHTML = '';
-    try { JSON.parse((taskData && taskData[headers.indexOf('Subtasks')]) || '[]').forEach(renderSubtaskItem); } catch(e) {}
+    try { JSON.parse((taskData && taskData[headers.indexOf('Subtasks')]) || '[]').forEach(subtask => renderSubtaskItem(subtask, false)); } catch(e) {}
     
     const linksContainer = document.getElementById('links-container');
     linksContainer.innerHTML = '';
@@ -253,99 +242,154 @@ function showTaskDetailsModal(taskData = null, projectId, bucketName = 'Uncatego
         });
     }
 
-    // Set the initial value for the bucket input
     if (taskData) {
         bucketInput.value = taskData[headers.indexOf('Bucket')] || 'Uncategorized';
     } else {
         bucketInput.value = bucketName;
     }
 
+    // Delete button logic
+    const deleteBtn = document.getElementById('task-delete-btn');
+    if (taskId) {
+        deleteBtn.style.display = 'block';
+        deleteBtn.onclick = () => handleDeleteTask(taskId);
+    } else {
+        deleteBtn.style.display = 'none';
+    }
+
     modal.style.display = 'block';
 }
 
-function renderSubtaskItem(subtask) {
+function renderSubtaskItem(subtask, isNew = false) {
     const container = document.getElementById('subtasks-container-modal');
-    const div = document.createElement('div');
-    div.className = 'subtask-item-modal';
-    div.innerHTML = `<input type="checkbox" ${subtask.completed ? 'checked' : ''}><input type="text" value="${subtask.text}"><button type="button" class="btn btn-danger btn-small">&times;</button>`;
-    div.querySelector('button').onclick = () => div.remove();
-    container.appendChild(div);
+    const item = document.createElement('div');
+    item.className = 'subtask-item-modal';
+    item.innerHTML = `
+        <input type="checkbox" ${subtask.completed ? 'checked' : ''}>
+        <input type="text" value="${subtask.name}" placeholder="Subtask name...">
+        <button type="button" class="btn btn-danger btn-small remove-subtask-btn">&times;</button>
+    `;
+    item.querySelector('.remove-subtask-btn').onclick = () => item.remove();
+    container.appendChild(item);
+    if (isNew) {
+        item.querySelector('input[type="text"]').focus();
+    }
 }
 
-function renderLinkItem(link) {
+function renderLinkItem({ name, url }) {
     const container = document.getElementById('links-container');
-    const div = document.createElement('div');
-    div.className = 'link-item-modal';
-    div.innerHTML = `<a href="${link.url}" target="_blank">${link.name}</a><input type="hidden" class="link-item-url" value="${link.url}"><input type="hidden" class="link-item-name" value="${link.name}"><button type="button" class="btn btn-danger btn-small">&times;</button>`;
-    div.querySelector('button').onclick = () => div.remove();
-    container.appendChild(div);
+    const item = document.createElement('div');
+    item.className = 'link-item-modal';
+    item.innerHTML = `
+        <a href="${url}" target="_blank">${name || url}</a>
+        <input type="hidden" class="link-name-data" value="${name}">
+        <input type="hidden" class="link-url-data" value="${url}">
+        <button type="button" class="btn btn-danger btn-small remove-link-btn">&times;</button>
+    `;
+    item.querySelector('.remove-link-btn').onclick = () => item.remove();
+    container.appendChild(item);
 }
+
+
+// --- ACTIONS ---
 
 async function handleTaskFormSubmit(event) {
     event.preventDefault();
     const statusSpan = document.getElementById('task-modal-status');
     statusSpan.textContent = 'Saving...';
     
+    const taskId = document.getElementById('task-id-input').value;
+    const projectId = document.getElementById('task-project-id-input').value;
+
     const subtasks = Array.from(document.querySelectorAll('#subtasks-container-modal .subtask-item-modal')).map(item => ({
-        text: item.querySelector('input[type="text"]').value,
-        completed: item.querySelector('input[type="checkbox"]').checked
-    })).filter(s => s.text);
-    
+        completed: item.querySelector('input[type="checkbox"]').checked,
+        name: item.querySelector('input[type="text"]').value
+    })).filter(s => s.name);
+
     const links = Array.from(document.querySelectorAll('#links-container .link-item-modal')).map(item => ({
-        url: item.querySelector('.link-item-url').value,
-        name: item.querySelector('.link-item-name').value
+        name: item.querySelector('.link-name-data').value,
+        url: item.querySelector('.link-url-data').value
     }));
 
     const taskData = {
-        'ProjectID': document.getElementById('task-project-id-input').value,
+        'ProjectID': projectId,
         'Task Name': document.getElementById('task-title').value,
         'Description': document.getElementById('task-description').value,
         'Due Date': document.getElementById('task-due-date').value,
         'Assignee': document.getElementById('task-assignee').value,
         'Status': document.getElementById('task-status').value,
-        'Bucket': document.getElementById('task-bucket').value,
+        'Bucket': document.getElementById('task-bucket').value.trim() || 'Uncategorized',
         'Subtasks': JSON.stringify(subtasks),
-        'Links': JSON.stringify(links)
+        'Links': JSON.stringify(links),
     };
     
-    const taskId = document.getElementById('task-id-input').value;
     try {
         if (taskId) {
             await updateSheetRow('Tasks', 'TaskID', taskId, taskData);
         } else {
+            // Assign a high sort index to new tasks to place them at the end.
+            const projectTasks = getProjectTasks(projectId);
+            const maxSortIndex = projectTasks.reduce((max, t) => Math.max(max, parseFloat(t[allTasks.headers.indexOf('SortIndex')] || 0)), 0);
+            taskData['SortIndex'] = maxSortIndex + 1;
             await writeData('Tasks', { ...taskData, 'TaskID': `T-${Date.now()}` });
         }
         statusSpan.textContent = 'Task saved!';
         await refreshData();
-        setTimeout(() => { elements.taskDetailsModal.style.display = 'none'; }, 1000);
+        setTimeout(() => {
+            elements.taskDetailsModal.style.display = 'none';
+        }, 1000);
+
     } catch (err) {
         statusSpan.textContent = 'Error saving task.';
         console.error('Task save error:', err);
     }
 }
 
-// --- ACTIONS ---
+function handleAddLink() {
+    const nameInput = document.getElementById('new-link-name');
+    const urlInput = document.getElementById('new-link-url');
+    if (urlInput.value && urlInput.checkValidity()) {
+        renderLinkItem({ name: nameInput.value.trim(), url: urlInput.value.trim() });
+        nameInput.value = '';
+        urlInput.value = '';
+    } else {
+        alert("Please enter a valid URL.");
+    }
+}
 
-async function handleToggleTaskComplete(taskId, currentStatus) {
+
+async function handleToggleComplete(taskId) {
+    const { headers, rows } = allTasks;
+    const task = rows.find(t => t[headers.indexOf('TaskID')] === taskId);
+    if (!task) return;
+    
+    const statusIdx = headers.indexOf('Status');
+    const currentStatus = task[statusIdx];
     const newStatus = currentStatus === 'Done' ? 'To Do' : 'Done';
-    const btn = document.querySelector(`.complete-task-btn[data-task-id="${taskId}"]`);
-    if (btn) btn.disabled = true;
 
     try {
         await updateSheetRow('Tasks', 'TaskID', taskId, { 'Status': newStatus });
         await refreshData();
-    } catch (err) {
+    } catch(err) {
+        alert('Could not update task status.');
         console.error("Task complete toggle error:", err);
-        if (btn) btn.disabled = false;
     }
 }
 
+async function handleDeleteTask(taskId) {
+    showDeleteConfirmationModal(
+        `Delete Task`,
+        `This will permanently delete the task. This action cannot be undone.`,
+        async () => {
+            await clearSheetRow('Tasks', 'TaskID', taskId);
+            await refreshData();
+            elements.taskDetailsModal.style.display = 'none';
+        }
+    );
+}
+
 async function handleDeleteBucket(bucketName, projectId) {
-    // The delete button for "Uncategorized" is not rendered, so this is an extra safeguard.
-    if (bucketName === 'Uncategorized') {
-        console.warn("Attempted to delete the default 'Uncategorized' bucket.");
-        return;
-    }
+    if (bucketName === 'Uncategorized') return;
     
     showDeleteConfirmationModal(
         `Delete Bucket: ${bucketName}`,
@@ -367,11 +411,151 @@ async function handleDeleteBucket(bucketName, projectId) {
     );
 }
 
-export function setupDragAndDrop(container) {
-    // Placeholder for drag and drop logic
-    console.log("Drag and drop setup initiated.");
+
+// --- DRAG AND DROP ---
+export function setupDragAndDrop(container, projectId) {
+    let draggedItem = null;
+    let placeholder = null;
+    let dragType = null; // 'task' or 'bucket'
+
+    function createPlaceholder(item) {
+        placeholder = document.createElement('div');
+        placeholder.className = dragType === 'task' ? 'task-placeholder' : 'bucket-placeholder';
+        placeholder.style.height = `${item.offsetHeight}px`;
+        return placeholder;
+    }
+
+    container.addEventListener('dragstart', e => {
+        draggedItem = e.target;
+        if (draggedItem.matches('.task-card')) {
+            dragType = 'task';
+        } else if (draggedItem.matches('.task-board-column')) {
+            dragType = 'bucket';
+        } else {
+            return; // Not a draggable item
+        }
+
+        setTimeout(() => draggedItem.classList.add('dragging'), 0);
+        placeholder = createPlaceholder(draggedItem);
+    });
+
+    container.addEventListener('dragend', e => {
+        if (!draggedItem) return;
+        draggedItem.classList.remove('dragging');
+        draggedItem = null;
+        if (placeholder && placeholder.parentNode) {
+            placeholder.parentNode.removeChild(placeholder);
+        }
+        placeholder = null;
+        dragType = null;
+    });
+
+    container.addEventListener('dragover', e => {
+        e.preventDefault();
+        if (!draggedItem) return;
+
+        if (dragType === 'task') {
+            const list = e.target.closest('.task-list');
+            if (list) {
+                const afterElement = getDragAfterElement(list, e.clientY);
+                if (afterElement == null) {
+                    list.appendChild(placeholder);
+                } else {
+                    list.insertBefore(placeholder, afterElement);
+                }
+            }
+        } else if (dragType === 'bucket') {
+            const board = e.target.closest('.task-board');
+            if (board) {
+                const afterElement = getDragAfterElement(board, e.clientX);
+                 if (afterElement == null) {
+                    board.appendChild(placeholder);
+                } else {
+                    board.insertBefore(placeholder, afterElement);
+                }
+            }
+        }
+    });
+
+    container.addEventListener('drop', async e => {
+        e.preventDefault();
+        if (!draggedItem || !placeholder) return;
+
+        let updatePromise;
+
+        if (dragType === 'task') {
+            const newBucket = e.target.closest('.task-board-column')?.dataset.bucket;
+            if (newBucket) {
+                const taskId = draggedItem.dataset.taskId;
+                const newSortIndex = calculateNewSortIndex(placeholder);
+                updatePromise = updateSheetRow('Tasks', 'TaskID', taskId, { 'Bucket': newBucket, 'SortIndex': newSortIndex });
+            }
+        } else if (dragType === 'bucket') {
+            // Dragging a whole bucket reorders it
+            const newSortIndex = calculateNewSortIndex(placeholder);
+            const { headers, rows } = allTasks;
+            const tasksInBucket = getProjectTasks(projectId).filter(t => (t[headers.indexOf('Bucket')] || 'Uncategorized') === draggedItem.dataset.bucket);
+            
+            const promises = tasksInBucket.map((task, index) => {
+                const taskId = task[headers.indexOf('TaskID')];
+                // Stagger the sort index to maintain order within the bucket
+                return updateSheetRow('Tasks', 'TaskID', taskId, { 'SortIndex': newSortIndex + index });
+            });
+            updatePromise = Promise.all(promises);
+        }
+
+        if (updatePromise) {
+            await updatePromise.catch(err => {
+                console.error("Drag and drop save error:", err);
+                alert("Could not save changes.");
+            });
+            // Perform a full refresh to ensure data integrity
+            await refreshData();
+        }
+
+    });
 }
 
+function getDragAfterElement(container, coord) {
+    const draggableElements = [...container.querySelectorAll('[draggable="true"]:not(.dragging)')];
+    const isHorizontal = container.classList.contains('task-board');
 
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = isHorizontal ? coord - box.left - box.width / 2 : coord - box.top - box.height / 2;
+        
+        if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+        } else {
+            return closest;
+        }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
 
+function calculateNewSortIndex(placeholder) {
+    const prevElement = placeholder.previousElementSibling;
+    const nextElement = placeholder.nextElementSibling;
+    const { headers } = allTasks;
+    const sortIdx = headers.indexOf('SortIndex');
+
+    let prevSort = 0;
+    if (prevElement) {
+        const prevId = prevElement.dataset.taskId || prevElement.querySelector('.task-card')?.dataset.taskId;
+        if(prevId) {
+            const task = allTasks.rows.find(t => t[headers.indexOf('TaskID')] === prevId);
+            if (task) prevSort = parseFloat(task[sortIdx] || 0);
+        }
+    }
+    
+    let nextSort = prevSort + 1000; // Default if it's the last item
+    if (nextElement) {
+         const nextId = nextElement.dataset.taskId || nextElement.querySelector('.task-card')?.dataset.taskId;
+         if(nextId) {
+            const task = allTasks.rows.find(t => t[headers.indexOf('TaskID')] === nextId);
+            if (task) nextSort = parseFloat(task[sortIdx] || 0);
+         }
+    }
+    
+    return (prevSort + nextSort) / 2;
+}
 
