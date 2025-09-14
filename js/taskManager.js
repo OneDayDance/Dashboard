@@ -1,7 +1,7 @@
 // js/taskManager.js
 // Description: Handles all logic related to tasks within a project.
 
-import { state, allTasks, updateState } from './state.js';
+import { state, allTasks, allStaff, updateState } from './state.js';
 import { updateSheetRow, writeData, clearSheetRow } from './api.js';
 import { elements, showDeleteConfirmationModal } from './ui.js';
 
@@ -208,12 +208,27 @@ function showTaskDetailsModal(taskData = null, projectId, bucketName = 'Uncatego
     const taskId = taskData ? taskData[headers.indexOf('TaskID')] : '';
     document.getElementById('task-id-input').value = taskId;
 
+    // Populate assignee dropdown
+    const assigneeSelect = document.getElementById('task-assignee');
+    assigneeSelect.innerHTML = '<option value="">Unassigned</option>'; // Clear and add default
+    if (allStaff && allStaff.rows) {
+        const nameIndex = allStaff.headers.indexOf('Name');
+        if (nameIndex > -1) {
+            allStaff.rows.forEach(staff => {
+                const staffName = staff[nameIndex];
+                if (staffName) {
+                    assigneeSelect.add(new Option(staffName, staffName));
+                }
+            });
+        }
+    }
+
     // Populate standard fields
     if (taskData) {
         document.getElementById('task-title').value = taskData[headers.indexOf('Task Name')] || '';
         document.getElementById('task-description').value = taskData[headers.indexOf('Description')] || '';
         document.getElementById('task-due-date').value = taskData[headers.indexOf('Due Date')] || '';
-        document.getElementById('task-assignee').value = taskData[headers.indexOf('Assignee')] || '';
+        assigneeSelect.value = taskData[headers.indexOf('Assignee')] || '';
         document.getElementById('task-status').value = taskData[headers.indexOf('Status')] || 'To Do';
     } else {
         document.getElementById('task-status').value = 'To Do';
@@ -352,8 +367,6 @@ function handleAddLink() {
         renderLinkItem({ name: nameInput.value.trim(), url: urlInput.value.trim() });
         nameInput.value = '';
         urlInput.value = '';
-    } else {
-        alert("Please enter a valid URL.");
     }
 }
 
@@ -558,4 +571,3 @@ function calculateNewSortIndex(placeholder) {
     
     return (prevSort + nextSort) / 2;
 }
-
