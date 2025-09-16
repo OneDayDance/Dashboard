@@ -193,7 +193,6 @@ export function showDeleteConfirmationModal(title, message, onConfirm) {
     const warningMessage = document.getElementById('delete-modal-warning-message');
     const confirmInput = document.getElementById('delete-modal-confirm-input');
     const confirmBtn = document.getElementById('delete-modal-confirm-btn');
-    const statusSpan = document.getElementById('delete-modal-status');
 
     // Set content
     modalTitle.textContent = title;
@@ -203,7 +202,6 @@ export function showDeleteConfirmationModal(title, message, onConfirm) {
     // Reset state
     confirmInput.value = '';
     confirmBtn.disabled = true;
-    statusSpan.textContent = '';
     confirmInput.oninput = () => {
         confirmBtn.disabled = confirmInput.value !== 'Delete';
     };
@@ -222,7 +220,6 @@ export function showDeleteConfirmationModal(title, message, onConfirm) {
         } catch (err) {
             hideToast(deletingToast);
             showToast(`Error: ${err.message}`, 5000, 'error');
-            statusSpan.textContent = `Error: ${err.message}`; // Also show in modal for clarity
             console.error('Deletion error:', err);
             confirmBtn.disabled = false;
             confirmInput.disabled = false;
@@ -231,3 +228,4 @@ export function showDeleteConfirmationModal(title, message, onConfirm) {
     
     modal.style.display = 'block';
 }
+

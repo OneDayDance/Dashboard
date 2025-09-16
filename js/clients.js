@@ -212,7 +212,6 @@ export function showClientDetailsModal(rowData, headers) {
     const navLinks = modal.querySelectorAll('.nav-link');
     const contentArea = modal.querySelector('.modal-pane-content');
     const footer = modal.querySelector('.modal-footer');
-    const statusSpan = modal.querySelector('#client-modal-status');
 
     // --- RENDER LOGIC ---
     function render() {
@@ -256,8 +255,6 @@ export function showClientDetailsModal(rowData, headers) {
                 footer.appendChild(editBtn);
             }
         }
-        footer.appendChild(statusSpan); // Re-append status span
-        statusSpan.textContent = '';
     }
 
     // --- CONTENT POPULATION ---
@@ -485,7 +482,6 @@ export function showClientDetailsModal(rowData, headers) {
     }
     
     async function handleSaveClientUpdate() {
-        statusSpan.textContent = 'Saving...';
         const toast = showToast('Saving changes...', -1, 'info');
         const dataToUpdate = {};
         const fields = ['First Name', 'Last Name', 'Email', 'Phone', 'Organization', 'Status', 'Lead Source', 'Address', 'Social Media', 'Birthday', 'Intake Date', 'Notes', 'Contact Logs'];
@@ -527,7 +523,6 @@ export function showClientDetailsModal(rowData, headers) {
         } catch (err) {
             hideToast(toast);
             showToast('Error saving changes.', 5000, 'error');
-            statusSpan.textContent = 'Error saving.';
             console.error('Client update error:', err);
         }
     }
@@ -547,3 +542,4 @@ export function showClientDetailsModal(rowData, headers) {
     attachContentEventListeners();
     modal.style.display = 'block';
 }
+

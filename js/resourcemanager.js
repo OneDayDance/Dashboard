@@ -64,8 +64,6 @@ export function createResourceManager(config) {
 
     async function handleFormSubmit(event) {
         event.preventDefault();
-        const statusSpan = getRequiredElement('modal-status');
-        statusSpan.textContent = 'Saving...';
         let toast = showToast('Saving...', -1, 'info');
 
         const imageFile = getRequiredElement('image-upload').files[0];
@@ -107,7 +105,6 @@ export function createResourceManager(config) {
         } catch (err) {
             hideToast(toast);
             showToast(`Error: ${err.message}`, 5000, 'error');
-            statusSpan.textContent = `Error: ${err.message}`;
             console.error(`${config.resourceName} save error:`, err);
         }
     }
@@ -314,3 +311,4 @@ export function createResourceManager(config) {
 
     return { init, render };
 }
+

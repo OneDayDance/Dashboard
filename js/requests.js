@@ -302,3 +302,4 @@ async function handleCreateClient(submissionRow, submissionHeaders) {
         showToast(`Error: ${err.result.error.message}`, 5000, 'error');
     }
 }
+
