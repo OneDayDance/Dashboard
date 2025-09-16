@@ -234,7 +234,6 @@ export function createResourceManager(config) {
         const form = getRequiredElement('modal-form');
         form.reset();
         
-        getRequiredElement('modal-status').textContent = '';
         const imagePreview = getRequiredElement('image-preview');
         const imageUploadInput = getRequiredElement('image-upload');
         const changePhotoButton = getRequiredElement('change-photo-btn');
@@ -311,4 +310,3 @@ export function createResourceManager(config) {
 
     return { init, render };
 }
-
