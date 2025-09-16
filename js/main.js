@@ -7,11 +7,9 @@ import {
     elements, 
     cacheDOMElements, 
     setupTabs, 
-    setupModalCloseButtons, 
-    showLoadingIndicator,
-    hideLoadingIndicator,
-    showMainError
+    setupModalCloseButtons
 } from './ui.js';
+import { showToast, hideToast } from './toast.js';
 import { initRequestsTab, renderRequests } from './requests.js';
 import { initClientsTab, renderClients } from './clients.js';
 import { initProjectsTab, renderProjectsTab } from './projects.js';
@@ -208,23 +206,24 @@ async function onSignInSuccess() {
     elements.appContainer.style.display = 'block';
     initializeAppUI();
     
-    showLoadingIndicator();
+    const loadingToast = showToast('Loading initial data...', -1, 'info');
     try {
-        await loadInitialData();
-        renderContentForActiveTab(); // Use the new central function for the initial render
+        await loadInitialData(false); // Pass false to prevent showing a redundant success toast
+        showToast('Data loaded successfully!', 3000, 'success');
     } catch (err) {
-        showMainError(`Failed to load initial data: ${err.message}. Please check sheet permissions and try again.`);
+        showToast(`Failed to load initial data: ${err.message}. Please check sheet permissions and try again.`, 6000, 'error');
     } finally {
-        hideLoadingIndicator();
+        hideToast(loadingToast);
     }
 }
 
 /**
  * Fetches all necessary data from the spreadsheet and stores it in the state.
+ * @param {boolean} showSuccessToast - Whether to show a success toast upon completion.
  */
-async function loadInitialData() {
+async function loadInitialData(showSuccessToast = true) {
     console.log("Refreshing all application data...");
-    showLoadingIndicator();
+    const loadingToast = showToast('Refreshing data...', -1, 'info');
     try {
         await Promise.all([
             loadRequests(), 
@@ -236,11 +235,16 @@ async function loadInitialData() {
             loadStaff()
         ]);
         console.log("All application data refreshed.");
-        renderContentForActiveTab(); // Use the new central function to refresh the current view
+        renderContentForActiveTab();
+        if (showSuccessToast) {
+            showToast('Data refreshed!', 3000, 'success');
+        }
     } catch (err) {
-        showMainError(`Failed to refresh data: ${err.message}`);
+        showToast(`Failed to refresh data: ${err.message}`, 5000, 'error');
+        // re-throw to allow callers to handle the error
+        throw err;
     } finally {
-        hideLoadingIndicator();
+        hideToast(loadingToast);
     }
 }
 
@@ -267,4 +271,3 @@ function handleSignoutClick() {
         silentAuthAttempted = false; 
     }
 }
-

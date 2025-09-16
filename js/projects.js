@@ -4,6 +4,7 @@
 import { state, allProjects, allClients, allTasks, allRequests, allEquipment, allStaff, updateState } from './state.js';
 import { updateSheetRow, writeData, clearSheetRow } from './api.js';
 import { elements, showDeleteConfirmationModal } from './ui.js';
+import { showToast, hideToast } from './toast.js';
 import { showRequestDetailsModal } from './requests.js';
 import { showClientDetailsModal } from './clients.js';
 import { initAssignResourceModal, createResourceHandler } from './assignResourceModal.js';
@@ -19,8 +20,6 @@ const equipmentAssignerConfig = {
     resourceType: 'equipment',
     resourceNameSingular: 'Equipment',
     resourceNamePlural: 'Equipment',
-    // FIX: Pass a function that returns the current state, not the state object itself.
-    // This prevents the config from holding a stale reference to the initial empty state.
     allResourcesState: () => allEquipment,
     idKey: 'EquipmentID',
     projectSheetColumn: 'Assigned Equipment',
@@ -49,8 +48,6 @@ const equipmentAssignerConfig = {
         `;
     },
 
-    // FIX: Updated to accept `currentResources` from the modal handler.
-    // This ensures it uses fresh data instead of the stale module-level import.
     createModalItemElement: (item, isSelected, assignment, { localSelected, render, currentResources }) => {
         const { headers } = currentResources;
         const [idIndex, nameIndex, imageIndex] = ['EquipmentID', 'Name', 'Image URL'].map(h => headers.indexOf(h));
@@ -92,7 +89,6 @@ const staffAssignerConfig = {
     resourceType: 'staff',
     resourceNameSingular: 'Staff',
     resourceNamePlural: 'Staff',
-    // FIX: Pass a function that returns the current state.
     allResourcesState: () => allStaff,
     idKey: 'StaffID',
     projectSheetColumn: 'Assigned Staff',
@@ -127,7 +123,6 @@ const staffAssignerConfig = {
         `;
     },
 
-    // FIX: Updated to accept `currentResources` from the modal handler.
     createModalItemElement: (item, isSelected, assignment, { localSelected, render, currentResources }) => {
         const { headers } = currentResources;
         const [idIndex, nameIndex, imageIndex] = ['StaffID', 'Name', 'Image URL'].map(h => headers.indexOf(h));
@@ -605,6 +600,7 @@ function attachProjectDetailsEventListeners(projectId) {
 
 // --- PROJECT-LEVEL ACTIONS ---
 async function handleSaveFinancials(projectId) {
+    const toast = showToast('Saving financials...', -1, 'info');
     const lineItems = [];
     document.querySelectorAll('.line-item-table .line-item-row').forEach(row => {
         const description = row.querySelector('.line-item-desc').value.trim();
@@ -614,7 +610,13 @@ async function handleSaveFinancials(projectId) {
     try {
         await updateSheetRow('Projects', 'ProjectID', projectId, { 'Cost Breakdown': JSON.stringify(lineItems) });
         await refreshData();
-    } catch (err) { alert('Error saving financials.'); console.error(err); }
+        hideToast(toast);
+        showToast('Financials saved!', 3000, 'success');
+    } catch (err) { 
+        hideToast(toast);
+        showToast('Error saving financials.', 5000, 'error');
+        console.error(err); 
+    }
 }
 
 function populateSourceRequests(clientEmail) {
@@ -679,15 +681,15 @@ export function showCreateProjectModal(clientRow = null, clientHeaders = allClie
 
 async function handleCreateProjectSubmit(event) {
     event.preventDefault();
-    const statusSpan = document.getElementById('create-project-status');
-    statusSpan.textContent = 'Creating project...';
+    const toast = showToast('Creating project...', -1, 'info');
 
     let clientEmail = '';
     const clientSelect = document.getElementById('project-client-select');
     if (clientSelect) { // Mode: adding from Projects tab
         clientEmail = clientSelect.value;
         if (!clientEmail) {
-            statusSpan.textContent = 'Please select a client.';
+            hideToast(toast);
+            showToast('Please select a client.', 3000, 'error');
             return;
         }
     } else { // Mode: adding from Client details
@@ -721,7 +723,7 @@ async function handleCreateProjectSubmit(event) {
     }
 
     const projectData = {
-        'Project Name': document.getElementById('project-name').value, 'Client Email': sourceRequestSelect.dataset.clientEmail,
+        'Project Name': document.getElementById('project-name').value, 'Client Email': clientEmail,
         'Status': document.getElementById('project-status').value, 'Value': document.getElementById('project-value').value,
         'Start Date': document.getElementById('project-start-date').value, 'ProjectID': `P-${Date.now()}`,
         'Source Request ID': sourceRequestId, 'Project Type': document.getElementById('project-type').value,
@@ -734,15 +736,21 @@ async function handleCreateProjectSubmit(event) {
             await updateSheetRow('Submissions', 'Submission ID', projectData['Source Request ID'], { 'Status': 'Archived' });
         }
         await refreshData();
-        statusSpan.textContent = 'Project created!';
+        hideToast(toast);
+        showToast('Project created!', 3000, 'success');
         setTimeout(() => {
             elements.createProjectModal.style.display = 'none';
             document.querySelector('.tab-button[data-tab="projects"]').click(); 
         }, 1500);
-    } catch (err) { statusSpan.textContent = 'Error creating project.'; console.error('Project creation error', err); }
+    } catch (err) { 
+        hideToast(toast);
+        showToast('Error creating project.', 5000, 'error');
+        console.error('Project creation error', err); 
+    }
 }
 
 async function handleSaveProjectUpdate(projectId) {
+    const toast = showToast('Saving changes...', -1, 'info');
     const dataToUpdate = {};
     ['Project Name', 'Status', 'Start Date', 'Service Provider', 'Location'].forEach(h => {
         const input = document.getElementById(`project-edit-${h.replace(/\s+/g, '')}`);
@@ -751,29 +759,46 @@ async function handleSaveProjectUpdate(projectId) {
     try {
         await updateSheetRow('Projects', 'ProjectID', projectId, dataToUpdate);
         await refreshData();
-    } catch(err) { console.error('Project update error', err); alert('Could not save project updates.'); }
+        hideToast(toast);
+        showToast('Project updated!', 3000, 'success');
+    } catch(err) { 
+        hideToast(toast);
+        showToast('Could not save project updates.', 5000, 'error');
+        console.error('Project update error', err); 
+    }
 }
 
 async function handleArchiveProject(projectId) {
+    const toast = showToast('Archiving project...', -1, 'info');
     try {
         await updateSheetRow('Projects', 'ProjectID', projectId, { 'Status': 'Archived' });
         await refreshData();
-    } catch(err) { console.error('Archive project error', err); alert('Could not archive project.'); }
+        hideToast(toast);
+        showToast('Project archived.', 3000, 'success');
+    } catch(err) { 
+        hideToast(toast);
+        showToast('Could not archive project.', 5000, 'error');
+        console.error('Archive project error', err); 
+    }
 }
 
 async function handleSaveGDriveLink(event) {
     event.preventDefault();
-    const statusSpan = document.getElementById('gdrive-link-status');
-    statusSpan.textContent = 'Saving...';
+    const toast = showToast('Saving link...', -1, 'info');
     const projectId = document.getElementById('gdrive-project-id-input').value;
     const newLink = document.getElementById('gdrive-link-input').value;
 
     try {
         await updateSheetRow('Projects', 'ProjectID', projectId, { 'Google Folder Link': newLink });
         await refreshData();
-        statusSpan.textContent = 'Saved!';
+        hideToast(toast);
+        showToast('Saved!', 3000, 'success');
         setTimeout(() => { elements.gdriveLinkModal.style.display = 'none'; }, 1000);
-    } catch (err) { statusSpan.textContent = 'Error saving link.'; console.error('GDrive link save error:', err); }
+    } catch (err) { 
+        hideToast(toast);
+        showToast('Error saving link.', 5000, 'error');
+        console.error('GDrive link save error:', err); 
+    }
 }
 
 function showAssignClientModal(projectId) {
@@ -791,32 +816,32 @@ function showAssignClientModal(projectId) {
         const option = new Option(name, email);
         clientSelect.add(option);
     });
-
-    document.getElementById('assign-client-status').textContent = '';
 }
 
 async function handleAssignClientSubmit(event) {
     event.preventDefault();
-    const statusSpan = document.getElementById('assign-client-status');
-    statusSpan.textContent = 'Saving...';
+    const toast = showToast('Assigning client...', -1, 'info');
 
     const projectId = document.getElementById('assign-client-project-id-input').value;
     const clientEmail = document.getElementById('assign-client-select').value;
 
     if (!clientEmail) {
-        statusSpan.textContent = 'Please select a client.';
+        hideToast(toast);
+        showToast('Please select a client.', 3000, 'error');
         return;
     }
 
     try {
         await updateSheetRow('Projects', 'ProjectID', projectId, { 'Client Email': clientEmail });
-        statusSpan.textContent = 'Client assigned!';
+        hideToast(toast);
+        showToast('Client assigned!', 3000, 'success');
         await refreshData();
         setTimeout(() => {
             elements.assignClientModal.style.display = 'none';
         }, 1500);
     } catch (err) {
-        statusSpan.textContent = 'Error assigning client.';
+        hideToast(toast);
+        showToast('Error assigning client.', 5000, 'error');
         console.error('Assign client error:', err);
     }
 }

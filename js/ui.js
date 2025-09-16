@@ -1,5 +1,6 @@
 // js/ui.js
 // Description: Handles DOM manipulation, UI setup, and event listeners for UI components.
+import { showToast, hideToast } from './toast.js';
 
 export const elements = {};
 
@@ -12,7 +13,6 @@ export function cacheDOMElements() {
     elements.signoutButton = document.getElementById('signout_button');
     elements.appContainer = document.getElementById('app-container');
     elements.landingContainer = document.getElementById('landing-container');
-    elements.loadingOverlay = document.getElementById('loading-overlay');
     elements.mainContentArea = document.querySelector('#app-container > main');
     elements.closeModalButtons = document.querySelectorAll('.close-button');
 
@@ -77,7 +77,6 @@ export function cacheDOMElements() {
     elements.resourceSearchResults = document.getElementById('resource-search-results');
     elements.selectedResourceList = document.getElementById('selected-resource-list');
     elements.saveAssignedResourceBtn = document.getElementById('save-assigned-resource-btn');
-    elements.assignResourceStatus = document.getElementById('assign-resource-status');
 
 
     // Modal Forms & Inputs
@@ -171,42 +170,6 @@ export function showColumnModal(headers, visibleColumns, containerId) {
     container.closest('.modal').style.display = 'block';
 }
 
-// --- LOADING AND ERROR INDICATORS ---
-export function showLoadingIndicator() {
-    if (elements.loadingOverlay) {
-        elements.loadingOverlay.style.display = 'flex';
-    }
-}
-
-export function hideLoadingIndicator() {
-    if (elements.loadingOverlay) {
-        elements.loadingOverlay.style.display = 'none';
-    }
-}
-
-export function showMainError(message) {
-    // Hide all main tab content
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.style.display = 'none';
-    });
-
-    // Create a dedicated error display area if it doesn't exist
-    let errorContainer = document.getElementById('main-error-container');
-    if (!errorContainer) {
-        errorContainer = document.createElement('div');
-        errorContainer.id = 'main-error-container';
-        errorContainer.className = 'card'; // Use existing card styling
-        errorContainer.style.margin = '20px';
-        errorContainer.style.padding = '20px';
-        errorContainer.style.color = '#721c24'; // Error text color
-        errorContainer.style.backgroundColor = '#f8d7da'; // Error background color
-        elements.appContainer.appendChild(errorContainer);
-    }
-    
-    errorContainer.innerHTML = `<h2>An Error Occurred</h2><p>${message}</p>`;
-    errorContainer.style.display = 'block';
-}
-
 /**
  * @deprecated This function is no longer in use and is kept for backward compatibility to avoid import errors.
  * The data loading and rendering logic has been moved to main.js and individual tab modules.
@@ -247,18 +210,19 @@ export function showDeleteConfirmationModal(title, message, onConfirm) {
 
     // Set the confirm action
     confirmBtn.onclick = async () => {
-        statusSpan.textContent = 'Deleting...';
+        const deletingToast = showToast('Deleting...', -1, 'info');
         confirmBtn.disabled = true;
         confirmInput.disabled = true;
         try {
             await onConfirm();
-            statusSpan.textContent = 'Deleted successfully.';
-            setTimeout(() => {
-                modal.style.display = 'none';
-                confirmInput.disabled = false;
-            }, 1500);
+            hideToast(deletingToast);
+            showToast('Deleted successfully.', 3000, 'success');
+            modal.style.display = 'none';
+            confirmInput.disabled = false;
         } catch (err) {
-            statusSpan.textContent = `Error: ${err.message}`;
+            hideToast(deletingToast);
+            showToast(`Error: ${err.message}`, 5000, 'error');
+            statusSpan.textContent = `Error: ${err.message}`; // Also show in modal for clarity
             console.error('Deletion error:', err);
             confirmBtn.disabled = false;
             confirmInput.disabled = false;

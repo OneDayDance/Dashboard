@@ -4,6 +4,7 @@
 import { state, updateState } from './state.js';
 import { updateSheetRow, writeData, uploadImageToDrive, clearSheetRow } from './api.js';
 import { showDeleteConfirmationModal } from './ui.js';
+import { showToast, hideToast } from './toast.js';
 import { extractFileIdFromUrl, safeSetValue } from './utils.js';
 
 /**
@@ -65,15 +66,19 @@ export function createResourceManager(config) {
         event.preventDefault();
         const statusSpan = getRequiredElement('modal-status');
         statusSpan.textContent = 'Saving...';
+        let toast = showToast('Saving...', -1, 'info');
 
         const imageFile = getRequiredElement('image-upload').files[0];
         let imageUrl = getRequiredElement('image-url').value;
 
         try {
             if (imageFile) {
-                statusSpan.textContent = 'Uploading image...';
+                hideToast(toast);
+                toast = showToast('Uploading image...', -1, 'info');
                 const uploadResult = await uploadImageToDrive(imageFile);
                 imageUrl = uploadResult.link;
+                hideToast(toast);
+                toast = showToast('Saving details...', -1, 'info');
             }
 
             const itemId = getRequiredElement('id-input').value;
@@ -90,7 +95,8 @@ export function createResourceManager(config) {
                 : writeData(config.sheetName, { ...itemData, [`${config.resourceName}ID`]: `${config.idPrefix}${Date.now()}` });
             
             await sheetPromise; 
-            statusSpan.textContent = `${config.resourceName} saved successfully!`;
+            hideToast(toast);
+            showToast(`${config.resourceName} saved successfully!`, 3000, 'success');
 
             await refreshData();
 
@@ -99,6 +105,8 @@ export function createResourceManager(config) {
             }, 1500);
 
         } catch (err) {
+            hideToast(toast);
+            showToast(`Error: ${err.message}`, 5000, 'error');
             statusSpan.textContent = `Error: ${err.message}`;
             console.error(`${config.resourceName} save error:`, err);
         }
@@ -127,7 +135,7 @@ export function createResourceManager(config) {
         if (processedRows.length === 0) {
             container.innerHTML = `
                 <div class="empty-state-container">
-                    <h3>No ${config.resourceName}s Found</h3>
+                    <h3>No ${pluralize(config.resourceName)} Found</h3>
                     <p>To get started, add a new ${config.name} using the button above. If you have data in your sheet that isn't appearing, check the filter settings.</p>
                 </div>`;
             return;
@@ -211,7 +219,6 @@ export function createResourceManager(config) {
 
                 const uniqueValues = [...new Set(rows.map(row => row[columnIndex]).filter(Boolean))];
                 const currentValue = filterElement.value;
-                // FIX: Use the pluralize helper for better grammar.
                 filterElement.innerHTML = `<option value="all">All ${pluralize(filter.sheetColumn)}</option>`;
                 uniqueValues.sort().forEach(value => {
                     const option = document.createElement('option');

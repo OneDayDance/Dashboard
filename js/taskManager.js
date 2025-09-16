@@ -4,6 +4,7 @@
 import { state, allTasks, allStaff, updateState } from './state.js';
 import { updateSheetRow, writeData, clearSheetRow } from './api.js';
 import { elements, showDeleteConfirmationModal } from './ui.js';
+import { showToast, hideToast } from './toast.js';
 
 let refreshData;
 
@@ -310,8 +311,7 @@ function renderLinkItem({ name, url }) {
 
 async function handleTaskFormSubmit(event) {
     event.preventDefault();
-    const statusSpan = document.getElementById('task-modal-status');
-    statusSpan.textContent = 'Saving...';
+    const toast = showToast('Saving task...', -1, 'info');
     
     const taskId = document.getElementById('task-id-input').value;
     const projectId = document.getElementById('task-project-id-input').value;
@@ -348,14 +348,16 @@ async function handleTaskFormSubmit(event) {
             taskData['SortIndex'] = maxSortIndex + 1;
             await writeData('Tasks', { ...taskData, 'TaskID': `T-${Date.now()}` });
         }
-        statusSpan.textContent = 'Task saved!';
+        hideToast(toast);
+        showToast('Task saved!', 3000, 'success');
         await refreshData();
         setTimeout(() => {
             elements.taskDetailsModal.style.display = 'none';
         }, 1000);
 
     } catch (err) {
-        statusSpan.textContent = 'Error saving task.';
+        hideToast(toast);
+        showToast('Error saving task.', 5000, 'error');
         console.error('Task save error:', err);
     }
 }
@@ -380,11 +382,14 @@ async function handleToggleComplete(taskId) {
     const currentStatus = task[statusIdx];
     const newStatus = currentStatus === 'Done' ? 'To Do' : 'Done';
 
+    const toast = showToast('Updating task...', -1, 'info');
     try {
         await updateSheetRow('Tasks', 'TaskID', taskId, { 'Status': newStatus });
         await refreshData();
+        hideToast(toast);
     } catch(err) {
-        alert('Could not update task status.');
+        hideToast(toast);
+        showToast('Could not update task status.', 3000, 'error');
         console.error("Task complete toggle error:", err);
     }
 }
@@ -520,7 +525,7 @@ export function setupDragAndDrop(container, projectId) {
         if (updatePromise) {
             await updatePromise.catch(err => {
                 console.error("Drag and drop save error:", err);
-                alert("Could not save changes.");
+                showToast("Could not save changes.", 3000, 'error');
             });
             // Perform a full refresh to ensure data integrity
             await refreshData();

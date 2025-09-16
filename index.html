@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/views.css">
+    <link rel="stylesheet" href="css/toast.css">
 </head>
 <body>
     <div id="landing-container">
@@ -261,12 +262,6 @@
 
     </div>
 
-    <!-- LOADING OVERLAY -->
-    <div id="loading-overlay" style="display: none;">
-        <div class="loading-spinner"></div>
-        <p>Loading data...</p>
-    </div>
-
     <!-- MODALS -->
     <!-- Request Details Modal (Rebuilt) -->
     <div id="details-modal" class="modal">
@@ -367,7 +362,6 @@
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn btn-primary">Add Client</button>
-                    <span id="add-client-modal-status"></span>
                 </div>
             </form>
         </div>
@@ -427,7 +421,6 @@
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn btn-primary">Create Project</button>
-                    <span id="create-project-status"></span>
                 </div>
             </form>
         </div>
@@ -493,7 +486,6 @@
                 <div class="modal-footer">
                     <button type="button" id="task-delete-btn" class="btn btn-danger" style="margin-right: auto;">Delete Task</button>
                     <button type="submit" class="btn btn-primary">Save Task</button>
-                    <span id="task-modal-status"></span>
                 </div>
             </form>
         </div>
@@ -516,7 +508,6 @@
                 </div>
                 <div class="modal-footer">
                     <button type="submit" id="gdrive-link-save-btn" class="btn btn-primary">Save Link</button>
-                    <span id="gdrive-link-status"></span>
                 </div>
             </form>
         </div>
@@ -539,7 +530,6 @@
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn btn-primary">Save Client</button>
-                    <span id="assign-client-status"></span>
                 </div>
             </form>
         </div>
@@ -565,7 +555,6 @@
             </div>
             <div class="modal-footer">
                 <button id="save-assigned-resource-btn" class="btn btn-primary">Save Changes</button>
-                <span id="assign-resource-status"></span>
             </div>
         </div>
     </div>

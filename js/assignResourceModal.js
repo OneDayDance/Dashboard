@@ -4,6 +4,7 @@
 import { allProjects } from './state.js';
 import { updateSheetRow } from './api.js';
 import { elements } from './ui.js';
+import { showToast, hideToast } from './toast.js';
 
 let refreshData;
 
@@ -47,14 +48,12 @@ export function createResourceHandler(config) {
     function renderAssignedSection(project, headers) {
         const assignedData = getAssignments(project, headers);
         let itemsHtml = '';
-        // FIX: Call the state function to get the latest resource data.
         const currentResources = allResourcesState();
         const [idIndex, nameIndex, imageIndex] = [idKey, 'Name', 'Image URL'].map(h => currentResources.headers.indexOf(h));
         
         if (assignedData && assignedData.length > 0) {
             assignedData.forEach(assignment => {
                 const resourceId = isComplex ? assignment.id : assignment;
-                // FIX: Use the fetched currentResources, not the potentially stale module-level import.
                 const resource = currentResources.rows.find(row => row[idIndex] === resourceId);
                 if (resource) {
                     itemsHtml += renderAssignedItemCard(resource, assignment, { idIndex, nameIndex, imageIndex });
@@ -105,7 +104,6 @@ export function createResourceHandler(config) {
             searchResultsContainer.innerHTML = '';
             selectedContainer.innerHTML = '';
 
-            // FIX: Get the current resource state each time the modal content is rendered.
             const currentResources = allResourcesState();
 
             // Render selected items
@@ -114,7 +112,6 @@ export function createResourceHandler(config) {
                 const id = isComplex ? assignmentOrId.id : assignmentOrId;
                 const item = currentResources.rows.find(row => row[currentResources.headers.indexOf(idKey)] === id);
                 if (item) {
-                    // FIX: Pass the fresh `currentResources` data to the element creator function.
                     selectedContainer.appendChild(createModalItemElement(item, true, assignmentOrId, { localSelected, render, currentResources }));
                 }
             });
@@ -128,7 +125,6 @@ export function createResourceHandler(config) {
             });
 
             availableItems.forEach(item => {
-                 // FIX: Pass the fresh `currentResources` data to the element creator function.
                  searchResultsContainer.appendChild(createModalItemElement(item, false, null, { localSelected, render, currentResources }));
             });
         };
@@ -142,18 +138,19 @@ export function createResourceHandler(config) {
                 config.updateStateBeforeSave(selectedContainer, localSelected);
             }
 
-            const statusSpan = elements.assignResourceStatus;
-            statusSpan.textContent = 'Saving...';
+            const toast = showToast('Saving assignments...', -1, 'info');
             try {
                 const dataToSave = formatForSave(localSelected);
                 await updateSheetRow('Projects', 'ProjectID', projectId, { [projectSheetColumn]: dataToSave });
-                statusSpan.textContent = 'Saved!';
+                hideToast(toast);
+                showToast('Saved!', 3000, 'success');
                 await refreshData();
                 setTimeout(() => {
                     elements.assignResourceModal.style.display = 'none';
                 }, 1000);
             } catch (err) {
-                statusSpan.textContent = 'Error saving.';
+                hideToast(toast);
+                showToast('Error saving assignments.', 5000, 'error');
                 console.error(`Error assigning ${resourceType}:`, err);
             }
         };

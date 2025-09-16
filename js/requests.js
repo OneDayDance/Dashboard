@@ -3,7 +3,8 @@
 
 import { state, allRequests, allClients, sortableColumns, updateState, updateFilters } from './state.js';
 import { updateSheetRow, writeData } from './api.js';
-import { showColumnModal, elements, loadDataForActiveTab } from './ui.js';
+import { showColumnModal, elements } from './ui.js';
+import { showToast, hideToast } from './toast.js';
 import { showCreateProjectModal } from './projects.js';
 
 let refreshData; // This will hold the main data refresh function.
@@ -171,13 +172,16 @@ async function handleStatusChange(event) {
     const newStatus = event.target.value;
     const submissionId = event.target.dataset.submissionId;
     event.target.disabled = true;
+    const toast = showToast('Updating status...', -1, 'info');
     try {
         await updateSheetRow('Submissions', 'Submission ID', submissionId, { 'Status': newStatus });
-        // The data will be refreshed automatically by the updateSheetRow function's success handler.
+        await refreshData();
     } catch (err) {
-        alert('Could not update status.');
+        showToast('Could not update status.', 3000, 'error');
         console.error("Status Update Error:", err);
         event.target.disabled = false; // Re-enable on failure
+    } finally {
+        hideToast(toast);
     }
 }
 
@@ -224,7 +228,6 @@ export function showRequestDetailsModal(rowData, headers) {
             <h3>Notes</h3>
             <textarea id="modal-notes-textarea">${notes}</textarea>
             <button id="modal-save-note-btn" class="btn btn-secondary">Save Note</button>
-            <span id="modal-note-status"></span>
         </div>
         <div class="content-section">
             <h3>Actions</h3>
@@ -232,7 +235,7 @@ export function showRequestDetailsModal(rowData, headers) {
                 <button id="modal-create-client-btn" class="btn btn-primary" ${!submissionEmail || clientExists ? 'disabled' : ''}>Create Client</button>
                 <button id="modal-create-project-btn" class="btn btn-primary" ${!clientExists ? 'disabled' : ''}>Create Project</button>
             </div>
-            <span id="modal-request-actions-status">${clientExists ? 'Client already exists.' : ''}</span>
+            ${clientExists ? '<p><em>Client already exists.</em></p>' : ''}
         </div>
     `;
     actionsPane.innerHTML = actionsHtml;
@@ -258,21 +261,22 @@ export function showRequestDetailsModal(rowData, headers) {
 }
 
 async function handleSaveNote(submissionId) {
-    const noteStatus = document.getElementById('modal-note-status');
-    noteStatus.textContent = 'Saving...';
+    const toast = showToast('Saving note...', -1, 'info');
     const dataToUpdate = { 'Notes': document.getElementById('modal-notes-textarea').value };
     try {
         await updateSheetRow('Submissions', 'Submission ID', submissionId, dataToUpdate);
-        noteStatus.textContent = 'Saved successfully!';
+        hideToast(toast);
+        showToast('Note saved successfully!', 3000, 'success');
+        await refreshData();
     } catch (err) {
-        noteStatus.textContent = 'Error saving note.';
+        hideToast(toast);
+        showToast('Error saving note.', 3000, 'error');
         console.error("Save Note Error:", err);
     }
 }
 
 async function handleCreateClient(submissionRow, submissionHeaders) {
-    const actionStatus = document.getElementById('modal-request-actions-status');
-    actionStatus.textContent = 'Creating client...';
+    const toast = showToast('Creating client...', -1, 'info');
     const fullName = submissionRow[submissionHeaders.indexOf('Full Name')] || '';
     const nameParts = fullName.split(' ');
     const clientData = {
@@ -288,10 +292,13 @@ async function handleCreateClient(submissionRow, submissionHeaders) {
     };
 
     try {
-        await writeData('Clients', clientData); // This will now trigger a full data refresh.
-        actionStatus.textContent = 'Client created successfully!';
+        await writeData('Clients', clientData);
+        hideToast(toast);
+        showToast('Client created successfully!', 3000, 'success');
+        await refreshData();
         setTimeout(() => elements.detailsModal.style.display = 'none', 1500);
     } catch (err) {
-        actionStatus.textContent = `Error: ${err.result.error.message}`;
+        hideToast(toast);
+        showToast(`Error: ${err.result.error.message}`, 5000, 'error');
     }
 }

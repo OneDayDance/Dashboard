@@ -4,6 +4,7 @@
 import { state, allClients, allRequests, allProjects, clientSortableColumns, updateState, updateClientFilters } from './state.js';
 import { updateSheetRow, writeData, clearSheetRow } from './api.js';
 import { showColumnModal, elements, showDeleteConfirmationModal } from './ui.js';
+import { showToast, hideToast } from './toast.js';
 import { showCreateProjectModal, renderProjectsTab } from './projects.js';
 import { showRequestDetailsModal } from './requests.js';
 
@@ -13,7 +14,6 @@ let refreshData; // This will hold the main data refresh function.
 export function initClientsTab(refreshDataFn) {
     refreshData = refreshDataFn;
     
-    // FIX: Corrected element ID from clientAddBtn to addClientBtn to match the UI cache.
     if (elements.addClientBtn) {
         elements.addClientBtn.onclick = () => showAddClientModal();
     }
@@ -43,14 +43,12 @@ function showAddClientModal() {
     if (elements.addClientModal) {
         elements.addClientModal.style.display = 'block';
         elements.addClientForm.reset();
-        document.getElementById('add-client-modal-status').textContent = '';
     }
 }
 
 async function handleAddClientSubmit(event) {
     event.preventDefault();
-    const statusDiv = document.getElementById('add-client-modal-status');
-    statusDiv.textContent = 'Adding client...';
+    const toast = showToast('Adding client...', -1, 'info');
 
     const clientData = {
         'First Name': document.getElementById('add-client-first-name').value,
@@ -69,13 +67,15 @@ async function handleAddClientSubmit(event) {
 
     try {
         await writeData('Clients', clientData);
-        statusDiv.textContent = 'Client added successfully!';
+        hideToast(toast);
+        showToast('Client added successfully!', 3000, 'success');
         await refreshData();
         setTimeout(() => { 
             elements.addClientModal.style.display = 'none';
         }, 1500);
     } catch (err) {
-        statusDiv.textContent = `Error: ${err.message}`;
+        hideToast(toast);
+        showToast(`Error: ${err.message}`, 5000, 'error');
         console.error("Add client error:", err);
     }
 }
@@ -486,6 +486,7 @@ export function showClientDetailsModal(rowData, headers) {
     
     async function handleSaveClientUpdate() {
         statusSpan.textContent = 'Saving...';
+        const toast = showToast('Saving changes...', -1, 'info');
         const dataToUpdate = {};
         const fields = ['First Name', 'Last Name', 'Email', 'Phone', 'Organization', 'Status', 'Lead Source', 'Address', 'Social Media', 'Birthday', 'Intake Date', 'Notes', 'Contact Logs'];
         fields.forEach(h => {
@@ -515,7 +516,8 @@ export function showClientDetailsModal(rowData, headers) {
                 localState.currentRowData = newRow;
             }
             
-            statusSpan.textContent = 'Saved successfully!';
+            hideToast(toast);
+            showToast('Saved successfully!', 3000, 'success');
             setTimeout(() => {
                 localState.isEditMode = false;
                 render();
@@ -523,6 +525,8 @@ export function showClientDetailsModal(rowData, headers) {
             }, 1000);
 
         } catch (err) {
+            hideToast(toast);
+            showToast('Error saving changes.', 5000, 'error');
             statusSpan.textContent = 'Error saving.';
             console.error('Client update error:', err);
         }
